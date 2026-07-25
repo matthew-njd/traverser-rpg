@@ -40,4 +40,6 @@ Each milestone ends with a build I can run on my actual phone. Placeholder art (
 
 ## Today's Session
 
-**T1 — Data Model & Schema.** Review GDD Sections 1, 4, 8, 9, and 11 plus the planning doc's data-model asks, ask any targeted clarifying questions, then produce the complete schema spec.
+**T2 — API Surface & Sync Protocol.** Review GDD Sections 1, 9, and 11 plus T1's data model and the planning doc's offline section, ask any targeted clarifying questions, then produce the endpoint list, sync transaction, offline queue design, and merge rules.
+
+*(T1 — Data Model & Schema: complete, `traverser-tech-01-data-model.md`.)*

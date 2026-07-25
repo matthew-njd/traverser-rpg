@@ -1,0 +1,1 @@
+**Traverser** is a mythology-themed fitness RPG mobile app set in the world of "The Old Roads." It turns real-world physical activity into RPG-style progression — gamifying exercise so the love of RPGs becomes the motivation to move more.
