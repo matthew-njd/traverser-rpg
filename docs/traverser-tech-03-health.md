@@ -1,6 +1,6 @@
 # Traverser Tech Spec — T3: Health Integration
 
-**Status:** locked. Inputs: GDD Sections 1, 10, 11 · `traverser-tech-01-data-model.md` · `traverser-tech-02-api-sync.md` · sanctioned scope trims.
+**Status:** locked. **Amended 2026-07-26** with the spike/health-connect findings (§3, §4, §12 — full findings in `DECISIONS.md`); the spike confirmed the rest of the spec as written. Inputs: GDD Sections 1, 10, 11 · `traverser-tech-01-data-model.md` · `traverser-tech-02-api-sync.md` · sanctioned scope trims.
 **Scope:** how raw Android Health Connect data becomes the `steps` and `tier{1,2,3}_minutes` integers the rest of the system consumes — the read strategy, the tier-minute derivation algorithm, session identity, the permission flow, the on-device/server split, and the spike checklist. No RN code, no `app.json` edits, no package installs this session; those land in M0/M1.
 
 **Platform:** Android only. No HealthKit code paths (CLAUDE.md). §11 names the seam for a possible iOS later and stops there.
@@ -63,7 +63,11 @@ GDD 10 §3.1 puts this at Screen 2, before any story content, with the copy lock
 
 **Sequence.** `getSdkStatus()` → if available, `initialize()` → `requestPermission([{accessType:'read', recordType:'Steps'}, {accessType:'read', recordType:'HeartRate'}])` → then, always, `getGrantedPermissions()`.
 
+> **Amended 2026-07-26 (spike):** `initialize()` is **per-process and must precede every read pass**, not just onboarding. Changing permissions in Health Connect settings restarts the app process, after which every call fails with "Health Connect client not initialized" — so `getSdkStatus` → `initialize` joins `getGrantedPermissions` on every foreground (T4 §8.1 wires this).
+
 That last call is not redundant. The player can grant steps and deny heart rate — Health Connect's dialog is per-record-type — and the app must handle a partial grant as a first-class state rather than a binary. **The result of `requestPermission` is never trusted on its own; `getGrantedPermissions` is the authority.**
+
+> **Amended 2026-07-26 (spike):** granting Steps also silently grants `StepsCadence`, a record type never requested. `getGrantedPermissions` can therefore return **more** entries than were asked for — check it by exact `recordType` match, never by array length or index. Partial grant otherwise behaves as specified (probe 7: Steps granted, HeartRate denied, reported independently).
 
 | State | What happens |
 |---|---|
@@ -73,7 +77,9 @@ That last call is not redundant. The player can grant steps and deny heart rate 
 | **Neither granted** | GDD 10 §3.2 exactly: onboarding continues through story and tutorial battle, no hard block, persistent low-key banner on the Character screen, no step/HR XP accrues, **Battle XP still functions normally.** |
 | **SDK unavailable / update required** | Same non-blocking treatment as denied, different banner and different deep link — store listing rather than Health Connect settings. |
 
-**Re-checking.** `getGrantedPermissions` runs on every foreground, before the read. Permissions are revocable at any time from OS settings, and revocation is silent: a revoked read returns an **empty result, not an error**. An app that only checks permissions at onboarding will read zero steps forever and report it as a quiet day. Empty-and-unpermissioned and empty-and-genuinely-sedentary must never be conflated — the first shows the banner, the second shows nothing.
+**Re-checking.** `getGrantedPermissions` runs on every foreground, before the read. Permissions are revocable at any time from OS settings, and revocation is silent from the app's point of view — so the check must be per-foreground, never onboarding-only.
+
+> **Corrected 2026-07-26 (spike, probe 6).** This section originally claimed a revoked read returns an empty result, not an error. **That is wrong: a read without permission throws** — `HealthConnectException: java.lang.SecurityException: Caller requires android.permission.health.READ_STEPS/READ_HEART_RATE`, verified for both record types. The read path therefore needs a catch that maps the exception to the banner state (probe 6's stated fallback; T4 §8.3 owns it). The original worry about conflating empty-and-unpermissioned with empty-and-genuinely-sedentary is now trivially safe: an unpermissioned read cannot produce an empty result at all. *(Tested via denial; revoke-after-grant not separately tested — same native path.)*
 
 **Deep link.** The banner's tap target calls `openHealthConnectSettings()`. Do not attempt to re-trigger `requestPermission` after a denial; Android suppresses repeat prompts and the button would appear broken.
 
@@ -107,6 +113,8 @@ First, **Health Connect de-duplicates overlapping step contributions from multip
 
 Second, the daily buckets it returns line up with `activity_date` directly, which is what T2 §2 needs: *"`activity_date` is a bare `YYYY-MM-DD` and is always supplied by the client, never derived server-side."* The slicing must be evaluated in the player's local timezone so the bucket boundary is local midnight — §12 has a probe confirming the library's timezone semantics here, because getting it wrong shifts every day boundary by the UTC offset and silently misattributes the last hours of every evening walk.
 
+> **Confirmed 2026-07-26 (spike, probes 4–5):** `aggregateGroupByPeriod` slices on **local** midnight and **does** de-duplicate across origins (phone + watch produced raw 601 vs. aggregate 373 — a ~60% daily inflation avoided). One consequence for the caller: the time range filter must be a **UTC instant string** (`toISOString()`); a local-naive string throws `Text '...' could not be parsed at index 19`. The library does the local conversion itself. Multi-origin is the normal steady state on the spiked device, not an edge case — the phone writes steps independently of Fitbit.
+
 **4.3 Heart rate.**
 
 ```
@@ -114,6 +122,8 @@ readRecords('HeartRate', { timeRangeFilter: { operator: 'between', startTime, en
 ```
 
 Each `HeartRateRecord` carries a `samples[]` array of `{ time, beatsPerMinute }`. Flatten every record's samples into one time-ordered timeline across the whole window and discard the record grouping — provider record boundaries are arbitrary and have nothing to do with GDD 11 §8's session definition. Retain each source record's `metadata.id` for the local dedupe ledger, and `metadata.dataOrigin` for diagnostics only.
+
+> **Amended 2026-07-26 (spike, not anticipated by this spec):** two on-device realities the read must handle. **(1) Reads are paginated** — a 48-hour HeartRate read returned exactly 1,000 records (the default `pageSize` cap) with a `pageToken` present; any read assuming one call returns the window silently truncates. T4 §8.2 owns the page-following helper, and no read of any record type bypasses it. **(2) Fitbit writes HR as ~one record per minute, not one per workout** (median duration 57s, ~26 samples each) — a session is stitched from hundreds of adjacent records, which reinforces §1.2's decision to segment from the sample timeline rather than from provider records. Sampling density is comfortably sufficient for §5.2's whole-minute bucketing (median inter-sample gap 2s; the sample-interval-weighting fallback is not needed).
 
 Aggregation is deliberately **not** used for HR. The available aggregate metrics are min/max/average over a span, and none of them can produce time-in-zone — averaging a 45-minute workout to a single BPM destroys precisely the information GDD 1 §2.2 charges XP against.
 
@@ -142,9 +152,9 @@ GDD 1 §2.2 notes HRmax may be *"refined by wearable data where available"*. Not
 **5.3 Session segmentation.** Walk the minute timeline in order:
 
 - A session **opens** at the first Tier 1+ minute.
-- A session **closes** after **10 consecutive** non-Tier-1+ minutes (GDD 11 §8.1: *"ending when the player drops below Tier 1 for more than 10 consecutive minutes"*). The closed session's `ended_at` is the last Tier 1+ minute, not the end of the gap — the gap is a boundary marker, not part of the session.
-- A gap shorter than 10 minutes does **not** close the session; those minutes are inside the session but contribute to no tier.
-- A trailing gap shorter than 10 minutes at the end of the read window leaves the session **open**. It is uploaded as-is and may grow on the next sync (§6 makes that safe).
+- A session **closes** after **more than 10 consecutive** non-Tier-1+ minutes (GDD 11 §8.1: *"ending when the player drops below Tier 1 for more than 10 consecutive minutes"*). An exactly-10-minute gap does **not** close the session; the 11th consecutive sub-Tier-1 minute does — fixtures §11.3's boundary row pins the strict inequality. *(Wording tightened 2026-07-26; an earlier draft said "after 10 consecutive", leaving the exactly-10 case ambiguous.)* The closed session's `ended_at` is the last Tier 1+ minute, not the end of the gap — the gap is a boundary marker, not part of the session.
+- A gap of 10 minutes or fewer does **not** close the session; those minutes are inside the session but contribute to no tier.
+- A trailing gap of 10 minutes or fewer at the end of the read window leaves the session **open**. It is uploaded as-is and may grow on the next sync (§6 makes that safe).
 
 **5.4 Totals.** Sum per-tier minutes per session, and independently per `activity_date`. A session crossing local midnight is **one session** whose minutes split across two dates — `hr_session` keeps the whole thing (it is bounded by `started_at`/`ended_at`, not by a date), while the day rollups each receive their own share. This matters for the overactivity warning, which is a per-session rule and must not reset at midnight.
 
@@ -242,6 +252,8 @@ GDD 11 §8 splits cleanly across the two layers, and T2 §4 step 11 already fixe
 
 T3 introduces derivation logic with no fixture coverage. These cases must be authored into the fixtures file **before** the code is written — per CLAUDE.md, tests assert against fixtures, and fixtures are never edited to make a test pass:
 
+**DELIVERED** — added as fixtures **§11**, machine-verified 2026-07-26 by executing the §5/§8 algorithms in Node rather than transcribing prose (same method as T5's §10). §11.3 additionally pins the exactly-10-minute gap boundary (does not close — GDD 11 §8.1's "more than 10").
+
 1. **Threshold table** for at least two ages (a younger and an older player), giving `HRmax` and the three `ceil` BPM bounds.
 2. **Bucketing** — a minute with several samples straddling a boundary, asserting the mean-BPM tier assignment; a minute with no samples asserting zero.
 3. **Segmentation, 9-minute gap** — one session, gap minutes untiered.
@@ -276,6 +288,8 @@ Run on the physical Android device before M1 code lands. Each item: *probe → w
 | 9 | **Long gap.** Leave the app closed >48 h with activity happening, then open. | The interaction of §4.1's window with GDD 11 §3.2's grace lookback. | Verifies the grace path end-to-end. If steps outside the window are missing entirely, that is expected — confirm it reads as quiet, not as a loss, per GDD 11 §4. |
 
 Probes 1, 4, and 5 are the ones that can change the spec. The rest confirm it.
+
+> **Status 2026-07-26 — spike executed** (Pixel 9, Android 16, Fitbit as HR source; full findings in `DECISIONS.md`). Probes **1, 3, 4, 5, 7, 8 passed as specified** (probe 1: median 2s sampling, whole-minute bucketing stands; probe 4: aggregation de-duplicates; probe 5: local-midnight slicing). Probe **6 disproved §3's original claim** — reads throw rather than returning empty; §3 amended above. Two findings nothing anticipated: paginated reads and per-minute HR records (§4.3 amendment). Historical depth on this device is **~30 days** — clears §4.1's 72-hour window easily, but the grace lookback must never assume more. Probes **2 (backfill latency) and 9 (long gap) remain uncharacterised** — both are time-elapsed probes whose fallbacks are "widen the constant", re-reads are idempotent by §8, so they are opportunistic M1 checks, not blockers. Directionally observed for probe 2: a read minutes after a walk can understate the day severely (23 of ~373 steps before the watch synced), which §4.1/§8's design already absorbs.
 
 ---
 

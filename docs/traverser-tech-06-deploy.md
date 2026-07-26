@@ -302,7 +302,9 @@ Every external dependency, its free-tier limit, and this project's usage against
 - **M5 (The Song):** the home-lab decision (§11) and the second restore drill.
 - **Manifest:** T6 adds no content IDs, but §5.4 makes the manifest load-bearing at seed time in the same way T4 §9.2 made it load-bearing at build time. The two ID families flagged on 2026-07-25 and escalated by T4 (six `gate_*` keys, twelve concrete `gear_{slot}_{tier}` keys) block the seed as well as the build.
 
-### 13.1 Open: recovering the device identity after an uninstall
+### 13.1 ~~Open~~ **Decided 2026-07-26**: recovering the device identity after an uninstall
+
+> **Resolution: candidate 1 adopted** — the manual export/import path, built at **M1 alongside the backup job** (`DECISIONS.md` 2026-07-26). The analysis below is retained as the record of why.
 
 **The conflict.** §10 makes the Postgres backup non-negotiable, and §10.1 shows that a Postgres backup alone is not restorable-to: `player_id` and the bearer token live only in app storage (T4 §6.5), so losing the phone, wiping it, or being forced into an uninstall by a keystore change (§7.3) leaves a complete history with no client able to claim it. T4 §15 defers "account recovery after uninstall" to real auth, which is the right call for a *feature*; but the backup requirement makes it a gap in T6's deliverable *now*, because a backup plan with an unclaimable restore is incomplete regardless of what the roadmap says.
 

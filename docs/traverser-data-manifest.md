@@ -105,19 +105,39 @@ Note: "Savage Bite" appears on both Cerberus and Fenrir with different AI weight
 | `item_blindveil` | Blindveil | breach/wisdom | uncommon | 3 |
 
 ## Gear (Section 8)
-Weapon/Armor/Accessory — one tier ladder, zone-agnostic, one silhouette per slot:
-| Key pattern | Mortal | Heroic | Mythic | Divine |
-|---|---|---|---|---|
-| `gear_weapon_{tier}` | Traveler's Blade | Warden's Blade | Paragon's Blade | Ascendant's Blade |
-| `gear_armor_{tier}` | Traveler's Guard | Warden's Guard | Paragon's Guard | Ascendant's Guard |
-| `gear_accessory_{tier}` | Traveler's Band | Warden's Band | Paragon's Band | Ascendant's Band |
+Weapon/Armor/Accessory — one tier ladder, zone-agnostic, one silhouette per slot. Concrete keys (enumerated 2026-07-26 per DECISIONS 2026-07-25 — the codegen and seed both need literals, not the former `gear_{slot}_{tier}` pattern):
+| Key | Display name | Slot | Tier |
+|---|---|---|---|
+| `gear_weapon_mortal` | Traveler's Blade | weapon | mortal |
+| `gear_weapon_heroic` | Warden's Blade | weapon | heroic |
+| `gear_weapon_mythic` | Paragon's Blade | weapon | mythic |
+| `gear_weapon_divine` | Ascendant's Blade | weapon | divine |
+| `gear_armor_mortal` | Traveler's Guard | armor | mortal |
+| `gear_armor_heroic` | Warden's Guard | armor | heroic |
+| `gear_armor_mythic` | Paragon's Guard | armor | mythic |
+| `gear_armor_divine` | Ascendant's Guard | armor | divine |
+| `gear_accessory_mortal` | Traveler's Band | accessory | mortal |
+| `gear_accessory_heroic` | Warden's Band | accessory | heroic |
+| `gear_accessory_mythic` | Paragon's Band | accessory | mythic |
+| `gear_accessory_divine` | Ascendant's Band | accessory | divine |
 
 Trinkets (zone-specific, the only bespoke per-item art in the game):
 `gear_skyroad_sigil` (Skyroad Sigil, heroic, Cyclops) · `gear_frostroad_sigil` (Frostroad Sigil, heroic, Fenrir) · `gear_sunroad_sigil` (Sunroad Sigil, heroic, Griffin) · `gear_gatekeepers_ruse` (mythic, Cerberus repeat) · `gear_gatekeepers_snare` (divine, Cerberus first kill) · `gear_coilbreakers_oath` (mythic, Jörmungandr repeat) · `gear_coilbreakers_wrath` (divine, Jörmungandr first kill) · `gear_emberwise_ward` (mythic, Cacus repeat) · `gear_emberwise_verdict` (divine, Cacus first kill). Heroic Sigils grant **no move**.
 
+## Zone Gates (Section 9 §3 — added 2026-07-26 per DECISIONS 2026-07-25)
+Content keys for the `zone_gate` table (tech-01 §3). Thresholds are fixtures §8; not asset keys — no art or audio export carries these.
+| Key | Zone | Boss | Kind | League threshold | Unlocks |
+|---|---|---|---|---|---|
+| `gate_cyclops` | olympion | `enemy_cyclops` | mid-boss | 90 | — |
+| `gate_cerberus` | olympion | `enemy_cerberus` | final boss | 220 | valheon |
+| `gate_fenrir` | valheon | `enemy_fenrir` | mid-boss | 380 | — |
+| `gate_jormungandr` | valheon | `enemy_jormungandr` | final boss | 900 | imperion |
+| `gate_griffin` | imperion | `enemy_griffin` | mid-boss | 1850 | — |
+| `gate_cacus` | imperion | `enemy_cacus` | final boss | 2900 | egypt_tbd (locked terminus) |
+
 ## Audio IDs (Section 14 — already canonical, listed for completeness)
 Music: `mus_title`, `mus_oldroads`, `mus_hub`, `mus_map_mvp`, `mus_map_olympion`, `mus_map_valheon`, `mus_map_imperion`, `mus_battle_tutorial`, `mus_battle_olympion`, `mus_battle_valheon`, `mus_battle_imperion`, `mus_boss_cyclops`, `mus_boss_cerberus`, `mus_boss_fenrir`, `mus_boss_jormungandr`, `mus_boss_griffin`, `mus_boss_cacus`, `mus_entry_valheon`, `mus_entry_imperion`.
-Stingers: `stg_victory`, `stg_victory_boss`, `stg_defeat`, `stg_boss_intro`, `stg_type_super`, `stg_type_resisted`, `stg_reveal_*`, `stg_waymarker`, `stg_rest_day`, `stg_streak_break`, `stg_overactivity`, `stg_egypt_tease`.
+Stingers: `stg_victory`, `stg_victory_boss`, `stg_defeat`, `stg_boss_intro`, `stg_type_super`, `stg_type_resisted`, `stg_reveal_1`, `stg_reveal_2`, `stg_reveal_3`, `stg_waymarker`, `stg_rest_day`, `stg_streak_break`, `stg_overactivity`, `stg_egypt_tease`.
 SFX: `sfx_button_tap`, `sfx_button_disabled`, `sfx_tab_switch`, `sfx_subtab_switch`, `sfx_screen_push`, `sfx_screen_pop`, `sfx_modal_open`, `sfx_menu_select_action`, `sfx_encounter_start`, `sfx_hit_physical`, `sfx_hit_storm`, `sfx_hit_war`, `sfx_hit_trickery`, `sfx_hit_underworld`, `sfx_hit_sea`, `sfx_hit_wisdom`, `sfx_crit`, `sfx_enemy_faint`, `sfx_item_heal`, `sfx_item_buff`, `sfx_item_charm`, `sfx_skill_locked`, `sfx_flee_success`, `sfx_flee_denied`, `sfx_dialogue_advance`, `sfx_footstep_loop`, `sfx_banner_appear`, `sfx_reveal_card_flip`, `sfx_toggle`, `sfx_volume`.
 
 ## Analytics Event Names (Sections 11 §9 / 12 / 15 — deferred, reserved)
