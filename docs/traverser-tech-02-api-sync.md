@@ -85,7 +85,26 @@ Only three things genuinely require the server: registration, the content bundle
 
 Fired on app open and on foreground, never in the background (GDD 9 §2.3, GDD 11 §10). One `POST /api/v1/sync`, one Postgres transaction, `READ COMMITTED`, opening with `SELECT ... FROM player WHERE id = $1 FOR UPDATE` so two overlapping syncs from a retrying client serialize rather than interleave.
 
-**Request** carries: the queued `sync_delta` rows, completed `battle` rows, `hr_session` upserts, queued Explore requests, the client's `content_version`, and its local date + timezone.
+**Request** carries: the queued `sync_delta` rows, completed `battle` rows **with their client-rolled drops** (§4.1), `hr_session` upserts, queued Explore requests, the client's `content_version`, and its local date + timezone.
+
+#### 4.1 The battle payload — amended by T5
+
+T5 §1.6 establishes that **the client rolls loot and the server records it**. `drop_rate` and `enemy_drop_pool` are already client-cached content (tech-01 §7), and rolling server-side on ingest would leave a boss drop nonexistent until the next sync — days, with the API off by design (§1.2) — breaking GDD 13 §6.3's victory-screen Reveal Card. Each `battle` row therefore carries what it produced:
+
+```
+{ "client_battle_id": "...", "grant_id": "...", "enemy_id": "enemy_harpy",
+  "encounter_kind": "wild", "enemy_level": 15, "outcome": "win",
+  "started_at": "...", "ended_at": "...",
+  "vigor_after": 13,
+  "items_consumed": [ "<player_item_id>", ... ],
+  "drops": [ { "kind": "item",  "def_id": "item_stormveil" },
+             { "kind": "gear",  "def_id": "gear_weapon_mortal",
+               "level_at_drop": 15, "bonus_primary": 2 } ] }
+```
+
+`kind` is one of `item` \| `gear` \| `trinket`. Gear and trinket drops carry their **frozen** rolled bonus and `level_at_drop` (tech-01 §4 — the bonus is persisted, never recomputed); items carry neither. This is the only place in the API where the client supplies a value the server would otherwise derive, and it is deliberate: the bonus is frozen at drop time by design, so re-deriving it server-side would be the bug, not the check. `level_at_drop` is stored alongside purely so it *can* be re-derived for verification.
+
+**Trust boundary.** This does widen what a tampered client can mint — to items and gear, and no further. XP, levels, Leagues, gates, and encounter grants all stay server-derived (§1.1), so the ceiling on abuse is cosmetic-plus-stats in a single-player game, which the sanctioned no-anti-cheat trim already accepts. Stated here so the boundary is explicit rather than incidental.
 
 The order below is normative. It is the order tech-01 §7 asked T2 to fix, and steps 3–6 in particular cannot be reordered without changing outcomes.
 
@@ -93,8 +112,12 @@ The order below is normative. It is the order tech-01 §7 asked T2 to fix, and s
 `INSERT INTO sync_delta ... ON CONFLICT (player_id, client_delta_id) DO NOTHING RETURNING *`.
 **Everything downstream is computed only from the returned rows.** This single line is the entire double-count defence — a replayed batch returns zero rows and the rest of the transaction has nothing to do. If any later step ever reads the *request* rather than the *returned set*, idempotency is gone.
 
-**2. Ingest battles and sessions.**
+**2. Ingest battles, their drops, and sessions.**
 `battle` rows on `ON CONFLICT (player_id, client_battle_id) DO NOTHING`, likewise `RETURNING`. `hr_session` upserts on `(player_id, external_session_id)` — tier minutes here are **set, not added**, because a session is a point-in-time snapshot that grows as it's re-observed (T3 owns what fills it; §6.3). `player_bestiary` `encounter_count` / `defeat_count` increment **only for newly-inserted battles**. `enemy_level` is recorded as sent; it equals the player's level at encounter time and is history, not a live value.
+
+**Drops are materialised only for newly-inserted battles** — the same `RETURNING` set that gates the bestiary increment, for the same reason and in the same statement's shadow. A replayed battle returns no row, so its `drops` array is never read and no duplicate `player_item` / `player_gear` is written. Deriving this from an "already granted?" lookup instead of from the returned set is how a boss's Divine drop gets granted twice. `vigor_after` is applied to `player.vigor_current` and `vigor_anchor_at` is reset to the battle's `ended_at`, likewise only for newly-inserted battles; `items_consumed` deletes those `player_item` rows, idempotent by primary key.
+
+Drops do **not** pass through `milestone_grant` (step 10's permission slip) — `client_battle_id` is already their idempotency key, and routing them through a second ledger would give one event two conflicting sources of truth.
 
 **3. Roll up to `activity_day`.**
 Group the returned deltas by `activity_date` and upsert:
@@ -188,7 +211,7 @@ Two days offline, then one open. Day 1: 8,000 steps, 45 min Vigorous. Day 2: 6,2
 | 10 | No level milestone at 12; no streak milestone at 9 |
 | 11 | 45 min < 90 → no warning |
 
-**Now replay the identical payload.** Step 1 returns zero rows. Steps 3–9 have an empty working set. Step 10's `milestone_grant` inserts conflict. Result: **0 XP, 0 Leagues, 0 encounters, 0 duplicate grants**, and a response whose `player` block is byte-identical to the first. That property is the point of the whole design; if a future change breaks it, it breaks here.
+**Now replay the identical payload.** Step 1 returns zero rows. Step 2 returns no `battle` rows, so no drops are materialised, no bestiary counter moves, and `vigor_current` is not re-applied. Steps 3–9 have an empty working set. Step 10's `milestone_grant` inserts conflict. Result: **0 XP, 0 Leagues, 0 encounters, 0 duplicate grants, 0 duplicate drops**, and a response whose `player` block is byte-identical to the first. That property is the point of the whole design; if a future change breaks it, it breaks here.
 
 ---
 
@@ -233,7 +256,8 @@ Per §1.5: one device assumed. Concurrent devices would not corrupt totals — a
 
 - **T3 (Health Integration):** owns everything that populates `sync_delta` with `source in ('steps','hr')` and everything that fills `hr_session`. Two contracts it must satisfy: tier-minute derivation happens on-device and arrives already bucketed (the server never sees raw HR), and `hr_session.external_session_id` must be stable across re-observations — §4 step 2 sets session minutes rather than adding them, which only works if the same session keeps the same key. If Health Connect can't provide one, the fallback `(player_id, started_at)` key keeps this transaction valid unchanged.
 - **T4 (Client Architecture):** owns the queue's storage engine, the local mirror, and the optimistic-preview UI. Three requirements from here: the queue must survive process death, the mirror must be repairable from `GET /players/me` in one shot, and the reconciliation must be visibly *quiet* — a corrected projection is not an error state and must not render as one.
-- **T5 (Battle Engine):** owns the `battle` payload shape and produces a `client_battle_id` under the same never-derive-from-content rule as §5. Consumes encounter grants rather than rolling its own encounters (§1.3). Item consumption and Vigor changes ride along with the battle payload, not as separate writes.
+- **T5 (Battle Engine):** owns the `battle` payload shape and produces a `client_battle_id` under the same never-derive-from-content rule as §5. Consumes encounter grants rather than rolling its own encounters (§1.3). Item consumption and Vigor changes ride along with the battle payload, not as separate writes. **Amended 2026-07-26 by T5 §1.6:** the payload also carries a `drops` array (§4.1) — the client rolls loot so it exists offline, and step 2 materialises it only for newly-inserted battles. This is the one place the client supplies a value the server would otherwise derive, and the trust boundary it moves is stated in §4.1.
+- **T5 — grant return on abandonment.** T5 §8.1 abandons a battle whose `content_version` or snapshot schema moved underneath it and returns the encounter grant unspent. Because grants are held client-side until spent (§1.3), "return" is a local no-op and nothing in this spec changes — the `grant_already_spent` path is simply never reached for that battle. Named because the failure mode is otherwise invisible from the server's side.
 - **T6 (Deployment):** the API being unreachable is the normal case, not an outage — health checks and any future alerting must not treat it as one. Tailscale reachability is what makes §1.4's token load-bearing rather than ceremonial.
 - **M1 (The Walk):** §4 is M1's spine — steps → XP → level-up, with §4 steps 7–11 stubbed until their milestones. The replay property from §4's worked example is the first integration test worth writing.
 - **Manifest:** T2 introduces no new content IDs. `grant_id` and the operation IDs on progression writes are runtime UUIDs, not manifest keys.
