@@ -1,6 +1,6 @@
 # Traverser Tech Spec — T1: Data Model & Schema
 
-**Status:** locked. Inputs: GDD Sections 1, 4, 8, 9, 11 · `traverser-data-manifest.md` · `traverser-test-fixtures.md` · sanctioned scope trims.
+**Status:** locked. **Amended 2026-08-01** with four schema additions that later locked specs require and this one does not provide — `player_settings.birth_year` (T3 §1.4), `encounter_grant` + `battle.grant_id` (T2 §1.3/§6.2), `auth_token` (T2 §1.4), `client_operation` (T2 §3/§6.2). All four are §4 player-schema additions; the content schema (§3) and its seed plan (§5) are unchanged. Discovery record in `DECISIONS.md`. Inputs: GDD Sections 1, 4, 8, 9, 11 · `traverser-data-manifest.md` · `traverser-test-fixtures.md` · sanctioned scope trims.
 **Scope:** the Postgres schema and its seed plan. No EF project, migrations, or seed SQL are written this session — those land in M0.
 
 ---
@@ -268,10 +268,41 @@ create table player_settings (
   player_id             uuid primary key references player on delete cascade,
   daily_reminder_time   time,               -- null = off; fixed-time local notification
   music_volume          numeric(3,2) not null default 1.0,
-  sfx_volume            numeric(3,2) not null default 1.0
+  sfx_volume            numeric(3,2) not null default 1.0,
+  birth_year            int check (birth_year between 1900 and 2100)
 );
 ```
 Split from `player` so UI preference writes never contend with progression writes during a sync transaction.
+
+> **Amended 2026-08-01:** `birth_year` added. GDD 1 §2.2 requires `HRmax = 220 − age` and GDD 10's eleven-screen onboarding never collects it — T3 §1.4 closes that gap with a birth-year field on Screen 3 and T4 §6.4 places it here, in the mirrored `player_settings` row, rather than in a second preferences store. This spec had no column for it.
+>
+> **Nullable, deliberately:** the row is created at registration, which precedes Screen 3, and T3 §1.4 makes the field editable in Settings afterwards. Null means *not yet collected* — HR tier thresholds cannot be derived and tier minutes are not charged, which is the correct behaviour rather than a silent default age. It is **not** a "0 XP" state: Step XP is unaffected.
+>
+> Last-write-wins per T2 §6.3, like every other field in this table. Changing it re-derives thresholds for future reads only and never recomputes past days — XP is never taken back (GDD 1 §1), so no historical `activity_day` or `hr_session` row is touched.
+>
+> The CHECK is a **data-sanity bound with no GDD source**, present only so a typo cannot produce a negative or absurd HRmax. Real validation (a plausible minimum age) belongs on the client at Screen 3.
+
+```sql
+create table auth_token (
+  token_hash   bytea primary key,           -- sha256 of the opaque token; the token itself is never stored
+  player_id    uuid not null references player on delete cascade,
+  issued_at    timestamptz not null default now(),
+  last_used_at timestamptz,
+  revoked_at   timestamptz
+);
+
+create index on auth_token (player_id);
+```
+
+> **Added 2026-08-01.** T2 §1.4 makes guest identity a device-generated `player_id` plus an opaque long-lived bearer token, and T6 §4 puts the API on a tailnet rather than localhost — which is what makes the token load-bearing rather than ceremonial. This spec described the guest profile (§4, `player`) but gave the token nowhere to live.
+>
+> **The token is stored hashed, not plaintext.** It is a credential with no expiry and no refresh flow, and T6 §10.5 puts `pg_dump` output in an already-synced cloud folder — a plaintext bearer token would be replicated off-machine on a nightly schedule. SHA-256 with no salt is correct here precisely because the token is server-minted high-entropy random, not a user-chosen secret: there is no dictionary to attack and per-row salting would only prevent the O(1) lookup the auth path needs.
+>
+> `revoked_at` rather than a delete, so "this device was de-authorised" stays distinguishable from "this token never existed" when something 401s unexpectedly. `last_used_at` is diagnostics only — nothing reads it to make a decision, and it must not become a session-expiry mechanism without a spec change.
+>
+> Multiple live rows per player are allowed. T2 §1.4 registers once, so the normal count is one; the table does not enforce that, because re-registration after a reinstall (T6 §13.1's identity-restore path) legitimately mints a second. **This is not the multi-device seam** (T2 §1.5) — it is one device that got a new token.
+>
+> Real auth remains additive exactly as §6 says: `auth_identity` arrives alongside this table, not instead of it.
 
 ```sql
 create table player_equipped_skill (
@@ -359,6 +390,26 @@ create index on sync_delta (player_id, activity_date);
 Append-only. **The unique constraint on `(player_id, client_delta_id)` is the entire idempotency mechanism** T2 builds on: the client resends freely, `ON CONFLICT DO NOTHING` drops duplicates, and `activity_day` is only incremented for rows that actually inserted. This is what makes the merge additive-and-safe rather than last-write-wins.
 
 ```sql
+create table client_operation (
+  player_id    uuid not null references player on delete cascade,
+  operation_id uuid not null,               -- client-generated, per T2 §2
+  endpoint     text not null,               -- diagnostics only; never switched on
+  applied_at   timestamptz not null default now(),
+  primary key (player_id, operation_id)
+);
+```
+
+> **Added 2026-08-01.** T2 §2 requires that *every* write carry a client-generated ID and be safe to retry — "if a new write endpoint can't state its idempotency key, it isn't finished." `sync_delta` provides that for `POST /sync` and `client_battle_id` for battles, but T2 §3's progression writes had no ledger, and T2 §6.2 lists stat-point allocation among the idempotent-once operations. This is the same mechanism as `sync_delta`'s unique constraint, for the endpoints that are not a sync.
+>
+> **Only the endpoints that actually need it write here.** Most of T2 §3 is already safe without a ledger: `PUT /skills` and the equip toggle are last-write-wins (T2 §6.3), and `pending-rewards/{id}` is idempotent on the reward's own `resolved_at`. The genuinely dangerous ones are the **additive or effectful** writes — `POST /allocations` above all, where a replayed request that already applied would silently re-add stat points, plus item discard, rest-day tagging, and Explore requests.
+>
+> `INSERT ... ON CONFLICT DO NOTHING RETURNING *` and act only on returned rows, exactly as T2 §4 step 1 does for deltas. **Zero rows means already-applied, which is a success, not an error** — the response is the player's current state, and T2 §3's word "rejected" for allocations means the points are not added twice, not that the client sees a failure.
+>
+> No response body is stored. The mirror is repairable from `GET /players/me` in one shot (T2 §7), so a replay returning current state is always sufficient and a response cache would be a second copy of the truth.
+>
+> `endpoint` is for reading the table during debugging. Nothing branches on it — an operation ID is unique on its own, and making behaviour depend on this column would let a client change the outcome of a replay by relabelling it.
+
+```sql
 create table hr_session (
   id                   uuid primary key,
   player_id            uuid not null references player on delete cascade,
@@ -386,10 +437,34 @@ create table streak_state (
 Cached counters derivable from `activity_day`, kept because the Character screen reads them on every open. `longest_streak` is Section 11 §4's permanent personal best — it never decreases, so a break erases the counter but not the record.
 
 ```sql
+create table encounter_grant (
+  id            uuid primary key,           -- `grant_id` on the wire
+  player_id     uuid not null references player on delete cascade,
+  zone_id       text not null references zone,
+  enemy_id      text not null references enemy,
+  source        text not null check (source in ('travel','workout','explore')),
+  activity_date date not null,              -- the day it was charged against encounters_used
+  issued_at     timestamptz not null default now(),
+  foreign key (player_id, activity_date) references activity_day (player_id, activity_date)
+);
+
+create index on encounter_grant (player_id, activity_date);
+```
+
+> **Added 2026-08-01.** T2 §1.3 is the seam that makes offline battles possible: sync does not deliver battles, it delivers **grants** with the zone and enemy already resolved server-side and already charged against `activity_day.encounters_used`. The client holds them and spends them whenever. T2's sync response returns `encounter_grants[]`, its battle payload carries `grant_id`, and its error vocabulary includes `grant_already_spent` — none of which had a table here.
+>
+> `source` is GDD 9 §5.1's three trigger sources. It is recorded because the 5/day cap counts all three against one pool but only `explore` is player-initiated, so a support question about "where did my encounters go" is otherwise unanswerable.
+>
+> The composite FK to `activity_day` is what stops a grant existing on a day that was never charged. `encounters_used` stays the authoritative counter — GDD 9 §5.3's cap is enforced by its own CHECK, not by counting rows here.
+
+Grant redemption is expressed on the battle rather than here:
+
+```sql
 create table battle (
   id               uuid primary key,
   player_id        uuid not null references player on delete cascade,
   client_battle_id uuid not null,
+  grant_id         uuid references encounter_grant,   -- null for boss and tutorial battles
   enemy_id         text not null references enemy,
   encounter_kind   text not null check (encounter_kind in
                      ('wild','mini_boss','zone_boss','tutorial','explore')),
@@ -400,8 +475,20 @@ create table battle (
   ended_at         timestamptz not null,
   unique (player_id, client_battle_id)
 );
+
+create unique index on battle (grant_id) where grant_id is not null;
 ```
 The engine runs client-side, so results arrive as sync payloads — `client_battle_id` gives them the same replay safety as `sync_delta`. `enemy_level` is recorded as history (it equals the player's level at that moment, but the player's level moves on). A loss awards 0 XP with no penalty, per GDD 1 §2.3.
+
+> **Amended 2026-08-01:** `grant_id` and its partial unique index added.
+>
+> **A grant carries no `spent_at`.** "Spent" is derived — a grant is spent iff a battle references it — because §2's rule is that derived values are not stored, and a `spent_at` alongside a `battle.grant_id` would be two places holding one fact that can disagree. The partial unique index makes double-spend *structurally* impossible rather than a check someone has to remember, which is the same move as `player_gear`'s one-per-slot index and `milestone_grant`'s permission slip.
+>
+> T2 §6.2's "replay is a no-op, not a repeat" therefore falls out of the constraint: a replayed battle is already swallowed by `unique (player_id, client_battle_id)`, and a *different* battle claiming a spent grant raises the unique violation T2 surfaces as `grant_already_spent`.
+>
+> **Nullable, and null is the common case for bosses.** Mid-boss and zone-boss encounters are fixed gate fights (GDD 9 §4.2), not rolls from the daily pool, and the tutorial battle predates any grant. Only `wild` and `explore` battles must carry one. This is not enforced by a CHECK because `encounter_kind` and `grant_id` are supplied by the client in the same payload; T6 §5.2-style validation is the wrong tool and the engine (T5) owns the pairing.
+>
+> T5 §8.1's abandoned battle returns its grant unspent, which needs nothing here: no battle row is written, so the grant stays underived-unspent and the client can re-spend it.
 
 ```sql
 create table player_bestiary (
@@ -494,7 +581,7 @@ Not built now; each lands as new tables with no change to the above.
 | Deferred | How it lands later |
 |---|---|
 | **Analytics** (Section 15, trim: Sentry only) | A single `analytics_event` table (`player_id`, `name`, `occurred_at`, typed columns per §9's schema). Nothing above references it. |
-| **Accounts / auth** (trim: guest-only) | `player` already has a `uuid` PK, not a singleton — add `auth_identity (player_id, provider, subject)` and nothing else changes. |
+| **Accounts / auth** (trim: guest-only) | `player` already has a `uuid` PK, not a singleton — add `auth_identity (player_id, provider, subject)` and nothing else changes. *(Amended 2026-08-01: `auth_token` is the guest bearer credential, not accounts — it is built now and stays afterwards; `auth_identity` arrives alongside it.)* |
 | **Quests** (Phase 2) | `quest_def` content table + `player_quest` progress table, FK to `player`. |
 | **Classes** | `class_def` content table + a `class_id` column on `player`. |
 | **Currency / salvage** (GDD 8 §9) | A balance column on `player` + `currency_ledger`; gear discard becomes its sink. |
@@ -504,6 +591,8 @@ Not built now; each lands as new tables with no change to the above.
 ---
 
 ## 7. Cross-spec flags
+
+> **Amended 2026-08-01.** The flags below were written before T2–T6 existed and read as *this spec asking questions of them*. Four of the answers turned out to need schema this spec didn't have, and those are now built (§4): `encounter_grant` + `battle.grant_id` for T2 §1.3's grant seam, `auth_token` for T2 §1.4's bearer token, `client_operation` for T2 §2/§3's progression-write idempotency, and `player_settings.birth_year` for T3 §1.4's `HRmax = 220 − age`. The flags are left as originally written — they are the record of what was asked — and none of the answers below changed.
 
 - **T2 (API & Sync):** owns the merge semantics over `sync_delta` → `activity_day`. The contract this spec provides is `unique (player_id, client_delta_id)` + `ON CONFLICT DO NOTHING`; T2 must define what the client generates that ID from so it's stable across retries. T2 also owns the ordering inside the sync transaction (steps → XP → level-up → Leagues → gate checks → encounter checkpoints) and must make `milestone_grant` the gate on every deterministic reward.
 - **T3 (Health Integration):** owns what populates `hr_session` and the `source = 'hr'` deltas. `hr_session.external_session_id` exists for Health Connect record dedupe — T3 must confirm Health Connect exposes a stable per-session identifier; if it doesn't, the dedupe key becomes `(player_id, started_at)` and that's a schema note, not a redesign. Tier-minute derivation happens on-device; the server stores the result.
