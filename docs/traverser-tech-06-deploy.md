@@ -59,7 +59,18 @@ Two services. No reverse proxy, no self-hosted Sentry, no pgAdmin, no Redis. Eac
 | Service | Image | Ports | Volumes | Restart |
 |---|---|---|---|---|
 | `api` | built from `./api/Dockerfile` | `127.0.0.1:8080:8080` | none (stateless) | `unless-stopped` |
-| `db` | `postgres:18-alpine` ⟨verify current major at M0⟩ | none published | `traverser_pgdata:/var/lib/postgresql/data` | `unless-stopped` |
+| `db` | `postgres:18-alpine` | `127.0.0.1:${POSTGRES_PORT}:5432` | `traverser_pgdata:/var/lib/postgresql` | `unless-stopped` |
+
+> **Amended 2026-08-01 (M0):** three changes to the row above, all discovered while building it.
+> **(1)** ⟨verify current major⟩ resolved — 18 is current; `postgres:19` does not exist.
+> **(2)** ↯ **The mount point is `/var/lib/postgresql`, not `/var/lib/postgresql/data`.** The 18+
+> official images moved `PGDATA` to a major-scoped subdirectory (`/var/lib/postgresql/18/docker`)
+> so `pg_upgrade --link` can see two majors inside one mount. This spec's original path is the
+> pre-18 convention every tutorial still shows, and using it makes the container refuse to start.
+> **(3)** "none published" is not achievable alongside §5.1's host-run migrations — the row now
+> publishes a **loopback-bound** port. §3.2 below is amended to match; §1.2 is unaffected.
+> Compose v2 (§2) and the chiseled runtime tag (§3.3) were also confirmed at M0: `docker compose`
+> v5.3.1, and `aspnet:10.0-noble-chiseled-extra` is the tag in use — see §3.5.
 
 Notes that are load-bearing rather than incidental:
 
@@ -67,7 +78,11 @@ Notes that are load-bearing rather than incidental:
 
 **3.2 `db` publishes no port at all.** The API reaches it over the Compose network by service name (`Host=db`). Publishing 5432 to the host is a habit worth breaking here: the only consumer that needs it is an occasional `psql` session, and `docker compose exec db psql -U traverser traverser` covers that without opening anything.
 
+> **Amended 2026-08-01 (M0):** the reasoning holds, the conclusion does not. §5.1's chosen migration path is `dotnet ef database update` **from the host**, which needs a reachable Postgres, and the EF tooling cannot be run through `docker compose exec`. `db` therefore publishes `127.0.0.1:${POSTGRES_PORT}:5432` — loopback-bound, so §1.2's "nothing else on the LAN reaches it" is intact and verified. The habit this section warns against is publishing on `0.0.0.0` out of reflex; that remains forbidden for both services.
+
 **3.3 ↯ .NET 10 container images are Ubuntu, and the Debian tags do not exist.** `mcr.microsoft.com/dotnet/sdk:10.0` and `mcr.microsoft.com/dotnet/aspnet:10.0` both resolve to **Ubuntu 24.04 "Noble Numbat"**, and **Debian images including `bookworm-slim` are not shipped for .NET 10 at all** — this is a documented .NET 10 breaking change. Nearly every .NET Dockerfile tutorial in circulation uses `-bookworm-slim`, so this will look like a typo and is not; a copied tutorial Dockerfile will fail to pull. The explicit-distro form is `10.0-noble`. A chiseled (distroless, non-root) runtime variant is available and preferable for the runtime stage ⟨verify the exact tag at M0⟩.
+
+> **Amended 2026-08-01 (M0):** tag resolved, with a correction. The image is **`mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra`** — the `-extra` suffix matters. Plain `-noble-chiseled` omits ICU *and* tzdata, and Npgsql resolves time zones through `TimeZoneInfo` whenever it reads a `timestamptz`, which tech-01's schema is built on. Saving ~15 MB buys a `TimeZoneNotFoundException` thrown from inside a query instead of at startup. Confirmed distroless and non-root (UID 1654; `exec id` fails — there is no shell). Cosmetic side effect: Npgsql logs `Cannot load library libgssapi_krb5.so.2` per connection attempt, because chiseled ships no Kerberos libraries; SCRAM authentication succeeds regardless and there is nothing to fix.
 
 **3.4 `restart: unless-stopped`, not `always`.** The difference matters given §1.1: `unless-stopped` brings the stack back when the PC boots but respects a deliberate `docker compose stop`. `always` would fight the intended workflow.
 
@@ -122,6 +137,15 @@ Every key, in one place, so §11's migration is a file copy rather than an archa
 
 This is the server-side twin of T4 §9.2's build-time asset check. Between them, an ID that exists in one place and not the other fails either the build or the seed, never a battle.
 
+> **Amended 2026-08-01 (M0):** "lands in the seed step" has no target — the seed ships as EF `HasData` inside a migration, so there is no seed step to hook. The six checks split by what each can express, and both halves fail before content reaches a device:
+>
+> - **Per-row facts become CHECK constraints**, failing when the migration is applied: `ck_enemy_move_ai_weight` (tightened from `between 0 and 100`, which permitted the exact value this section forbids), `ck_drop_rate_chance`, `ck_enemy_drop_pool_weight`, `ck_gear_def_grants_move_trinket_only`. Migration `20260801140924_ContentValidationConstraints`; all four applied against the seeded database with no violations, so they guard future edits rather than fixing present data.
+> - **Facts spanning rows, tables, or files become tests** in `ContentValidationTests`: every enemy has a move, drop-pool rows resolve and are drawable, and the manifest cross-check.
+>
+> Two things this section's list left implicit and the implementation makes explicit. **`drop_rate.chance` excludes 0 as well as exceeding 1** — "never drops" is expressed by *omitting* the row (GDD 8 §5.2 gives wild encounters and the daily goal no `trinket` row at all), so a `0.0` row would be a second spelling of an absence that already carries meaning. And **`enemy_drop_pool.weight` needs the same strict positivity as `enemy_move.ai_weight`**, for the same reason: both feed a weighted draw, where 0 does not mean rare, it means absent.
+>
+> The manifest cross-check **parses `traverser-data-manifest.md`** rather than transcribing it, unlike the fixtures — the fixtures are a deliberate independent second copy, whereas a transcribed ID list would drift and start reporting its own mistakes as seed errors. It selects tables by shape (any seeded table keyed by a single string column), so it fails closed: a content table added later is covered without anyone remembering. Verified by mutation — renaming one seeded ID fails the test naming that ID.
+
 ---
 
 ## 6. The local dev loop
@@ -157,6 +181,14 @@ The trap: prebuild generates a *debug* keystore, and `npx expo prebuild --clean`
 - Wire the signing config through a **local Expo config plugin** ⟨verify the plugin API surface at M0⟩ that injects the release `signingConfig` during prebuild, pointing at the out-of-tree keystore path. A hand-edit to `android/app/build.gradle` is deleted by the next prebuild — T4 §11 row 2.
 - **The keystore and its passwords are part of the backup set (§10.5), not an afterthought.** Losing the keystore means the next release cannot be installed over the current one, which means an uninstall, which means data loss.
 
+> **Amended 2026-08-01 (M0):** done, and the ⟨verify⟩ is resolved — **`withAppBuildGradle` from `expo/config-plugins`**, in `app/plugins/withReleaseSigning.ts`, appending a marker-guarded Groovy block rather than regex-editing the template's `signingConfigs {}` (which would break on any upgrade that reformats it). The block calls `android.signingConfigs.create(...)` and reassigns `android.buildTypes.release.signingConfig`; the marker makes a prebuild without `--clean` idempotent.
+>
+> This section describes the trap accurately but understates it. The generated `android/app/build.gradle` contains, verbatim, **`release { signingConfig signingConfigs.debug }`** under the template's own *"Caution! In production, you need to generate your own keystore file"* comment. The default is not "unsigned until you configure it" — it is *silently signed with the throwaway key that prebuild regenerates*. So the plugin's job is to override a working-looking default, and its absence is invisible until an update-install is refused months later. The injected block therefore **throws** if a release task is requested without the keystore properties, instead of falling back.
+>
+> Two corrections to the bullets. **"Passwords come from the environment"** became `~/.gradle/gradle.properties` — Gradle reads project properties from there *and* from `ORG_GRADLE_PROJECT_*` env vars, so both work, but the file is the persistent default because a missing shell export fails by producing a wrongly-signed APK rather than an error. And **the backup set gains two members, not one**: the keystore and that properties file are useless apart, so §10.5's row should name both.
+>
+> ↯ **PKCS12 keystores have no separate key password.** `keytool` warns and reuses the store password, so `TRAVERSER_KEY_PASSWORD` equals `TRAVERSER_KEYSTORE_PASSWORD` by necessity. Setting them to different values yields a keystore Gradle cannot open with the credentials you believe you configured.
+
 **7.4 No over-the-air updates.** T4 §15 defers `expo-updates` — there is no distribution channel to update through. Every change reaches the phone as a rebuild over USB.
 
 ---
@@ -168,6 +200,10 @@ The requirement is narrow: the phone must be able to sync while Matthew is out w
 **8.1 The plan is free and comfortably sized.** The **Personal plan** covers 6 users, unlimited user devices, and 50 tagged devices, at no cost and with no card. This project needs one user and two devices — the PC and the phone. ✅ $0, with roughly an order of magnitude of headroom in every dimension.
 
 **8.2 Topology.** One tailnet. Tailscale client on the Windows host, Tailscale on the Android phone, both signed into the same account. **MagicDNS on**, so the host has a stable name instead of a `100.x.y.z` address that would end up hardcoded in a build. **HTTPS certificates enabled** in the admin console's DNS settings — this is a prerequisite for §8.3.
+
+> **Amended 2026-08-01 (M0):** there are **three** admin-console prerequisites, not two. Alongside MagicDNS and HTTPS certificates, **Serve must be enabled for the tailnet** — a separate, node-scoped consent step this section did not know about. Until it is, §8.3's command does not fail: it *blocks*, printing `Serve is not enabled on your tailnet` with a `https://login.tailscale.com/f/serve?node=…` link, and waits indefinitely for the toggle. Worth knowing, because a command that hangs reads as a network problem rather than a missing permission.
+>
+> §8.2's "name the host something uninteresting" mitigation was **acted on before enabling HTTPS, not after**, and the ordering is the whole point — a CT-log entry cannot be withdrawn, so renaming afterwards leaves the old name published forever. `tailscale set --hostname <name>` does it from the CLI without the admin console and takes effect immediately. Doing this *first* also avoids a second cost: the MagicDNS name is the client's base URL, and §4.2 makes that build-time, so a later rename is a rebuild and a reinstall.
 
 Worth stating rather than clicking past: enabling HTTPS requires acknowledging that **machine names and the tailnet DNS name are published to a public certificate-transparency ledger**. That is inherent to Let's Encrypt, not a Tailscale quirk. The practical consequence is that the *existence* of a host with a given name becomes public information; the service itself remains unreachable outside the tailnet, and no data is exposed. Naming the host something uninteresting is the whole mitigation.
 
@@ -206,6 +242,13 @@ Both of these would be serious problems for an app that needed a live connection
 **9.2 What the server captures.** Unhandled exceptions, and explicitly the ones the client cannot report: failures inside `POST /api/v1/sync`, seed/validation failures (§5.4), and migration assertion failures (§5.2). `Sentry__Environment` separates dev noise from real issues.
 
 **9.3 What is deliberately not instrumented.** No performance tracing, no custom event pipeline, no `POST /events` — the analytics trim stands, and GDD 15's Sentry-only recommendation is the whole of it. No request body is attached to an event: sync payloads contain step counts and heart-rate minutes, which is health data, and it does not leave the tailnet. **PII and request-body capture must be explicitly disabled**, not left at whatever the SDK defaults to. ⟨verify the relevant `Sentry.AspNetCore` option names at M0.⟩
+
+> **Amended 2026-08-01 (M0):** §9.3's ⟨verify⟩ is resolved. On `Sentry.AspNetCore` the two options are **`SendDefaultPii = false`** (request URL, headers, IP, user identity) and **`MaxRequestBodySize = RequestSize.None`** from `Sentry.Extensibility` (the body itself, and gated behind `SendDefaultPii` besides). Both are already the SDK defaults; both are set explicitly, because "we rely on the default" is not a decision that survives an SDK upgrade. `TracesSampleRate = 0.0` covers the no-tracing half. The client equivalents on `@sentry/react-native` 7.11.0 are `sendDefaultPii`, `attachScreenshot`, `attachViewHierarchy`, `tracesSampleRate`, and `profilesSampleRate`, all verified against the installed typings.
+>
+> Two additions this section did not anticipate:
+>
+> - **`enableCaptureFailedRequests: false` on the client**, for a reason that is architectural rather than privacy. T2 §1.2 makes an unreachable API the normal case and T4 §8.1 makes the client treat it as success — so a failed request here is the design working, not an incident. Left on, it would fill a free-tier quota with events describing correct behaviour and bury the real ones. This is the client-side twin of §9.4's "the API being down is not an incident."
+> - **§9.2's migration-assertion capture needs an explicit `SentrySdk.CaptureException` and `FlushAsync`.** Sentry's ASP.NET Core integration reports unhandled exceptions from the *request pipeline*; the §5.2 assertion throws during startup, before a pipeline exists. Left to the integration, the one server failure this section names would be the only one that never arrives, and the process would exit before the background sender flushed.
 
 **9.4 No alerting.** §1.1. The API being down is not an incident.
 

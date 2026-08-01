@@ -12,7 +12,13 @@
     <!-- Pins EF Core to the version Npgsql 10.0.3 targets. EFCore.NamingConventions 10.0.1 asks
          for 10.0.4, and without this the test project's assembly resolution picks the older one. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <!-- Transitive pin, same pattern as the Relational one above. Microsoft.AspNetCore.OpenApi
+         10.0.10 still resolves Microsoft.OpenApi 2.0.0, which carries GHSA-v5pm-xwqc-g5wc (high;
+         patched in 2.7.5). The advisory is a parser DoS and this app only *generates* documents,
+         so the practical exposure is nil — pinned anyway, because a permanent NU1903 on every
+         build is how a real advisory later gets ignored. -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

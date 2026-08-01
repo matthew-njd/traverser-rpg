@@ -80,6 +80,12 @@ On the web, every change is a reload. Here there are two classes of change and t
 
 The failure mode is that a change to `app.json` appears to do nothing and the natural next move — reload, clear cache, restart Metro — is all in the wrong layer. The rule: **if it isn't JavaScript, it needs a rebuild.**
 
+> **Amended 2026-08-01 (M0):** wherever this section and §1.1 say `app.json`, the file is **`app.config.ts`** — M0 replaced the static config outright rather than layering over it, because a stale unspread `app.json` alongside a dynamic config silently loses whichever keys are not spread (DECISIONS 2026-08-01). Both rows above apply unchanged to the new filename.
+>
+> The second bullet also gains the row T6 §4.2 assigned to it: **`EXPO_PUBLIC_API_BASE_URL`, and therefore `app/.env`.** The value is inlined into the bundle at build time, so pointing the app at a different API host is a prebuild-and-reinstall, not a restart — and it is the one entry on this list that fails *silently and later*, on a device, rather than by appearing to do nothing. This is also why T6 §11's host migration ends in a re-signed APK rather than a config edit.
+
+
+
 ### 3.3 ↯ Metro is not webpack
 
 No code splitting, no lazy routes, no dynamic `import()` of a chunk fetched at runtime. Everything ships in one bundle. `React.lazy` will not help startup, and route-level splitting — reflexive on the web — has no analogue. Startup cost is managed by *doing less work at boot* (§7.1), not by shipping less code.

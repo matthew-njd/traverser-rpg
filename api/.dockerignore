@@ -1,0 +1,21 @@
+# Build context is ./api (tech-06 §3). Paths below are relative to it.
+
+# ↯ These two are correctness, not image size. `obj/` from the Windows host carries a generated
+# NuGet.g.props full of `C:\Users\...\.nuget\packages` paths; copied into the Linux SDK stage it
+# makes `dotnet restore` resolve to directories that do not exist, and the error names a missing
+# package rather than the real cause.
+**/bin/
+**/obj/
+
+# Never built into the runtime image.
+Traverser.Tests/
+
+# Editor and tooling state.
+**/.vs/
+**/.vscode/
+**/*.user
+**/*.suo
+
+# Self.
+Dockerfile
+.dockerignore

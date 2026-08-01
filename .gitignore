@@ -6,6 +6,14 @@
 # dotenv files
 .env
 
+# Android signing material (tech-06 §7.3). The release keystore is a permanent artefact whose loss
+# forces an uninstall, and per tech-04 §6.5 an uninstall destroys player_id and the bearer token
+# with no recovery path — so it lives here, out of `android/` (which prebuild deletes) and out of
+# git, and inside the §10.5 backup set. Its passwords are in ~/.gradle/gradle.properties, outside
+# the repo entirely.
+*.keystore
+*.jks
+
 # User-specific files
 *.rsuser
 *.suo

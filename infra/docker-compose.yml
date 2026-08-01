@@ -1,15 +1,66 @@
+# Traverser stack — tech-06 §3. Two services, exactly one of them stateful.
+# Compose v2 syntax: no `version:` key (§2). Verified against Compose v5.3.1 on this host.
+#
+# No reverse proxy, no pgAdmin, no Redis, no self-hosted Sentry. Each would be defensible on a
+# real deployment and each is dead weight here: TLS is `tailscale serve` (§8), Sentry is hosted
+# (§1.5), psql in the db container covers inspection, and nothing on tech-02's surface caches.
+
 services:
-  postgres:
-    image: postgres:16
+  api:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # The connection string is assembled here rather than stored whole in .env so it cannot
+      # drift from the POSTGRES_* values it duplicates (§4.1). `Host=db` is the Compose service
+      # name on the default network — the API never goes via the published host port below.
+      ConnectionStrings__Traverser: "Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      # Empty is valid and disables capture — the dev loop must not require a Sentry account
+      # to run (§4.1). Not read by Program.cs yet; that is M0 item 6.
+      Sentry__Dsn: ${Sentry__Dsn:-}
+      Sentry__Environment: ${Sentry__Environment:-development}
+    ports:
+      # ↯ The `127.0.0.1:` prefix is the security boundary (§3.1), not formatting. The bare
+      # "8080:8080" form that every tutorial uses publishes on every host interface, which puts
+      # the fitness history on the LAN and makes the whole tailnet layer decorative.
+      # `tailscale serve --bg --https=443 http://127.0.0.1:8080` proxies to exactly this (§8.3).
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    # Pinned to a major, never `latest` — this stack restarts daily (§1.1), and `latest` would
+    # turn "I restarted the stack" into "I upgraded Postgres" (§2). 18 confirmed current 2026-08-01.
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # Deviates from §3.2's "publishes no port at all" — see DECISIONS 2026-08-01. tech-06 §5.1
+      # runs `dotnet ef database update` from the host, which needs a reachable Postgres, and
+      # §6.3's psql-in-the-container answer does not cover EF tooling or a GUI client. Loopback
+      # only, so §1.2 still holds: nothing else on the LAN can reach it.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # ↯ `/var/lib/postgresql`, NOT the `/var/lib/postgresql/data` that tech-06 §3's table says
+      # and that every pre-18 tutorial uses. The 18+ images moved PGDATA to a version-scoped
+      # subdirectory (`/var/lib/postgresql/18/docker`) so that `pg_upgrade --link` can see both
+      # majors inside one mount. Mounting the old path makes the container refuse to start.
+      # DECISIONS 2026-08-01.
+      - traverser_pgdata:/var/lib/postgresql
+    healthcheck:
+      # Gates `api`'s start so a cold boot does not fail the §5.2 schema assertion against a
+      # database that simply is not listening yet. This is not health-check-driven restart
+      # escalation (§1.1) — it only orders startup.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
 volumes:
-  postgres_data:
+  traverser_pgdata:

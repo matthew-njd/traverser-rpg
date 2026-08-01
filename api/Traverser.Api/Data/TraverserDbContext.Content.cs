@@ -93,7 +93,12 @@ public partial class TraverserDbContext
                 t.HasCheckConstraint("ck_enemy_move_category", Check.In<MoveCategory>("category"));
                 // Weights sum to 100 per enemy — asserted by a seed test, since a per-group CHECK
                 // isn't expressible.
-                t.HasCheckConstraint("ck_enemy_move_ai_weight", "ai_weight between 0 and 100");
+                //
+                // ↯ Lower bound is 1, not 0 (tech-06 §5.4). A zero-weight move is not a move that
+                // rarely happens, it is a move that can never be selected — tech-05 §5's weighted
+                // pick would silently exclude it, and the enemy would play a smaller movepool than
+                // its data says. That reads as a balance problem, not a data problem.
+                t.HasCheckConstraint("ck_enemy_move_ai_weight", "ai_weight between 1 and 100");
             });
 
             entity.HasKey(e => e.Id);
@@ -147,6 +152,13 @@ public partial class TraverserDbContext
             {
                 t.HasCheckConstraint("ck_gear_def_slot", Check.In<GearSlot>("slot"));
                 t.HasCheckConstraint("ck_gear_def_tier", Check.In<GearTier>("tier"));
+                // tech-06 §5.4, via DECISIONS 2026-07-26: a move-granting piece is a Trinket and
+                // nothing else. GDD 3 §4.1's "any Mythic/Divine piece" was narrowed to the Trinket
+                // slot by GDD 8 §1 — Weapon/Armor/Accessory are pure stat bonuses at every tier.
+                // The FK below already proves the move exists; this proves it belongs here.
+                t.HasCheckConstraint(
+                    "ck_gear_def_grants_move_trinket_only",
+                    $"grants_move_id is null or {Check.In("slot", GearSlot.Trinket)}");
             });
 
             entity.HasKey(e => e.Id);
@@ -191,6 +203,12 @@ public partial class TraverserDbContext
             {
                 t.HasCheckConstraint("ck_drop_rate_encounter_kind", Check.In<DropEncounterKind>("encounter_kind"));
                 t.HasCheckConstraint("ck_drop_rate_reward_kind", Check.In<DropRewardKind>("reward_kind"));
+                // tech-06 §5.4 — a probability, open at the bottom and closed at the top. Zero is
+                // excluded because "this reward never drops" is expressed by *omitting the row*,
+                // not by a row claiming a 0% chance: a missing row is meaningful here (there is no
+                // `trinket` row for wild encounters or the daily goal, GDD 8 §5.2), so allowing
+                // both spellings would make the absence ambiguous.
+                t.HasCheckConstraint("ck_drop_rate_chance", "chance > 0 and chance <= 1");
             });
 
             entity.HasKey(e => new { e.EncounterKind, e.RewardKind });
@@ -199,7 +217,13 @@ public partial class TraverserDbContext
 
         modelBuilder.Entity<EnemyDropPool>(entity =>
         {
-            entity.ToTable("enemy_drop_pool");
+            entity.ToTable("enemy_drop_pool", t =>
+                // Same reasoning as ck_enemy_move_ai_weight: this weight feeds a weighted pick, so
+                // 0 removes the entry from the pool entirely rather than making it rare. An enemy
+                // with no pool rows at all is fine and meaningful (enemy_waystone_wisp falls back
+                // to the generic pool, which is how fixtures §3's "Drops: None" needs no special
+                // case) — a row that exists but cannot be drawn is not.
+                t.HasCheckConstraint("ck_enemy_drop_pool_weight", "weight > 0"));
 
             entity.HasKey(e => new { e.EnemyId, e.EncounterKind, e.ItemDefId });
             entity.Property(e => e.Weight).HasDefaultValue(1);

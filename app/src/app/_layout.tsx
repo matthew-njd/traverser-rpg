@@ -4,10 +4,14 @@ import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
+import { initSentry, wrapRoot } from '@/sentry';
+
+// Before anything else renders, so a crash during first paint is still reported (tech-06 §9).
+initSentry();
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
+function TabLayout() {
   const colorScheme = useColorScheme();
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -16,3 +20,5 @@ export default function TabLayout() {
     </ThemeProvider>
   );
 }
+
+export default wrapRoot(TabLayout);
