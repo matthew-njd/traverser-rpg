@@ -51,9 +51,13 @@ public partial class TraverserDbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Ordinal).IsUnique();
 
-            // `egypt_tbd` seeds with false, so the sentinel must be `true` — otherwise EF would read
-            // an explicit `false` as "unset" and let the store default write `true` instead.
-            entity.Property(e => e.IsReleased).HasDefaultValue(true).HasSentinel(true);
+            // Deliberately NO store default, unlike tech-01 §3's `default true` (DECISIONS 2026-08-01).
+            // With one, HasData omitted `is_released` for the only row that wants `false` — EF treats a
+            // bool's CLR default as "unset" for seed data regardless of HasSentinel — and the store
+            // default shipped `egypt_tbd` as released, unlocking the Map's locked terminus. `zone` is
+            // seeded and read-only, so the seed is its only writer and a store-side default has no
+            // runtime role to play; the CLR initializer still defaults new rows to true.
+            entity.Property(e => e.IsReleased).ValueGeneratedNever();
         });
 
         modelBuilder.Entity<Enemy>(entity =>

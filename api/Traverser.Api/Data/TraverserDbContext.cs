@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Traverser.Api.Data.Entities;
+using Traverser.Api.Data.Seed;
 
 namespace Traverser.Api.Data;
 
@@ -81,5 +82,9 @@ public partial class TraverserDbContext(DbContextOptions<TraverserDbContext> opt
     {
         ConfigureContent(modelBuilder);
         ConfigurePlayer(modelBuilder);
+
+        // The content seed (tech-01 §5) — HasData, so every content change arrives as a reviewable
+        // migration diff. Applied after configuration because HasData validates against the model.
+        ContentSeed.Apply(modelBuilder);
     }
 }

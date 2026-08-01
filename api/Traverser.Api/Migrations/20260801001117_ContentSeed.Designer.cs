@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Traverser.Api.Data;
@@ -11,9 +12,11 @@ using Traverser.Api.Data;
 namespace Traverser.Api.Migrations
 {
     [DbContext(typeof(TraverserDbContext))]
-    partial class TraverserDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260801001117_ContentSeed")]
+    partial class ContentSeed
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4015,7 +4018,9 @@ namespace Traverser.Api.Migrations
                         .HasColumnName("display_name");
 
                     b.Property<bool>("IsReleased")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
+                        .HasDefaultValue(true)
                         .HasColumnName("is_released");
 
                     b.Property<int>("Ordinal")
