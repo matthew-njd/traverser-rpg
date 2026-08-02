@@ -43,7 +43,10 @@ public partial class TraverserDbContext
 
         modelBuilder.Entity<PlayerSettings>(entity =>
         {
-            entity.ToTable("player_settings");
+            entity.ToTable("player_settings", t =>
+                // A data-sanity bound with no GDD source — a typo cannot produce an absurd HRmax.
+                // Real validation (a plausible minimum age) belongs on the client at Screen 3.
+                t.HasCheckConstraint("ck_player_settings_birth_year", "birth_year between 1900 and 2100"));
 
             entity.HasKey(e => e.PlayerId);
             entity.Property(e => e.MusicVolume).HasPrecision(3, 2).HasDefaultValue(1.0m);
@@ -51,6 +54,34 @@ public partial class TraverserDbContext
 
             entity.HasOne(e => e.Player).WithOne()
                 .HasForeignKey<PlayerSettings>(e => e.PlayerId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AuthToken>(entity =>
+        {
+            entity.ToTable("auth_token");
+
+            // The hash is the PK: server-minted, high-entropy, and the auth path's O(1) lookup key.
+            entity.HasKey(e => e.TokenHash);
+            entity.Property(e => e.TokenHash).ValueGeneratedNever();
+            entity.Property(e => e.IssuedAt).HasDefaultValueSql("now()");
+
+            entity.HasIndex(e => e.PlayerId);
+
+            entity.HasOne(e => e.Player).WithMany()
+                .HasForeignKey(e => e.PlayerId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ClientOperation>(entity =>
+        {
+            entity.ToTable("client_operation");
+
+            // The composite PK is the entire mechanism — ON CONFLICT DO NOTHING against it is what
+            // makes a replayed allocation a no-op rather than a double-add (T2 §2).
+            entity.HasKey(e => new { e.PlayerId, e.OperationId });
+            entity.Property(e => e.AppliedAt).HasDefaultValueSql("now()");
+
+            entity.HasOne(e => e.Player).WithMany()
+                .HasForeignKey(e => e.PlayerId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<PlayerEquippedSkill>(entity =>
@@ -185,6 +216,29 @@ public partial class TraverserDbContext
                 .HasForeignKey<StreakState>(e => e.PlayerId).OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<EncounterGrant>(entity =>
+        {
+            entity.ToTable("encounter_grant", t =>
+                t.HasCheckConstraint("ck_encounter_grant_source", Check.In<EncounterGrantSource>("source")));
+
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.IssuedAt).HasDefaultValueSql("now()");
+
+            entity.HasIndex(e => new { e.PlayerId, e.ActivityDate });
+
+            entity.HasOne(e => e.Player).WithMany()
+                .HasForeignKey(e => e.PlayerId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Zone).WithMany()
+                .HasForeignKey(e => e.ZoneId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.Enemy).WithMany()
+                .HasForeignKey(e => e.EnemyId).OnDelete(DeleteBehavior.NoAction);
+            // Stops a grant existing on a day that was never charged. `encounters_used` stays the
+            // authoritative counter — the cap is its own CHECK, not a count of rows here.
+            entity.HasOne(e => e.ActivityDay).WithMany()
+                .HasForeignKey(e => new { e.PlayerId, e.ActivityDate }).OnDelete(DeleteBehavior.NoAction);
+        });
+
         modelBuilder.Entity<Battle>(entity =>
         {
             entity.ToTable("battle", t =>
@@ -200,8 +254,14 @@ public partial class TraverserDbContext
             // Gives a replayed battle the same no-op guarantee as a replayed delta.
             entity.HasIndex(e => new { e.PlayerId, e.ClientBattleId }).IsUnique();
 
+            // "Spent" is derived: a grant is spent iff a battle references it. This index makes
+            // double-spend structurally impossible; the violation is T2 §6.2's grant_already_spent.
+            entity.HasIndex(e => e.GrantId).IsUnique().HasFilter("grant_id is not null");
+
             entity.HasOne(e => e.Player).WithMany()
                 .HasForeignKey(e => e.PlayerId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Grant).WithMany()
+                .HasForeignKey(e => e.GrantId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(e => e.Enemy).WithMany()
                 .HasForeignKey(e => e.EnemyId).OnDelete(DeleteBehavior.NoAction);
         });

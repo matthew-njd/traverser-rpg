@@ -167,6 +167,17 @@ public enum SyncDeltaSource
     Manual
 }
 
+/// <summary>
+/// `encounter_grant.source` — GDD 9 §5.1's three trigger sources. All three count against one
+/// 5/day pool, but only Explore is player-initiated.
+/// </summary>
+public enum EncounterGrantSource
+{
+    Travel,
+    Workout,
+    Explore
+}
+
 /// <summary>`milestone_grant.milestone_kind` — the permission slip for every one-time reward.</summary>
 public enum MilestoneKind
 {

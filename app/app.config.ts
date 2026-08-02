@@ -30,9 +30,7 @@ const config: ExpoConfig = {
   icon: './assets/images/icon.png',
   scheme: 'traverser',
   userInterfaceStyle: 'automatic',
-  ios: {
-    icon: './assets/expo.icon',
-  },
+  // Android-only (CLAUDE.md) — the template's ios/web blocks are deliberately absent.
   android: {
     // ↯ PERMANENT. This is the app's identity to Android, and it cannot be changed after the first
     // install: a different package is a different app, so changing it means uninstall + reinstall,
@@ -46,10 +44,6 @@ const config: ExpoConfig = {
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-  },
-  web: {
-    output: 'static',
-    favicon: './assets/images/favicon.png',
   },
   plugins: [
     'expo-router',

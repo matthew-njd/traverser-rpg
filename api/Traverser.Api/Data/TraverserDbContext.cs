@@ -39,6 +39,9 @@ public partial class TraverserDbContext(DbContextOptions<TraverserDbContext> opt
     // Player-owned.
     public DbSet<Player> Players => Set<Player>();
     public DbSet<PlayerSettings> PlayerSettings => Set<PlayerSettings>();
+    public DbSet<AuthToken> AuthTokens => Set<AuthToken>();
+    public DbSet<ClientOperation> ClientOperations => Set<ClientOperation>();
+    public DbSet<EncounterGrant> EncounterGrants => Set<EncounterGrant>();
     public DbSet<PlayerEquippedSkill> PlayerEquippedSkills => Set<PlayerEquippedSkill>();
     public DbSet<PlayerItem> PlayerItems => Set<PlayerItem>();
     public DbSet<PlayerGear> PlayerGear => Set<PlayerGear>();
@@ -73,6 +76,7 @@ public partial class TraverserDbContext(DbContextOptions<TraverserDbContext> opt
         configurationBuilder.Properties<ItemSource>().HaveConversion<SnakeCaseEnumConverter<ItemSource>>();
         configurationBuilder.Properties<StreakCreditMethod>().HaveConversion<SnakeCaseEnumConverter<StreakCreditMethod>>();
         configurationBuilder.Properties<SyncDeltaSource>().HaveConversion<SnakeCaseEnumConverter<SyncDeltaSource>>();
+        configurationBuilder.Properties<EncounterGrantSource>().HaveConversion<SnakeCaseEnumConverter<EncounterGrantSource>>();
         configurationBuilder.Properties<MilestoneKind>().HaveConversion<SnakeCaseEnumConverter<MilestoneKind>>();
         configurationBuilder.Properties<PendingRewardKind>().HaveConversion<SnakeCaseEnumConverter<PendingRewardKind>>();
         configurationBuilder.Properties<PendingRewardResolution>().HaveConversion<SnakeCaseEnumConverter<PendingRewardResolution>>();

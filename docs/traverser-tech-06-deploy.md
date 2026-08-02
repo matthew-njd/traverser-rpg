@@ -48,7 +48,7 @@ An `EnsureCreated`/migrate-on-boot pattern is common and wrong here. This stack 
 - **Every Compose service is either backed by a named volume or is disposable.** There is exactly one stateful service. If a second ever appears without a volume, that is a bug, not a simplification.
 - **Secrets live in `.env`, which is gitignored; `.env.example` is committed with every key present and every value blank.** A missing key should fail at startup with the key's name, not at first use with a null reference.
 - **Anything on the host that the deployment depends on gets written down in this doc, not just done.** A one-machine deployment's real failure mode is an undocumented manual step that the person who performed it has forgotten. `tailscale serve` (§8) and the release keystore (§7.3) are both in this category.
-- **Docker Compose v2 syntax (`docker compose`, no `version:` key).** ⟨verify⟩ that the installed Docker Desktop is on Compose v2 — it will be, but the two spellings behave differently enough to be worth checking once.
+- **Docker Compose v2 syntax (`docker compose`, no `version:` key).** Verified at M0 — the installed Docker Desktop runs Compose v2, and every command in the README uses the v2 spelling.
 
 ---
 
@@ -168,7 +168,7 @@ No EAS, no cloud build service, no Play Store account, no developer-program fee.
 
 **7.1 Development build — `npx expo run:android` over USB.** This is the documented local-build path (T4 §1.1), not a workaround. It compiles on Matthew's machine, installs to the connected device over ADB, and is the daily driver for M0–M4. Expo Go is permanently unusable here because `react-native-health-connect` needs a native build (T4 §1.1).
 
-**7.2 Release build — a signed APK, sideloaded.** `npx expo run:android --variant release` ⟨verify the exact flag spelling on SDK 57⟩, or `./gradlew assembleRelease` inside the generated `android/`. An **APK**, not an AAB: AAB exists for Play Store delivery and cannot be installed directly. Transfer over USB (`adb install -r`) and install. This is what M5's "installable on my phone as a daily-use app" means.
+**7.2 Release build — a signed APK, sideloaded.** `npx expo run:android --variant release` (flag spelling verified against the SDK 57 CLI's own help at M0 — DECISIONS 2026-08-01), or `./gradlew assembleRelease` inside the generated `android/`. An **APK**, not an AAB: AAB exists for Play Store delivery and cannot be installed directly. Transfer over USB (`adb install -r`) and install. This is what M5's "installable on my phone as a daily-use app" means.
 
 **7.3 The release keystore is a permanent artefact and losing it is destructive.** This is the section that matters, and it is a consequence of T4 §1.1 that no prior spec states.
 

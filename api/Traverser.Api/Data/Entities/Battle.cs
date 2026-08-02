@@ -15,6 +15,15 @@ public class Battle
     /// <see cref="SyncDelta.ClientDeltaId"/>, so a resumed battle keeps the ID it began with.</summary>
     public Guid ClientBattleId { get; set; }
 
+    /// <summary>
+    /// Null for boss and tutorial battles — fixed gate fights and the tutorial are not rolls from
+    /// the daily pool, so only wild and Explore battles must carry one (the engine owns the
+    /// pairing; a CHECK is the wrong tool because both values arrive in the same client payload).
+    /// The partial unique index on this column is what makes double-spending a grant structurally
+    /// impossible; the violation surfaces as T2 §6.2's <c>grant_already_spent</c>.
+    /// </summary>
+    public Guid? GrantId { get; set; }
+
     public string EnemyId { get; set; } = null!;
 
     public BattleEncounterKind EncounterKind { get; set; }
@@ -35,6 +44,8 @@ public class Battle
     public DateTime EndedAt { get; set; }
 
     public Player Player { get; set; } = null!;
+
+    public EncounterGrant? Grant { get; set; }
 
     public Enemy Enemy { get; set; } = null!;
 }

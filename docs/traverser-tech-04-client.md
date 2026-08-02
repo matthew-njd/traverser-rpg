@@ -58,7 +58,7 @@ GDD 14 §3.1 requires `mus_hub` to persist *uninterrupted* across sub-tab switch
 
 | Concern | Choice | Note |
 |---|---|---|
-| Framework | Expo SDK 57, CNG (§1.1) | New Architecture only ⟨verify for 57⟩ |
+| Framework | Expo SDK 57, CNG (§1.1) | New Architecture only (verified — the 2026-08-01 M0 device build runs it; SDK 57 offers no opt-out) |
 | Build | `npx expo run:android` locally | Never EAS (CLAUDE.md) |
 | Navigation | `expo-router` | §4 |
 | State | `zustand` | §5 |
@@ -409,6 +409,12 @@ Every manifest key gets a placeholder file from the first build: a flat-coloured
 - No screen ever hardcodes a fallback path, so nothing needs revisiting when real art lands.
 - A screenshot during development names its own missing assets.
 - The art and audio projects deliver files into a directory, and nothing else in the repo changes.
+
+> **Amended 2026-08-01 (M0 close-out):** built (`scripts/gen-assets.ts`, `npm run gen:assets`; placeholders via `-- --placeholders`), with one deviation and one finding.
+>
+> - **Audio placeholders are silent `.wav` files, not `.ogg`.** The $0 toolchain has no OGG encoder (no ffmpeg on the machine, and a hand-rolled Ogg muxer could not be verified playable without adding tooling), while a 44-byte-header PCM WAV is correct by construction and ExoPlayer plays it natively. The registry resolves `{key}.ogg` when it exists and falls back to `{key}.wav`, so real audio deliveries are drop-in: add the `.ogg`, delete the `.wav`, rerun codegen. Both present at once is a codegen error — one spelling of the truth.
+> - **Metro's default `assetExts` does not include `ogg` at all** (it does include `wav`), so this section's `require('….ogg')` example needs a `metro.config.js` adding the extension before any real OGG can bundle. That file is deliberately absent until M5 introduces `getSentryExpoConfig` (tech-06 §9) — add `ogg` to `assetExts` in the same change.
+> - Skills and moves get key types (`SkillKey`, `GearMoveKey`, `EnemyMoveKey`) but no files, matching §9.2's own `AssetKey` union — they have no art; sprite keys are enemies + items + gear (52), audio keys are music + stingers + sfx (63).
 
 ### 9.4 Sprite composition — layered gear
 

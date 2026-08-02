@@ -107,6 +107,39 @@ namespace Traverser.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Traverser.Api.Data.Entities.AuthToken", b =>
+                {
+                    b.Property<byte[]>("TokenHash")
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("player_id");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.HasKey("TokenHash")
+                        .HasName("pk_auth_token");
+
+                    b.HasIndex("PlayerId")
+                        .HasDatabaseName("ix_auth_token_player_id");
+
+                    b.ToTable("auth_token", (string)null);
+                });
+
             modelBuilder.Entity("Traverser.Api.Data.Entities.Battle", b =>
                 {
                     b.Property<Guid>("Id")
@@ -135,6 +168,10 @@ namespace Traverser.Api.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("enemy_level");
 
+                    b.Property<Guid?>("GrantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("grant_id");
+
                     b.Property<string>("Outcome")
                         .IsRequired()
                         .HasColumnType("text")
@@ -160,6 +197,11 @@ namespace Traverser.Api.Migrations
                     b.HasIndex("EnemyId")
                         .HasDatabaseName("ix_battle_enemy_id");
 
+                    b.HasIndex("GrantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_battle_grant_id")
+                        .HasFilter("grant_id is not null");
+
                     b.HasIndex("PlayerId", "ClientBattleId")
                         .IsUnique()
                         .HasDatabaseName("ix_battle_player_id_client_battle_id");
@@ -170,6 +212,33 @@ namespace Traverser.Api.Migrations
 
                             t.HasCheckConstraint("ck_battle_outcome", "outcome in ('win', 'loss', 'flee')");
                         });
+                });
+
+            modelBuilder.Entity("Traverser.Api.Data.Entities.ClientOperation", b =>
+                {
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("player_id");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("operation_id");
+
+                    b.Property<DateTime>("AppliedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("applied_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("endpoint");
+
+                    b.HasKey("PlayerId", "OperationId")
+                        .HasName("pk_client_operation");
+
+                    b.ToTable("client_operation", (string)null);
                 });
 
             modelBuilder.Entity("Traverser.Api.Data.Entities.ContentVersion", b =>
@@ -357,6 +426,59 @@ namespace Traverser.Api.Migrations
                             QtyMax = 1,
                             QtyMin = 1,
                             Tier = "mortal"
+                        });
+                });
+
+            modelBuilder.Entity("Traverser.Api.Data.Entities.EncounterGrant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly>("ActivityDate")
+                        .HasColumnType("date")
+                        .HasColumnName("activity_date");
+
+                    b.Property<string>("EnemyId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("enemy_id");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("player_id");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.Property<string>("ZoneId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("zone_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_encounter_grant");
+
+                    b.HasIndex("EnemyId")
+                        .HasDatabaseName("ix_encounter_grant_enemy_id");
+
+                    b.HasIndex("ZoneId")
+                        .HasDatabaseName("ix_encounter_grant_zone_id");
+
+                    b.HasIndex("PlayerId", "ActivityDate")
+                        .HasDatabaseName("ix_encounter_grant_player_id_activity_date");
+
+                    b.ToTable("encounter_grant", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_encounter_grant_source", "source in ('travel', 'workout', 'explore')");
                         });
                 });
 
@@ -3016,6 +3138,10 @@ namespace Traverser.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("player_id");
 
+                    b.Property<int?>("BirthYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("birth_year");
+
                     b.Property<TimeOnly?>("DailyReminderTime")
                         .HasColumnType("time without time zone")
                         .HasColumnName("daily_reminder_time");
@@ -3037,7 +3163,10 @@ namespace Traverser.Api.Migrations
                     b.HasKey("PlayerId")
                         .HasName("pk_player_settings");
 
-                    b.ToTable("player_settings", (string)null);
+                    b.ToTable("player_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_player_settings_birth_year", "birth_year between 1900 and 2100");
+                        });
                 });
 
             modelBuilder.Entity("Traverser.Api.Data.Entities.PlayerSkillDef", b =>
@@ -4191,6 +4320,18 @@ namespace Traverser.Api.Migrations
                     b.Navigation("Player");
                 });
 
+            modelBuilder.Entity("Traverser.Api.Data.Entities.AuthToken", b =>
+                {
+                    b.HasOne("Traverser.Api.Data.Entities.Player", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_auth_token_player_player_id");
+
+                    b.Navigation("Player");
+                });
+
             modelBuilder.Entity("Traverser.Api.Data.Entities.Battle", b =>
                 {
                     b.HasOne("Traverser.Api.Data.Entities.Enemy", "Enemy")
@@ -4199,6 +4340,12 @@ namespace Traverser.Api.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("fk_battle_enemy_enemy_id");
+
+                    b.HasOne("Traverser.Api.Data.Entities.EncounterGrant", "Grant")
+                        .WithMany()
+                        .HasForeignKey("GrantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_battle_encounter_grant_grant_id");
 
                     b.HasOne("Traverser.Api.Data.Entities.Player", "Player")
                         .WithMany()
@@ -4209,7 +4356,60 @@ namespace Traverser.Api.Migrations
 
                     b.Navigation("Enemy");
 
+                    b.Navigation("Grant");
+
                     b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("Traverser.Api.Data.Entities.ClientOperation", b =>
+                {
+                    b.HasOne("Traverser.Api.Data.Entities.Player", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_client_operation_player_player_id");
+
+                    b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("Traverser.Api.Data.Entities.EncounterGrant", b =>
+                {
+                    b.HasOne("Traverser.Api.Data.Entities.Enemy", "Enemy")
+                        .WithMany()
+                        .HasForeignKey("EnemyId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_encounter_grant_enemy_enemy_id");
+
+                    b.HasOne("Traverser.Api.Data.Entities.Player", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_encounter_grant_player_player_id");
+
+                    b.HasOne("Traverser.Api.Data.Entities.Zone", "Zone")
+                        .WithMany()
+                        .HasForeignKey("ZoneId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_encounter_grant_zone_zone_id");
+
+                    b.HasOne("Traverser.Api.Data.Entities.ActivityDay", "ActivityDay")
+                        .WithMany()
+                        .HasForeignKey("PlayerId", "ActivityDate")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_encounter_grant_activity_day_player_id_activity_date");
+
+                    b.Navigation("ActivityDay");
+
+                    b.Navigation("Enemy");
+
+                    b.Navigation("Player");
+
+                    b.Navigation("Zone");
                 });
 
             modelBuilder.Entity("Traverser.Api.Data.Entities.Enemy", b =>

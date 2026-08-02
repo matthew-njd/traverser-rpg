@@ -144,6 +144,22 @@ npx expo run:android             # builds natively, installs over ADB
 nothing with `infra/.env`. An unset `EXPO_PUBLIC_API_BASE_URL` fails config resolution by design
 (tech-06 §4.2); it does not silently default.
 
+### The asset registry is generated — never hand-edit it
+
+Metro resolves `require()` at build time, so every sprite and sound must appear as a literal path
+somewhere (tech-04 §9). That somewhere is `src/assets/registry.generated.ts`, emitted by:
+
+```
+npm run gen:assets                    # verify + regenerate; fails naming any missing/orphan file
+npm run gen:assets -- --placeholders  # first create placeholders for keys that have no file yet
+```
+
+The generator parses `docs/traverser-data-manifest.md` — new content means a manifest key *first*,
+then `gen:assets`, never a hardcoded filename. Placeholders are flat-colour PNGs with the key as
+text, and silent `.wav` files (not `.ogg`: no OGG encoder in the toolchain, and Metro cannot bundle
+`.ogg` without a `metro.config.js`, which arrives at M5 — DECISIONS 2026-08-01). Real art/audio is
+drop-in: replace the placeholder (for audio: add `{key}.ogg`, delete the `.wav`), rerun `gen:assets`.
+
 ### ↯ The Android SDK ships a ninja too old to build Reanimated
 
 **One-time machine setup. Without it the first native build cannot succeed**, and the error names
@@ -329,12 +345,19 @@ both DSNs in place, the content-bundle validation pass (§5.4) is split between 
 `ContentValidationTests`, and the release keystore with its config plugin (§7.3) is generated and
 proven by `signingReport`.
 
-The installed app is still the Expo template — M0 delivered the pipeline, not the game. What it
-proves is that the identity (`com.oldroads.traverser`), the signing config, the Sentry init, and
-`EXPO_PUBLIC_API_BASE_URL` all survive the trip to a real device, which is what M1 builds on.
+M0 delivered the pipeline, not the game. What it proves is that the identity
+(`com.oldroads.traverser`), the signing config, the Sentry init, and `EXPO_PUBLIC_API_BASE_URL` all
+survive the trip to a real device, which is what M1 builds on.
 
-Deferred by explicit decision, not forgotten: source-map upload and the `getSentryExpoConfig` half
-of the Sentry setup (both M5), and the §13.1 profile export/restore (M1, alongside the backup job).
+A close-out pass (2026-08-01, DECISIONS) finished the loose ends so M1 starts at feature work: the
+four T1-amendment tables are migrated (`auth_token`, `encounter_grant`, `client_operation`,
+`birth_year`), the asset registry and its 115 placeholders exist, and the Expo template is stripped
+to a minimal boot shell (root layout + placeholder screen + the env/Sentry wiring).
+
+Deferred by explicit decision, not forgotten: source-map upload, the `getSentryExpoConfig` half of
+the Sentry setup, and the `metro.config.js` that lets Metro bundle `.ogg` (all M5); the §13.1
+profile export/restore (M1, alongside the backup job); and the template's web-facing npm
+dependencies, left installed for a deliberate prune at the next device rebuild.
 
 ### Sentry
 
