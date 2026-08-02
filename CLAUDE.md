@@ -18,6 +18,7 @@ Traverser is a mythology-themed fitness RPG (React Native + ASP.NET Core 10 + Po
 2. **Tech specs** (`traverser-tech-*.md`) — locked architecture decisions.
 3. **`traverser-data-manifest.md`** — canonical snake_case IDs for all content (enemies, moves, items, gear, audio). Never invent IDs; add to the manifest first.
 4. **`traverser-test-fixtures.md`** — machine-verified expected values. **All formula tests assert against this file.** If code disagrees with a fixture, the code is wrong — do not "fix" a fixture to make a test pass.
+5. **Build plans** (`traverser-m*-plan.md`) — the current milestone's scope, packet order, and exit criteria. Unlike 1–4 these are not locked: they record what M*n* intends to build, and `DECISIONS.md` records what actually happened when the two differ.
 
 ## Sanctioned scope trims (do not re-add)
 
