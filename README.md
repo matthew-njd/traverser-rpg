@@ -274,6 +274,119 @@ database with it.
 
 ---
 
+## Backups
+
+↯ **From M1 this stops being optional** (tech-06 §10). Health Connect keeps roughly 30 days of
+history on the phone, so beyond that window the Postgres row is the only copy of a given day's steps
+that exists anywhere — there is no upstream to re-fetch from and no way to walk those days again.
+
+`infra/backup.sh` takes a `pg_dump -Fc`, writes it to a local folder **and** to the Google Drive
+folder, then prunes both. Off-machine is the copy that matters: a dead PC or a failed drive
+controller takes every same-machine copy with it.
+
+### One-time setup
+
+Two keys in `infra/.env` (see `.env.example`). Neither has a default, deliberately — a backup job
+that guesses its destination is one that reports success while writing where nobody looks:
+
+```
+BACKUP_LOCAL_DIR=C:/Users/<you>/Documents/Development/Backups/Traverser
+BACKUP_REMOTE_DIR=G:/My Drive/Development/Projects/Apps/Traverser/Backups
+```
+
+Then register the schedule, from an ordinary (non-elevated) prompt:
+
+```
+powershell -ExecutionPolicy Bypass -File infra\register-backup-task.ps1
+```
+
+That `.ps1` is the **only** Windows-specific piece (tech-06 §11.2). `backup.sh` is POSIX sh with no
+GNU-only dependencies, so moving the stack to a Linux host means deleting the task and adding one
+cron line; the script itself goes across unchanged.
+
+### When it runs
+
+Daily at 03:00 **and** at logon, with run-if-missed set. This machine is frequently asleep at 03:00,
+so the catch-up is the mechanism rather than a fallback.
+
+↯ **At logon, not at startup** — a deviation from §10.3's wording, recorded in `DECISIONS.md`.
+Docker Desktop is a user-session application: at true machine startup there is no engine to dump
+from, so an at-startup trigger would fail on every boot.
+
+At most one dump per day. Both triggers fire on a day that begins with a reboot, and without that
+guard a power-cycled machine would spend three of its seven daily slots on a single day. Pass
+`--force` to override it for a manual run.
+
+### Retention
+
+7 daily / 4 weekly / 12 monthly (§10.4), applied to both locations by the same script. Sized for the
+recovery *window*, not for disk: a bad seed or a bug that corrupts progression may go unnoticed for
+weeks, and a 7-day-only history would have overwritten the last good copy by then.
+
+The rule is "the N most recent distinct days/weeks/months that **have** a dump", not "everything
+within the last N days" — on a machine that is off for a fortnight, a wall-clock rule would quietly
+prune six of the seven dailies while nobody was looking.
+
+About 19 files are kept at steady state rather than 23, because one dump satisfies several rules at
+once (the same dedupe restic and borg do for identical policy flags). Space is a non-issue and
+always will be: a dump is 83 KB today and grows by well under 1 MB per year of play, so both
+locations together stay in the tens of megabytes for years.
+
+### Checking that it is working
+
+```
+Get-ScheduledTaskInfo -TaskName 'Traverser database backup'
+```
+
+`LastTaskResult` **0** = both copies written · **1** = the dump failed · **2** = the local dump
+succeeded and the off-machine copy did not. **2 is a failure, not a warning** — the off-machine copy
+is the entire reason the job exists. Every run appends to `backup.log` in `BACKUP_LOCAL_DIR`.
+
+The quickest human check needs no commands: look at the newest file in the Drive folder. If its date
+is not today or yesterday, something is broken.
+
+The script waits up to ten minutes for Postgres (sized for a cold Docker Desktop at logon) but will
+not start a stopped stack on its own, since `docker compose stop` is a supported thing to do here.
+
+### The dump alone is not a backup
+
+A perfect Postgres backup restored onto new hardware is a database full of history that **no client
+can claim**, because `player_id` and the bearer token live only in app storage (tech-04 §6.5). Three
+artefacts therefore belong in the Drive folder alongside the dumps, and the script deliberately does
+not touch any of them:
+
+| Artefact | Why |
+|---|---|
+| `infra/.env` | Holds the Postgres password. A dump you cannot authenticate against is not a restore. Re-copy after a password rotation |
+| `traverser-release.keystore` | Losing it forces an uninstall, and uninstall destroys the device identity |
+| `~/.gradle/gradle.properties` | The keystore's four passwords — either file alone is useless |
+
+They are static, so automating them would buy nothing and add ways to lose them: a scheduled job
+that copies your signing key around is more exposure, not less. Copy them once, by hand.
+
+⚠️ A **fourth** member joins them at P8 — the exported `player_id` and bearer token (tech-06 §13.1),
+once the Settings screen can produce it. Until that exists, losing the phone still costs the profile
+even though the history survives.
+
+### Restoring
+
+Not yet drilled. The drill runs at **P9**, against real data, per §10.6 — that is the moment the
+backup stops being hypothetical and the cheapest possible time to find a typo in the dump command:
+
+```
+docker compose exec -T db createdb -U <POSTGRES_USER> traverser_restore_test
+docker compose exec -T db pg_restore -U <POSTGRES_USER> -d traverser_restore_test \
+  --clean --if-exists < traverser-YYYYMMDD-HHMM.dump
+# spot-check a known activity_day row, the player's level, the xp_curve row count, then:
+docker compose exec -T db dropdb -U <POSTGRES_USER> traverser_restore_test
+```
+
+Custom format means `pg_restore` can also pull individual objects out of an archive, which is what
+matters on the day the goal is "recover yesterday's `activity_day` rows" rather than "recreate the
+whole database".
+
+---
+
 ## Reaching the API from the phone — manual host steps
 
 The API binds to `127.0.0.1` and stays there. The phone reaches it over the tailnet, via
