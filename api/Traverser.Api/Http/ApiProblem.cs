@@ -25,6 +25,13 @@ internal static class ApiProblem
     /// <summary>Body failed a server-side sanity check. <c>detail</c> names the field.</summary>
     public const string ValidationFailed = "validation_failed";
 
+    /// <summary>
+    /// An allocation asked for more points than the player has unspent. Its own code rather than
+    /// <see cref="ValidationFailed"/> because the request is well-formed and the client can act on
+    /// it specifically — refetch the profile, the level-up it assumed did not happen.
+    /// </summary>
+    public const string InsufficientStatPoints = "insufficient_stat_points";
+
     public static IResult Unauthorized(string code, string detail) =>
         Create(StatusCodes.Status401Unauthorized, code, "Unauthorized", detail);
 

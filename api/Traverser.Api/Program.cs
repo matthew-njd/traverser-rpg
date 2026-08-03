@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
@@ -60,7 +61,15 @@ builder.Services.AddAuthorization();
 // no custom converter. ConfigureHttpJsonOptions is the minimal-API surface specifically —
 // AddControllers().AddJsonOptions() configures a different options instance and would not apply.
 builder.Services.ConfigureHttpJsonOptions(options =>
-    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower);
+{
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+
+    // Closed sets travel as their stored text (`hr`, `goal_hit`), not as ordinals — the wire and
+    // tech-01's CHECK constraints then spell every enum the same way, and adding a member cannot
+    // silently renumber an existing one. The naming policy is passed explicitly because
+    // JsonStringEnumConverter does not inherit the one above.
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
+});
 
 // UseSnakeCaseNamingConvention is not optional — without it EF creates PlayerItem/ItemDefId
 // tables and columns, and every query written against tech-01's schema breaks (tech-01 §2, §7).
@@ -164,6 +173,8 @@ open.MapRegistration();
 
 secured.MapPlayerReads();
 secured.MapContentEndpoints();
+secured.MapSync();
+secured.MapProgression();
 
 app.Run();
 
