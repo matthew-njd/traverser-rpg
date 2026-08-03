@@ -38,8 +38,13 @@ Each milestone ends with a build I can run on my actual phone. Placeholder art (
 
 ---
 
-## Today's Session
+## Current Session
 
-**T2 — API Surface & Sync Protocol.** Review GDD Sections 1, 9, and 11 plus T1's data model and the planning doc's offline section, ask any targeted clarifying questions, then produce the endpoint list, sync transaction, offline queue design, and merge rules.
+**M1 — The Walk.** Scope, packet order, and exit criteria are in `traverser-m1-plan.md`; work the packets in order, one commit each, `Phase 2 - M1: <name> (P<n>)`.
 
-*(T1 — Data Model & Schema: complete, `traverser-tech-01-data-model.md`.)*
+Rather than restating the session here every time and letting it rot, this block names the current milestone only. **The milestone plan is the session brief** — its packet list is the running order and its §5 exit criteria are the definition of done.
+
+**Complete:**
+
+- **Phase 1 — Tech Specs:** all six, T1–T6, closed 2026-07-26. Amendments land in place as dated blockquotes; deviations get a `DECISIONS.md` line.
+- **Phase 2 — M0 (Scaffolding):** closed 2026-08-01. The app builds locally and installs to the Pixel over USB; Postgres is migrated and seeded; Compose, Tailscale, Sentry, and the release keystore are wired. `traverser-m0-plan.md` §4.1 records where delivery diverged from the plan.

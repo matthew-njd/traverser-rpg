@@ -44,9 +44,40 @@ const config: ExpoConfig = {
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    // tech-03 §2 — exactly two, both read. No WRITE_* (Traverser is a read-only consumer and
+    // should never hold a write permission it could be blamed for), no READ_HEALTH_DATA_IN_
+    // BACKGROUND (§1.5 — sync is foreground-only), no READ_EXERCISE (§1.2 — we derive tiers from
+    // heart-rate samples and never read exercise sessions; asking for an unused permission is a
+    // worse onboarding conversion for no benefit).
+    permissions: [
+      'android.permission.health.READ_STEPS',
+      'android.permission.health.READ_HEART_RATE',
+    ],
   },
   plugins: [
     'expo-router',
+    [
+      'expo-build-properties',
+      {
+        android: {
+          // ↯ Health Connect's floor, not a preference. `androidx.health.connect:connect-client`
+          // declares minSdk 26 and Expo's default is 24, so without this the manifest merger fails
+          // the build outright. Android 8.0 excludes nothing that matters: Health Connect itself
+          // needs 8.0+ on the installable-APK path and is only part of the OS from 14.
+          minSdkVersion: 26,
+        },
+      },
+    ],
+    // Adds the Android 13-and-below rationale intent filter to MainActivity (tech-03 §2).
+    'react-native-health-connect',
+    // ...and this adds the Android 14+ half, which the library's plugin does not. Both are
+    // required by §2; see the plugin's own header for why the omission is silent.
+    './plugins/withHealthConnectRationale',
+    // Excludes the encrypted token store from Android Auto Backup. ↯ Not cosmetic: SecureStore
+    // values are Keystore-encrypted with a device-bound key, so a backed-up blob restored onto
+    // another device is undecryptable — the app would hold a bearer token it can never read.
+    // tech-06 §13.1's export is the supported recovery path; Auto Backup is not.
+    'expo-secure-store',
     [
       'expo-splash-screen',
       {

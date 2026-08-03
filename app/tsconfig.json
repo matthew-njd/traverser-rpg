@@ -3,6 +3,10 @@
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "types": [
+      "node",
+      "jest"
+    ],
     "paths": {
       "@/*": [
         "./src/*"
