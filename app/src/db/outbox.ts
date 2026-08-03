@@ -77,15 +77,26 @@ export function enqueueAll(
   });
 }
 
-/** The oldest `limit` entries, FIFO. Does not remove them — see {@link acknowledge}. */
-export function peek(db: SqliteDatabase, limit: number): OutboxEntry[] {
+/**
+ * The oldest `limit` entries, FIFO. Does not remove them — see {@link acknowledge}.
+ *
+ * `kind` narrows to one write type. The queue is deliberately one table (tech-04 §6.2) because every
+ * kind shares the same durability, ordering and retry rules — but they do not share an *endpoint*,
+ * so the drain reads one kind at a time rather than sending a mixed batch somewhere that only
+ * understands part of it.
+ */
+export function peek(db: SqliteDatabase, limit: number, kind?: OutboxKind): OutboxEntry[] {
+  const where = kind === undefined ? '' : 'WHERE kind = ?';
+  const params = kind === undefined ? [limit] : [kind, limit];
+
   return db
     .getAllSync<OutboxRow>(
       `SELECT client_op_id, kind, payload, created_at, attempts
        FROM outbox
+       ${where}
        ORDER BY created_at, client_op_id
        LIMIT ?`,
-      [limit],
+      params,
     )
     .map(toEntry);
 }

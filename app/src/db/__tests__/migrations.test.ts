@@ -60,6 +60,38 @@ describe('schema migrations', () => {
     expect(runMigrations(db)).toBe(LATEST_VERSION);
   });
 
+  /**
+   * ↯ The path every device that already shipped actually takes, and the one an all-at-once test
+   * never exercises: a database sitting at an older version, upgraded in place with its rows intact.
+   * The rule that makes it safe is that migrations are append-only — an edit to V1 would never run
+   * on a device that already applied it, and the two databases would diverge in silence.
+   */
+  it('upgrades an older database in place, keeping its rows', () => {
+    const db = memoryDatabase();
+
+    // Rewind to a device that is still on version 1 by dropping what came after it.
+    db.execSync('DROP TABLE player');
+    for (const statement of MIGRATIONS[0]?.statements ?? []) {
+      if (statement.includes('CREATE TABLE player ')) {
+        db.execSync(statement);
+      }
+    }
+    db.execSync('PRAGMA user_version = 1');
+    db.runSync(
+      `INSERT INTO player (one_row, id, traverser_name, timezone, created_at)
+       VALUES (1, 'p1', 'Matthew', 'America/New_York', '2026-08-03T00:00:00Z')`,
+    );
+
+    expect(runMigrations(db)).toBe(LATEST_VERSION);
+
+    // The row survived, and the new column arrived with its default rather than as null.
+    expect(
+      db.getFirstSync<{ id: string; provisional: number }>(
+        'SELECT id, provisional FROM player',
+      ),
+    ).toEqual({ id: 'p1', provisional: 0 });
+  });
+
   it('survives close and reopen without reapplying', () => {
     const file = new FileDatabase();
 

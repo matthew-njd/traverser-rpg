@@ -160,8 +160,26 @@ const V1_DEVICE: readonly string[] = [
    )`,
 ];
 
+/**
+ * Version 2 — tech-04 §8.4's provisional flag.
+ *
+ * ↯ Added as a second migration rather than folded into V1, per rule 1 above: V1 has already been
+ * applied on this device, so an edit to it would never run and the two databases would diverge
+ * silently. That is the whole discipline, and it starts costing something the first time it is
+ * inconvenient.
+ *
+ * The flag says *the player row currently holds an optimistic projection* (§8.4). A sync response
+ * replaces those values and clears it. It is one flag rather than one per column because the
+ * projection is written as a set and replaced as a set — a half-provisional row is not a state this
+ * design has.
+ */
+const V2_PROVISIONAL: readonly string[] = [
+  'ALTER TABLE player ADD COLUMN provisional INTEGER NOT NULL DEFAULT 0',
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
+  { version: 2, statements: [...V2_PROVISIONAL] },
 ];
 
 /** The version a fully-migrated database reports. */
