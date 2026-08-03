@@ -1,8 +1,12 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Sentry.Extensibility;
+using Traverser.Api.Auth;
 using Traverser.Api.Data;
+using Traverser.Api.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +39,21 @@ builder.WebHost.UseSentry(options =>
 });
 
 builder.Services.AddOpenApi();
+
+// tech-02 §2 — errors are RFC 9457 ProblemDetails. This registers the default writer so that
+// unhandled exceptions and framework-generated statuses (a 400 from malformed JSON, a 405) come
+// back in the same shape as the ones the endpoints produce deliberately. Without it the client
+// would face two different error formats depending on how deep the failure happened.
+builder.Services.AddProblemDetails();
+
+// tech-02 §1.4's opaque guest bearer token. One scheme, no fallback, no cookie — there is exactly
+// one kind of credential on this surface and adding a second way in would be a new decision.
+builder.Services
+    .AddAuthentication(GuestTokenAuthenticationHandler.SchemeName)
+    .AddScheme<AuthenticationSchemeOptions, GuestTokenAuthenticationHandler>(
+        GuestTokenAuthenticationHandler.SchemeName, configureOptions: null);
+
+builder.Services.AddAuthorization();
 
 // snake_case on the wire, so payload fields match tech-01's column names 1:1 and a request body
 // can be read against the schema with no mental mapping (tech-02 §2). Built into System.Text.Json;
@@ -102,6 +121,26 @@ await using (var scope = app.Services.CreateAsyncScope())
     }
 }
 
+// Turns an unhandled exception into a 500 ProblemDetails instead of an empty response (or, in
+// Development, the developer exception page). Paired with AddProblemDetails above.
+// ↯ StatusCodeSelector is not optional here. Minimal APIs signal a malformed request body by
+// throwing BadHttpRequestException, which carries its own 400 — but registering an exception
+// handler at all takes that translation over, and the default answer for any exception is 500. So
+// adding UseExceptionHandler to get RFC 9457 shapes silently turned every syntactically broken
+// request body into "the server is broken", which is both wrong and the kind of wrong that sends
+// someone reading server logs for a client bug. Found by posting `{not json`.
+app.UseExceptionHandler(new ExceptionHandlerOptions
+{
+    StatusCodeSelector = ex => ex is BadHttpRequestException bad
+        ? bad.StatusCode
+        : StatusCodes.Status500InternalServerError,
+});
+
+app.UseStatusCodePages();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -112,25 +151,25 @@ if (app.Environment.IsDevelopment())
 // speaks plain HTTP on 8080 (tech-06 §1.2, §3.5), so redirecting here would send the client to a
 // port nothing is listening on. This is the inverse of the usual end-to-end-HTTPS instinct.
 
-// tech-02 §3 — the client polls this at the start of every sync and fetches /content/bundle only
-// when the number moved. Unauthenticated for now: tech-02 §1.4's bearer token has no storage
-// until the amended `auth_token` table is built, and this returns one integer about seeded
-// content, not player data. Revisit when registration lands.
-app.MapGet("/api/v1/content/version", async (TraverserDbContext db, CancellationToken ct) =>
-{
-    var version = await db.ContentVersions
-        .AsNoTracking()
-        .Select(c => c.Version)
-        .SingleAsync(ct);
+// tech-02 §2 — one `/api/v1` prefix, two groups, and the split *is* the security model.
+//
+// ↯ Authentication is a property of the group, not of the endpoint. Adding a route to `secured`
+// cannot forget to authenticate, and adding one to `open` is a visible, deliberate act rather than
+// an omission nobody notices in review. `open` has exactly one member and there is no reason for it
+// to gain a second: registration is unauthenticated because it is what mints the credential.
+var open = app.MapGroup("/api/v1");
+var secured = app.MapGroup("/api/v1").RequireAuthorization();
 
-    return Results.Ok(new ContentVersionResponse(version));
-});
+open.MapRegistration();
+
+secured.MapPlayerReads();
+secured.MapContentEndpoints();
 
 app.Run();
 
 /// <summary>
-/// tech-02 §3 calls this "a single integer", but it ships as a one-member object: everything on
-/// tech-02's wire is a snake_case JSON body, and a bare scalar has nowhere to grow if the bundle
-/// poll ever needs to carry a second field.
+/// Exposed so the test project can drive the real pipeline through
+/// <c>WebApplicationFactory&lt;Program&gt;</c> — the auth filter, the JSON naming policy, and the
+/// ProblemDetails shape are all things a handler called directly would not exercise.
 /// </summary>
-internal sealed record ContentVersionResponse(int ContentVersion);
+public partial class Program;
