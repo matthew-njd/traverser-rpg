@@ -1,18 +1,32 @@
 import type { MintedDelta } from '../health/deltas';
-import { type SyncResponse, parseContentVersion, parseSyncResponse, toWireSyncRequest } from './dto';
+import {
+  type AllocationPayload,
+  type PlayerProfile,
+  type Registration,
+  type SettingsPayload,
+  type SyncResponse,
+  parseContentVersion,
+  parseProfile,
+  parseRegistration,
+  parseSyncResponse,
+  toWireAllocation,
+  toWireRegistration,
+  toWireSettings,
+  toWireSyncRequest,
+} from './dto';
 
 /**
- * The HTTP client for the three calls a sync pass makes.
+ * The HTTP client for everything the app asks of the server.
  *
  * ↯ **An unreachable server is the normal case, not the error case** (tech-02 §1.2, tech-04 §8.1).
  * The API runs in Docker on a PC that is off between sessions by design, so this module's job is to
- * fail *fast and quietly* and let the pass succeed anyway. Everything the player earned is already
+ * fail *fast and quietly* and let the caller carry on. Everything a sync pass earns is already
  * durable in the outbox before a request is ever made.
  *
  * ↯ And note the shape of the failure: `fetch` **rejects** on a network error, it does not resolve
  * with `ok: false`. Only an HTTP response — including a 500 — comes back as a resolved promise. The
- * two are different conditions here and are given different error types, because one means "try
- * again later, nothing is wrong" and the other means the server has an opinion.
+ * two are different conditions here and get different error types, because one means "try again
+ * later, nothing is wrong" and the other means the server has an opinion.
  */
 
 /** No response at all: host down, DNS, connection refused, or the timeout below. */
@@ -43,18 +57,23 @@ export class ApiStatusError extends Error {
  */
 export const DEFAULT_TIMEOUT_MS = 8_000;
 
-export interface TraverserApi {
-  contentVersion(): Promise<number>;
-  sync(deltas: readonly MintedDelta[], contentVersion: number): Promise<SyncResponse>;
-}
-
 export interface ApiOptions {
   /** Includes the `/api/v1` prefix, no trailing slash. */
   readonly baseUrl: string;
-  readonly token: string;
+  /** Null only for registration, which is where the token comes from. */
+  readonly token: string | null;
   readonly timeoutMs?: number;
   /** Injected in tests; production uses the global. */
   readonly fetchImpl?: typeof fetch;
+}
+
+export interface TraverserApi {
+  contentVersion(): Promise<number>;
+  sync(deltas: readonly MintedDelta[], contentVersion: number): Promise<SyncResponse>;
+  /** tech-02 §3's one-shot repair path, and what a restore uses to prove its credentials. */
+  profile(): Promise<PlayerProfile>;
+  allocate(payload: AllocationPayload): Promise<void>;
+  updateSettings(payload: SettingsPayload): Promise<void>;
 }
 
 async function problemCode(response: Response): Promise<string | null> {
@@ -73,62 +92,104 @@ async function problemCode(response: Response): Promise<string | null> {
   return null;
 }
 
-export function createApi(options: ApiOptions): TraverserApi {
+async function request(options: ApiOptions, path: string, init?: RequestInit): Promise<unknown> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const doFetch = options.fetchImpl ?? fetch;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  async function request(path: string, init?: RequestInit): Promise<unknown> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
 
-    let response: Response;
-
-    try {
-      response = await doFetch(`${options.baseUrl}${path}`, {
-        ...init,
-        signal: controller.signal,
-        headers: {
-          authorization: `Bearer ${options.token}`,
-          accept: 'application/json',
-          ...(init?.body === undefined ? {} : { 'content-type': 'application/json' }),
-          ...init?.headers,
-        },
-      });
-    } catch (cause) {
-      throw new ApiUnreachableError(`No response from ${path}.`, { cause });
-    } finally {
-      clearTimeout(timer);
-    }
-
-    if (!response.ok) {
-      throw new ApiStatusError(
-        response.status,
-        await problemCode(response),
-        `${path} returned ${response.status}.`,
-      );
-    }
-
-    try {
-      return await response.json();
-    } catch {
-      // A 2xx whose body will not parse is a broken server, not an unreachable one — but it is also
-      // not something a retry fixes, so it is reported rather than swallowed as offline.
-      throw new ApiStatusError(response.status, null, `${path} returned an unreadable body.`);
-    }
+  try {
+    response = await doFetch(`${options.baseUrl}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        ...(options.token === null ? {} : { authorization: `Bearer ${options.token}` }),
+        accept: 'application/json',
+        ...(init?.body === undefined ? {} : { 'content-type': 'application/json' }),
+        ...init?.headers,
+      },
+    });
+  } catch (cause) {
+    throw new ApiUnreachableError(`No response from ${path}.`, { cause });
+  } finally {
+    clearTimeout(timer);
   }
 
+  if (!response.ok) {
+    throw new ApiStatusError(
+      response.status,
+      await problemCode(response),
+      `${path} returned ${response.status}.`,
+    );
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    // A 2xx whose body will not parse is a broken server, not an unreachable one — but it is also
+    // not something a retry fixes, so it is reported rather than swallowed as offline.
+    throw new ApiStatusError(response.status, null, `${path} returned an unreadable body.`);
+  }
+}
+
+export function createApi(options: ApiOptions): TraverserApi {
   return {
     async contentVersion() {
-      return parseContentVersion(await request('/content/version'));
+      return parseContentVersion(await request(options, '/content/version'));
     },
 
     async sync(deltas, contentVersion) {
       return parseSyncResponse(
-        await request('/sync', {
+        await request(options, '/sync', {
           method: 'POST',
           body: JSON.stringify(toWireSyncRequest(deltas, contentVersion)),
         }),
       );
     },
+
+    async profile() {
+      return parseProfile(await request(options, '/players/me'), 'response');
+    },
+
+    async allocate(payload) {
+      await request(options, '/players/me/allocations', {
+        method: 'POST',
+        body: JSON.stringify(toWireAllocation(payload)),
+      });
+    },
+
+    async updateSettings(payload) {
+      await request(options, '/players/me/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(toWireSettings(payload)),
+      });
+    },
   };
+}
+
+/**
+ * ↯ Registration is the one call made **without** a bearer token — it is where the token comes from
+ * — so it is a free function rather than a method on the client. Keeping it off the interface means
+ * no client instance in the app ever holds an empty credential.
+ *
+ * ↯ It is also idempotent on the client-minted `player_id` (tech-02 §3): re-registering returns the
+ * existing profile rather than 409, so a lost response does not strand the device. The token is
+ * freshly minted on every call and returned exactly once — only its SHA-256 is stored server-side.
+ */
+export async function registerPlayer(
+  options: Omit<ApiOptions, 'token'>,
+  body: { playerId: string; traverserName: string; timezone: string },
+): Promise<Registration> {
+  return parseRegistration(
+    await request({ ...options, token: null }, '/players', {
+      method: 'POST',
+      body: JSON.stringify(toWireRegistration(body)),
+    }),
+  );
 }

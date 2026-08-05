@@ -162,6 +162,7 @@ The client duplicates GDD 1 §2's XP rates (1 per 20 steps; 3/5/7 per tier-minut
 - **Restore drill (T6 §10.6)** — `createdb` → `pg_restore` → spot-check a known `activity_day` row, the player's level, and the `xp_curve` row count → `dropdb`. The M1 drill is the important one: it is the cheapest possible moment to discover the dump command has a typo in it.
 - Add the exported identity file to the backup set, making it four members.
 - Opportunistically close T3 §12's two uncharacterised probes: **2** (backfill latency — read at +5min/+1h/+6h/+24h after a workout) and **9** (long gap — leave the app closed >48h with activity happening). Both fallbacks are "widen the constant" and re-reads are idempotent by §8, so neither is a blocker; they are simply cheap to observe once real syncing is happening daily.
+- **First look at the visual style** (`DECISIONS.md` 2026-08-04). P8's `src/ui/theme.ts` is invented, not specified — GDD 13 §10's art phase covers assets and gear-tier colours, not the app's own skin, and nothing in the spec set owns background colour, typography or control styling. P9 is the first time it is seen rather than read, so it is the moment to say "roughly right" or "nothing like it". Tweaking is a one-file change by construction; the decision to record is whether the art phase's scope widens to include the skin, or a short design-language section is written for M2+ to build against.
 
 ### P10 — Close-out review
 
@@ -176,6 +177,7 @@ Checklist, each item drawn from something M0 actually missed or nearly missed:
 5. **Nothing is deferred silently.** Every deferral has a `DECISIONS.md` line or a row in §2.2.
 6. **`dotnet test`, `tsc --noEmit`, and the jest suite are green, and the tree is clean.**
 7. **Any `⟨verify⟩` marker M1 touched is resolved**, or explicitly re-scoped to a later milestone with a reason.
+8. **The visual style has a named owner.** `DECISIONS.md` 2026-08-04 carries this as `⟨open⟩`: the art phase (GDD 13 §10) covers assets and gear-tier colours, and nothing covers the app's own skin — so `src/ui/theme.ts` is invented rather than specified. Close it here by either widening the art phase's scope in writing or scheduling a design-language section, informed by P9's first look. **Leaving it open is a legitimate outcome; leaving it unstated is not** — that is precisely how it would reach M5 with five milestones of screens built against an unratified look and nobody having chosen it.
 
 If the review turns up something too large to absorb here, that is a signal the milestone is not finished — not a reason to open a P11. An empty diff is the good outcome, not a wasted packet.
 

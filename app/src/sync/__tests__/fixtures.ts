@@ -30,6 +30,34 @@ export function wirePlayer(overrides: Record<string, unknown> = {}): Record<stri
   };
 }
 
+export function wireSettings(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    daily_reminder_time: null,
+    music_volume: '1.00',
+    sfx_volume: '1.00',
+    birth_year: 1990,
+    ...overrides,
+  };
+}
+
+/** `GET /players/me`, and the body of a registration. */
+export function wireProfile(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    player: wirePlayer(),
+    leagues: 205,
+    streak: { current: 8, longest: 22, last_credited_date: '2026-08-02' },
+    settings: wireSettings(),
+    unlocked_zone_ids: ['olympion'],
+    ...overrides,
+  };
+}
+
+export function wireRegistration(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return { token: 'tok-from-server', profile: wireProfile(), ...overrides };
+}
+
 export function wireSyncResponse(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     server_time: '2026-08-03T12:00:00Z',

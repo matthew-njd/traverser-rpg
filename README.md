@@ -351,7 +351,7 @@ not start a stopped stack on its own, since `docker compose stop` is a supported
 ### The dump alone is not a backup
 
 A perfect Postgres backup restored onto new hardware is a database full of history that **no client
-can claim**, because `player_id` and the bearer token live only in app storage (tech-04 §6.5). Three
+can claim**, because `player_id` and the bearer token live only in app storage (tech-04 §6.5). Four
 artefacts therefore belong in the Drive folder alongside the dumps, and the script deliberately does
 not touch any of them:
 
@@ -360,13 +360,27 @@ not touch any of them:
 | `infra/.env` | Holds the Postgres password. A dump you cannot authenticate against is not a restore. Re-copy after a password rotation |
 | `traverser-release.keystore` | Losing it forces an uninstall, and uninstall destroys the device identity |
 | `~/.gradle/gradle.properties` | The keystore's four passwords — either file alone is useless |
+| `traverser-identity.json` | The exported `player_id` + bearer token. Without it the restored database has no claimant |
 
 They are static, so automating them would buy nothing and add ways to lose them: a scheduled job
 that copies your signing key around is more exposure, not less. Copy them once, by hand.
 
-⚠️ A **fourth** member joins them at P8 — the exported `player_id` and bearer token (tech-06 §13.1),
-once the Settings screen can produce it. Until that exists, losing the phone still costs the profile
-even though the history survives.
+**Producing the identity file** (built at P8, tech-06 §13.1): Character tab → gear icon → **Identity
+export**. *Export identity* shares the JSON to anywhere Android can send it; *Show it instead*
+renders it as selectable text to copy by hand. Save it to the Drive folder as
+`traverser-identity.json`.
+
+⚠️ Re-export after any **re-registration** — registering mints a fresh token and the old one is not
+returned again. And note the honest limit, from §13.1: this only helps if it was exported *before*
+the loss. It is not a recovery mechanism, it is a precaution.
+
+The matching import is the **Restore from a backup** button on the app's first screen, which is
+reachable only while the device has no identity. It verifies the credentials against
+`GET /players/me` before storing anything, so a mistyped token fails on the spot rather than
+stranding the install.
+
+☐ **Not yet in the folder** — the file is produced on the device, so it joins the set at P9 with the
+first real build.
 
 ### Restoring
 

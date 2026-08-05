@@ -238,3 +238,117 @@ export function parseSyncResponse(value: unknown): SyncResponse {
 export function parseContentVersion(value: unknown): number {
   return int(object(value, 'response').version, 'version');
 }
+
+// ---- Registration and the repair path ---------------------------------------------------------
+
+export interface PlayerSettings {
+  readonly dailyReminderTime: string | null;
+  /** ↯ Decimal *strings*, not numbers — tech-02 §2. M5 owns the sliders; the mirror carries them. */
+  readonly musicVolume: string;
+  readonly sfxVolume: string;
+  /** ↯ Null means *not yet collected*, not "unknown age" (tech-03 §1.4). */
+  readonly birthYear: number | null;
+}
+
+/**
+ * `GET /players/me` and the body of a registration. tech-02 §3 calls this the mirror's **one-shot
+ * repair path**: when the client suspects drift it refetches this whole document rather than
+ * reconciling field by field, so anything the mirror persists has to appear here.
+ */
+export interface PlayerProfile {
+  readonly player: PlayerState;
+  readonly leagues: number;
+  readonly streak: Streak;
+  readonly settings: PlayerSettings;
+  readonly unlockedZoneIds: readonly string[];
+}
+
+export interface Registration {
+  /**
+   * ↯ Returned exactly once and never again — only its SHA-256 is stored server-side, so no endpoint
+   * can re-read it. This value must reach `expo-secure-store` before anything else can fail.
+   */
+  readonly token: string;
+  readonly profile: PlayerProfile;
+}
+
+export function parseProfile(value: unknown, at = 'profile'): PlayerProfile {
+  const body = object(value, at);
+  const streak = object(body.streak, `${at}.streak`);
+  const settings = object(body.settings, `${at}.settings`);
+
+  return {
+    player: parsePlayerState(body.player, `${at}.player`),
+    leagues: int(body.leagues, `${at}.leagues`),
+    streak: {
+      current: int(streak.current, `${at}.streak.current`),
+      longest: int(streak.longest, `${at}.streak.longest`),
+      lastCreditedDate: nullableText(streak.last_credited_date, `${at}.streak.last_credited_date`),
+    },
+    settings: {
+      dailyReminderTime: nullableText(
+        settings.daily_reminder_time,
+        `${at}.settings.daily_reminder_time`,
+      ),
+      musicVolume: text(settings.music_volume, `${at}.settings.music_volume`),
+      sfxVolume: text(settings.sfx_volume, `${at}.settings.sfx_volume`),
+      birthYear: nullableInt(settings.birth_year, `${at}.settings.birth_year`),
+    },
+    unlockedZoneIds: array(body.unlocked_zone_ids, `${at}.unlocked_zone_ids`).map((id, index) =>
+      text(id, `${at}.unlocked_zone_ids[${index}]`),
+    ),
+  };
+}
+
+export function parseRegistration(value: unknown): Registration {
+  const body = object(value, 'response');
+
+  return { token: text(body.token, 'token'), profile: parseProfile(body.profile) };
+}
+
+export function toWireRegistration(request: {
+  playerId: string;
+  traverserName: string;
+  timezone: string;
+}): Json {
+  return {
+    player_id: request.playerId,
+    traverser_name: request.traverserName,
+    timezone: request.timezone,
+  };
+}
+
+// ---- Progression writes (tech-02 §3) ----------------------------------------------------------
+
+/** The six stats are locked by GDD 1 §5; a delta map would buy an open key space to validate down. */
+export interface AllocationPayload {
+  readonly operationId: string;
+  readonly vigor: number;
+  readonly might: number;
+  readonly resolve: number;
+  readonly favor: number;
+  readonly aegis: number;
+  readonly stride: number;
+}
+
+export function toWireAllocation(payload: AllocationPayload): Json {
+  return {
+    operation_id: payload.operationId,
+    vigor: payload.vigor,
+    might: payload.might,
+    resolve: payload.resolve,
+    favor: payload.favor,
+    aegis: payload.aegis,
+    stride: payload.stride,
+  };
+}
+
+/** Null means *leave alone*. Last-write-wins is correct for point-in-time preferences (§6.3). */
+export interface SettingsPayload {
+  readonly dailyStepGoal: number | null;
+  readonly birthYear: number | null;
+}
+
+export function toWireSettings(payload: SettingsPayload): Json {
+  return { daily_step_goal: payload.dailyStepGoal, birth_year: payload.birthYear };
+}

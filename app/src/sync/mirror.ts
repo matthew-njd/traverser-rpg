@@ -1,7 +1,15 @@
 import { acknowledge } from '../db/outbox';
 import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
-import type { ActivityDay, PlayerState, Streak, SyncResponse } from './dto';
+import type {
+  ActivityDay,
+  PlayerProfile,
+  PlayerSettings,
+  PlayerState,
+  SettingsPayload,
+  Streak,
+  SyncResponse,
+} from './dto';
 import { type ProjectedState, leaguesFor } from './projection';
 
 /**
@@ -249,6 +257,98 @@ export function applySyncResponse(db: SqliteDatabase, response: SyncResponse): v
 
     acknowledge(db, [...response.acceptedDeltaIds, ...response.duplicateDeltaIds]);
   });
+}
+
+function writeSettingsRow(db: SqliteDatabase, playerId: string, settings: PlayerSettings): void {
+  db.runSync(
+    `INSERT INTO player_settings (player_id, daily_reminder_time, music_volume, sfx_volume, birth_year)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (player_id) DO UPDATE SET
+       daily_reminder_time = excluded.daily_reminder_time,
+       music_volume = excluded.music_volume,
+       sfx_volume = excluded.sfx_volume,
+       birth_year = excluded.birth_year`,
+    [
+      playerId,
+      settings.dailyReminderTime,
+      settings.musicVolume,
+      settings.sfxVolume,
+      settings.birthYear,
+    ],
+  );
+}
+
+/**
+ * The whole authoritative document — registration's response and tech-02 §3's repair path are the
+ * same write, which is why they share a function. A repair that touched only some tables would
+ * leave the rest of the mirror stale in exactly the situation where drift was already suspected.
+ */
+export function writeProfile(db: SqliteDatabase, profile: PlayerProfile): void {
+  transact(db, () => {
+    writePlayer(db, profile.player);
+    writeSettingsRow(db, profile.player.playerId, profile.settings);
+    writeStreak(db, profile.player.playerId, profile.streak);
+
+    for (const zoneId of profile.unlockedZoneIds) {
+      db.runSync(
+        `INSERT INTO player_zone_progress (player_id, zone_id, unlocked_at)
+         VALUES (?, ?, ?)
+         ON CONFLICT (player_id, zone_id) DO NOTHING`,
+        [profile.player.playerId, zoneId, profile.player.createdAt],
+      );
+    }
+  });
+}
+
+/**
+ * Applies a settings change locally. The caller queues the same change for replay in the same
+ * transaction (tech-02 §3: these endpoints apply optimistically to the mirror and replay to the
+ * server) — which is why this writes and does not queue.
+ *
+ * Null means *leave alone*, matching the wire: last-write-wins is correct for point-in-time
+ * preferences, and a null that meant "clear" would make a partial update destructive (§6.3).
+ */
+export function writeSettings(db: SqliteDatabase, settings: SettingsPayload): void {
+  if (settings.dailyStepGoal !== null) {
+    db.runSync('UPDATE player SET daily_step_goal = ? WHERE one_row = 1', [settings.dailyStepGoal]);
+  }
+
+  if (settings.birthYear !== null) {
+    db.runSync('UPDATE player_settings SET birth_year = ?', [settings.birthYear]);
+  }
+}
+
+/**
+ * The activity log, newest first (GDD 13 §3.2).
+ *
+ * ↯ Paged out of SQLite on demand and **never mirrored into the store** (tech-04 §5.2) — the store
+ * holds the small hot slice, and a growing table cached in memory is how a store becomes the thing
+ * that has to be invalidated.
+ */
+export function readActivityDays(db: SqliteDatabase, limit: number): ActivityDay[] {
+  return db
+    .getAllSync<{
+      activity_date: string;
+      steps: number;
+      tier1_minutes: number;
+      tier2_minutes: number;
+      tier3_minutes: number;
+      xp_awarded: number;
+      step_goal_snapshot: number;
+      goal_met: number;
+      streak_credit_method: string | null;
+    }>('SELECT * FROM activity_day ORDER BY activity_date DESC LIMIT ?', [limit])
+    .map((row) => ({
+      activityDate: row.activity_date,
+      steps: row.steps,
+      tier1Minutes: row.tier1_minutes,
+      tier2Minutes: row.tier2_minutes,
+      tier3Minutes: row.tier3_minutes,
+      xpAwarded: row.xp_awarded,
+      stepGoalSnapshot: row.step_goal_snapshot,
+      goalMet: row.goal_met === 1,
+      streakCreditMethod: row.streak_credit_method,
+    }));
 }
 
 export function readStreak(db: SqliteDatabase): Streak {

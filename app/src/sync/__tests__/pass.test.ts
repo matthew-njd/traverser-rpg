@@ -5,10 +5,21 @@ import type { MintedDelta } from '../../health/deltas';
 import { fixedOffsetDates } from '../../health/localDate';
 import { HealthError, type HealthSnapshot, type HealthProvider } from '../../health/provider';
 import { ApiStatusError, ApiUnreachableError, type TraverserApi } from '../api';
-import { type SyncResponse, parseSyncResponse } from '../dto';
+import { type AllocationPayload, type SyncResponse, parseProfile, parseSyncResponse } from '../dto';
 import { readPlayer } from '../mirror';
 import { type SyncPassResult, runForegroundSync } from '../pass';
-import { fakeProvider, registeredDatabase, wirePlayer, wireSyncResponse } from './fixtures';
+import {
+  fakeProvider,
+  registeredDatabase,
+  wirePlayer,
+  wireProfile,
+  wireSyncResponse,
+} from './fixtures';
+
+// ↯ Importing the real SDK starts a `setInterval` at module load, which keeps the Jest worker alive
+// after the run and reports as a leaked handle. Mocked here for the same reason `healthconnect.test`
+// mocks it — the pass reports a refused write, and nothing about that needs a live client.
+jest.mock('@sentry/react-native', () => ({ captureMessage: jest.fn() }));
 
 /**
  * tech-04 §8.1 — the ordered foreground pass.
@@ -48,6 +59,9 @@ function fakeApi(
         accepted_delta_ids: deltas.map((delta) => delta.clientDeltaId),
       });
     },
+    profile: async () => parseProfile(wireProfile(), 'response'),
+    allocate: async () => undefined,
+    updateSettings: async () => undefined,
     ...overrides,
   };
 }
@@ -229,7 +243,7 @@ describe('the online pass', () => {
    * the entry a naive drain reaches for. The progression writes arrive with the screens at P8; this
    * test is what stops them being swept into the wrong request when they do.
    */
-  it('sends only sync_delta entries, leaving other write kinds queued', async () => {
+  it('sends each write kind to its own endpoint, never a mixed batch to /sync', async () => {
     const db = registeredDatabase();
 
     enqueue(db, {
@@ -240,12 +254,97 @@ describe('the online pass', () => {
       createdAt: '2026-08-01T00:00:00.000Z',
     });
 
-    const api = fakeApi();
+    const allocated: AllocationPayload[] = [];
+    const api = fakeApi({
+      allocate: async (payload) => {
+        allocated.push(payload);
+      },
+    });
 
     await run(db, { api });
 
     expect(api.sent[0]?.map((delta) => delta.clientDeltaId)).not.toContain('allocation-1');
-    expect(peek(db, 10).map((entry) => entry.clientOpId)).toEqual(['allocation-1']);
+    expect(allocated.map((payload) => payload.operationId)).toEqual(['allocation-1']);
+    expect(count(db)).toBe(0);
+  });
+
+  /**
+   * ↯ Progression writes replay **before** the sync, and the reason is not obvious. Step 12
+   * overwrites the mirror with the response's authoritative player block; replaying an allocation
+   * after that block was computed means the response does not contain it, so the mirror is
+   * rewritten without the points the player just spent and the allocation visibly reverts.
+   */
+  it('replays a queued allocation before posting the sync', async () => {
+    const db = registeredDatabase();
+    const order: string[] = [];
+
+    enqueue(db, {
+      clientOpId: 'allocation-1',
+      kind: 'allocation',
+      payload: { operationId: 'allocation-1', might: 3 },
+      createdAt: '2026-08-01T00:00:00.000Z',
+    });
+
+    await run(db, {
+      api: fakeApi({
+        allocate: async () => {
+          order.push('allocate');
+        },
+        sync: async () => {
+          order.push('sync');
+
+          return response();
+        },
+      }),
+    });
+
+    expect(order).toEqual(['allocate', 'sync']);
+  });
+
+  /**
+   * ↯ The one place an entry is dropped without the server naming it. A 4xx cannot succeed on
+   * retry — the server has stated an opinion — so leaving it queued would retry it on every
+   * foreground forever and block everything behind it. A 5xx or an unreachable host stays queued.
+   */
+  it('drops a write the server refuses, and keeps one it merely failed to answer', async () => {
+    const rejected = registeredDatabase();
+
+    enqueue(rejected, {
+      clientOpId: 'allocation-1',
+      kind: 'allocation',
+      payload: { operationId: 'allocation-1', might: 3 },
+      createdAt: '2026-08-01T00:00:00.000Z',
+    });
+
+    await run(rejected, {
+      api: fakeApi({
+        allocate: async () => {
+          throw new ApiStatusError(422, 'insufficient_stat_points', 'no');
+        },
+      }),
+    });
+
+    expect(count(rejected)).toBe(0);
+
+    const unanswered = registeredDatabase();
+
+    enqueue(unanswered, {
+      clientOpId: 'allocation-2',
+      kind: 'allocation',
+      payload: { operationId: 'allocation-2', might: 3 },
+      createdAt: '2026-08-01T00:00:00.000Z',
+    });
+
+    const result = await run(unanswered, {
+      api: fakeApi({
+        allocate: async () => {
+          throw new ApiStatusError(503, null, 'unavailable');
+        },
+      }),
+    });
+
+    expect(result.server).toBe('rejected');
+    expect(peek(unanswered, 10).map((entry) => entry.clientOpId)).toContain('allocation-2');
   });
 
   it('reports content the build does not hold', async () => {

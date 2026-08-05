@@ -48,6 +48,25 @@ export async function loadIdentity(): Promise<DeviceIdentity | null> {
   return { playerId, token };
 }
 
+/**
+ * ↯ Persists the client-minted `player_id` **before** registration is attempted, so a crash between
+ * the server creating the profile and the token reaching storage does not orphan it.
+ *
+ * This is the half-identity {@link loadIdentity} refuses to return, and refusing it there is still
+ * right — it cannot authenticate. But the id itself is worth keeping, because `POST /players` is
+ * idempotent on it (tech-02 §3): a retry that reuses the id returns the existing profile and a fresh
+ * token, while a retry that minted a *new* id would leave a second, unclaimable player row on the
+ * server for every failed attempt.
+ */
+export async function savePendingPlayerId(playerId: string): Promise<void> {
+  await SecureStore.setItemAsync(PLAYER_ID_KEY, playerId);
+}
+
+/** The id from an earlier registration attempt, if one got that far. */
+export async function loadPendingPlayerId(): Promise<string | null> {
+  return SecureStore.getItemAsync(PLAYER_ID_KEY);
+}
+
 export async function clearIdentity(): Promise<void> {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
   await SecureStore.deleteItemAsync(PLAYER_ID_KEY);

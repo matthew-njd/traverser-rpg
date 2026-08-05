@@ -1,4 +1,6 @@
-import { peek, recordAttempt } from '../db/outbox';
+import * as Sentry from '@sentry/react-native';
+
+import { acknowledge, peek, recordAttempt } from '../db/outbox';
 import { readWatermark } from '../db/watermarks';
 import type { SqliteDatabase } from '../db/types';
 import { type MintedDelta, commitHealthRead } from '../health/deltas';
@@ -14,6 +16,7 @@ import {
   readWindowFor,
 } from '../health/provider';
 import { ApiStatusError, ApiUnreachableError, type TraverserApi } from './api';
+import type { AllocationPayload, SettingsPayload } from './dto';
 import { type LevelUp, WireFormatError } from './dto';
 import { applySyncResponse, readBirthYear, readPlayer, writeProjection } from './mirror';
 import { projectGains, projectState } from './projection';
@@ -184,6 +187,45 @@ function project(db: SqliteDatabase, minted: readonly MintedDelta[]): void {
   writeProjection(db, projectState(current, gains));
 }
 
+/**
+ * Replays the queued progression writes, oldest first, and drops each once the server has taken it.
+ *
+ * ↯ The retry policy, which is the only place in this app where an entry is dropped without the
+ * server naming it in `accepted`/`duplicate`: a **4xx is terminal** for that entry, a 5xx or an
+ * unreachable host is retryable. A rejected write that stayed queued would be retried on every
+ * foreground forever and block everything behind it — and it cannot succeed, because the server has
+ * already stated an opinion about it (`insufficient_stat_points` after the mirror drifted, say,
+ * which step 12's authoritative snapshot is about to correct anyway). Reported to Sentry rather
+ * than swallowed, because a write the player made and the server refused is worth knowing about.
+ */
+async function replayWrites(db: SqliteDatabase, api: TraverserApi): Promise<void> {
+  const queued = [
+    ...peek(db, MAX_BATCH, 'allocation'),
+    ...peek(db, MAX_BATCH, 'settings'),
+  ].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.clientOpId.localeCompare(b.clientOpId));
+
+  for (const entry of queued) {
+    try {
+      if (entry.kind === 'allocation') {
+        await api.allocate(JSON.parse(entry.payload) as AllocationPayload);
+      } else {
+        await api.updateSettings(JSON.parse(entry.payload) as SettingsPayload);
+      }
+
+      acknowledge(db, [entry.clientOpId]);
+    } catch (error) {
+      if (error instanceof ApiStatusError && error.status >= 400 && error.status < 500) {
+        Sentry.captureMessage(`write_rejected:${entry.kind}:${error.code ?? error.status}`);
+        acknowledge(db, [entry.clientOpId]);
+        continue;
+      }
+
+      recordAttempt(db, [entry.clientOpId]);
+      throw error;
+    }
+  }
+}
+
 export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassResult> {
   const { db, api } = deps;
 
@@ -213,6 +255,15 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
   try {
     // ---- Step 10 ----
     contentVersion = await api.contentVersion();
+
+    // ---- Step 10a. Progression writes replay *before* the sync, not after.
+    //
+    // ↯ Order matters and the reason is not obvious. tech-02 §3's `•` endpoints apply optimistically
+    // to the mirror and replay to the server; step 12 then overwrites the mirror with the response's
+    // authoritative player block. Replaying an allocation *after* that block was computed means the
+    // response does not contain it — so the mirror is rewritten without the points the player just
+    // spent, and the allocation visibly reverts on screen until the next sync. Same for a step goal.
+    await replayWrites(db, api);
 
     // ---- Step 11. The whole queue in one batch: tech-02 §5 requires it to drain completely before
     // the response is applied, so a partial upload is never partially reconciled.
