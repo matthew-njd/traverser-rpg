@@ -31,6 +31,35 @@ export function minutes(startLocal: string, count: number, bpm: number): HrSampl
 }
 
 /**
+ * Marks a database as having already consumed one read.
+ *
+ * ↯ `commitHealthRead` treats a device's **first** read as a baseline that raises the marks and
+ * credits nothing — otherwise a fresh install harvests whatever history Health Connect already holds
+ * and the player arrives several levels deep, and a restored identity re-mints deltas the server
+ * already has. Most tests are about the steady state *after* that, so they say so explicitly rather
+ * than getting the baseline by accident.
+ */
+export function pastFirstRead(db: SqliteDatabase, at = '2026-07-01T00:00:00.000Z'): void {
+  db.runSync(
+    `INSERT INTO read_watermark (one_row, consumed_through) VALUES (1, ?)
+     ON CONFLICT (one_row) DO UPDATE SET consumed_through = excluded.consumed_through`,
+    [at],
+  );
+
+  // ↯ Per source, because the baseline is per source — a device can have seen steps and never yet
+  // seen heart rate. A mark of 0 on a date no test asserts against says "this source has been read"
+  // without pretending anything was earned.
+  db.runSync(
+    `INSERT INTO step_watermark (activity_date, reported_high_water) VALUES ('1970-01-01', 0)
+     ON CONFLICT (activity_date) DO NOTHING`,
+  );
+  db.runSync(
+    `INSERT INTO hr_minute_watermark (activity_date, tier, reported_minutes)
+     VALUES ('1970-01-01', 1, 0) ON CONFLICT (activity_date, tier) DO NOTHING`,
+  );
+}
+
+/**
  * Wraps a database so every statement it executes is recorded. Used for the structural assertions
  * that no black-box test can make — chiefly tech-03 §8.4's "all of it in one transaction", where the
  * failure being guarded against is invisible in the resulting rows.
@@ -60,3 +89,6 @@ export function recordingDatabase(db: SqliteDatabase): {
     },
   };
 }
+
+/** Both sources read — the ordinary case once permission and birth year are in place. */
+export const READ_BOTH = { steps: true, heartRate: true } as const;

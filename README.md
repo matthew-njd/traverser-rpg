@@ -417,16 +417,35 @@ first real build.
 
 ### Restoring
 
-Not yet drilled. The drill runs at **P9**, against real data, per §10.6 — that is the moment the
-backup stops being hypothetical and the cheapest possible time to find a typo in the dump command:
+**Rehearsed 2026-08-05 (P9), passed** — against `traverser-20260805-1933.dump`, which held seeded
+content and no player data yet. Restore exited 0, and the restored copy matched the live database
+exactly on every content count (`xp_curve` 60, zones 4, enemies 13, enemy moves 28, gear 21, items
+18, `content_version` 1). `xp_curve` level 60 came back with a **null** `xp_to_next`, which is the
+value that means accrual stops there with nothing banked (GDD 1 §4) — worth checking specifically,
+because a null surviving a round trip is exactly the kind of thing a restore can quietly get wrong.
+The test database was dropped and `traverser_db` is the only one left.
+
+☑ **Drilled against real data 2026-08-05 (P9), passed.** Re-run immediately after the first real
+sync, against a forced dump (the nightly one predated the sync). Restore exited 0 and the spot-check
+per §10.6 came back intact: a known `activity_day` row (Aug 3 = 11,163 steps), the player's level
+(6), `lifetime_steps` 28,663, `birth_year` 1992, 6 `sync_delta` rows, `xp_curve` still 60. Dropped
+afterwards, off-machine copy confirmed in Drive. **This is the run that counts** — the rehearsal
+proved the commands, this proved a database with history in it restores.
+
+Re-run the same four steps whenever you want that reassurance again; it costs about a minute.
 
 ```
-docker compose exec -T db createdb -U <POSTGRES_USER> traverser_restore_test
-docker compose exec -T db pg_restore -U <POSTGRES_USER> -d traverser_restore_test \
+docker compose exec -T db createdb -U traverser_admin traverser_restore_test
+docker compose exec -T db pg_restore -U traverser_admin -d traverser_restore_test \
   --clean --if-exists < traverser-YYYYMMDD-HHMM.dump
 # spot-check a known activity_day row, the player's level, the xp_curve row count, then:
-docker compose exec -T db dropdb -U <POSTGRES_USER> traverser_restore_test
+docker compose exec -T db dropdb -U traverser_admin traverser_restore_test
 ```
+
+⚠️ The user is **`traverser_admin`** and the database is **`traverser_db`** — tech-06 §10.2's
+example says `traverser` for both, and pasted literally it fails. The values live in `infra/.env`
+as `POSTGRES_USER` / `POSTGRES_DB`; run `grep '^POSTGRES_USER\|^POSTGRES_DB' infra/.env` rather
+than trusting either this file or the spec.
 
 Custom format means `pg_restore` can also pull individual objects out of an archive, which is what
 matters on the day the goal is "recover yesterday's `activity_day` rows" rather than "recreate the

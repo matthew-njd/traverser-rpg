@@ -253,6 +253,9 @@ describe('reading (tech-03 §4)', () => {
       dailySteps: new Map(),
       sessions: [],
       consumedThrough: WINDOW.endMs,
+      // ↯ Reported, not inferred: an empty result from a source that was never read must not later
+      // be mistaken for a source that was read and found nothing.
+      readSources: { steps: false, heartRate: false },
     });
   });
 });

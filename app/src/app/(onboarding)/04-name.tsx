@@ -10,7 +10,7 @@ import {
   MAX_TRAVERSER_NAME_LENGTH,
   registerNewPlayer,
 } from '@/onboarding/registration';
-import { refreshIdentity } from '@/runtime';
+import { refreshIdentity, syncNow } from '@/runtime';
 import { ApiUnreachableError } from '@/sync/api';
 import { Body, Button, Field, Screen, Title } from '@/ui/primitives';
 import { colors, space, type } from '@/ui/theme';
@@ -72,6 +72,13 @@ export default function NameYourTraverser() {
       );
 
       await refreshIdentity();
+
+      // ↯ Sync immediately, rather than waiting for the next foreground. Two reasons, both observed
+      // at P9: the health banner is whatever the *last* pass concluded, and the last pass ran before
+      // this screen existed — so a player who has just typed their birth year gets asked for it again
+      // until they background the app. And this is the pass that baselines heart rate, which only
+      // became readable a moment ago when the birth year landed in the mirror.
+      void syncNow().catch(() => undefined);
 
       // `replace`, not `push` — onboarding must not be reachable by a back press once it is done.
       router.replace('/character');

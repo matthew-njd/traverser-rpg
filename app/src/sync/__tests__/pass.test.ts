@@ -3,6 +3,7 @@ import type { SqliteDatabase } from '../../db/types';
 import { readWatermark } from '../../db/watermarks';
 import type { MintedDelta } from '../../health/deltas';
 import { fixedOffsetDates } from '../../health/localDate';
+import { READ_BOTH, pastFirstRead } from '../../health/__tests__/fixtures';
 import { HealthError, type HealthSnapshot, type HealthProvider } from '../../health/provider';
 import { ApiStatusError, ApiUnreachableError, type TraverserApi } from '../api';
 import { type AllocationPayload, type SyncResponse, parseProfile, parseSyncResponse } from '../dto';
@@ -10,7 +11,7 @@ import { readPlayer } from '../mirror';
 import { type SyncPassResult, runForegroundSync } from '../pass';
 import {
   fakeProvider,
-  registeredDatabase,
+  registeredDatabase as freshDatabase,
   wirePlayer,
   wireProfile,
   wireSyncResponse,
@@ -38,6 +39,7 @@ const walked = (steps: number): HealthSnapshot => ({
   dailySteps: new Map([[dates.dateOf(NOW), steps]]),
   sessions: [],
   consumedThrough: NOW,
+  readSources: READ_BOTH,
 });
 
 const response = (overrides: Record<string, unknown> = {}): SyncResponse =>
@@ -65,6 +67,19 @@ function fakeApi(
     ...overrides,
   };
 }
+
+/**
+ * A registered device that has already consumed one read. The first read of a device's life is a
+ * baseline that credits nothing (see `commitHealthRead`), and these cases are about the steady state
+ * after it — the baseline itself has its own describe block below.
+ */
+const registeredDatabase = (overrides: Record<string, unknown> = {}) => {
+  const db = freshDatabase(overrides);
+
+  pastFirstRead(db);
+
+  return db;
+};
 
 const run = (
   db: SqliteDatabase,

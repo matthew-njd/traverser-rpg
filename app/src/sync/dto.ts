@@ -235,8 +235,18 @@ export function parseSyncResponse(value: unknown): SyncResponse {
   };
 }
 
+/**
+ * ↯ The field is `content_version`, **not** `version` — `ContentVersionResponse(int ContentVersion)`.
+ *
+ * This was wrong until P9 put the client in front of the real server. The unit tests could not catch
+ * it: the wire fixture was hand-written from the C# record's *shape* rather than from a response, so
+ * the fixture and the parser agreed with each other and both disagreed with the server. Every sync
+ * pass would have thrown `WireFormatError` at step 10 and reported the server as `rejected` — with
+ * the deltas still safely queued, so the symptom would have been "sync never works" rather than
+ * anything pointing here.
+ */
 export function parseContentVersion(value: unknown): number {
-  return int(object(value, 'response').version, 'version');
+  return int(object(value, 'response').content_version, 'content_version');
 }
 
 // ---- Registration and the repair path ---------------------------------------------------------

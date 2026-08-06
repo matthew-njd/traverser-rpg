@@ -49,6 +49,12 @@ export interface HealthSnapshot {
   readonly sessions: readonly DerivedSession[];
   /** The end of the window this snapshot consumed. */
   readonly consumedThrough: number;
+  /**
+   * Which sources were actually read, as opposed to granted. An empty `dailySteps` means "no steps
+   * that window" when steps were read and "we did not look" when they were not, and delta minting
+   * has to tell those apart to know whether it has ever seen a source before.
+   */
+  readonly readSources: HealthPermissions;
 }
 
 export type HealthErrorReason =

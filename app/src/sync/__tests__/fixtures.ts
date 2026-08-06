@@ -1,6 +1,7 @@
 import { memoryDatabase } from '../../db/__tests__/testDatabase';
 import type { SqliteDatabase } from '../../db/types';
 import type { HealthProvider, HealthSnapshot } from '../../health/provider';
+import { READ_BOTH } from '../../health/__tests__/fixtures';
 
 /** The wire shape the server actually sends — `snake_case`, per tech-02 §2. */
 export const PLAYER_ID = '018f3a9c-0000-7000-8000-000000000001';
@@ -128,6 +129,7 @@ export const EMPTY_SNAPSHOT: HealthSnapshot = {
   dailySteps: new Map(),
   sessions: [],
   consumedThrough: Date.parse('2026-08-03T12:00:00Z'),
+  readSources: READ_BOTH,
 };
 
 /** A provider that reports everything granted and returns whatever snapshot it is given. */

@@ -5,7 +5,25 @@ import { memoryDatabase } from '../../db/__tests__/testDatabase';
 import { type MintedDelta, commitHealthRead } from '../deltas';
 import { bucketMinutes, segmentSessions, thresholdsForAge } from '../derive';
 import type { HealthSnapshot } from '../provider';
-import { TIER_1_BPM, TIER_3_BPM, edt, edtDates, minutes, recordingDatabase } from './fixtures';
+import {
+  TIER_1_BPM,
+  TIER_3_BPM,
+  edt,
+  edtDates,
+  READ_BOTH,
+  minutes,
+  pastFirstRead,
+  recordingDatabase,
+} from './fixtures';
+
+/** A database past its first-read baseline — see {@link pastFirstRead}. */
+const readyDatabase = () => {
+  const db = memoryDatabase();
+
+  pastFirstRead(db);
+
+  return db;
+};
 
 /**
  * tech-03 §8 — delta minting against the high-water marks, asserted against fixtures §11.6, §11.7
@@ -25,15 +43,173 @@ const stepSnapshot = (observedTotal: number, consumedThrough = READ_AT): HealthS
   dailySteps: new Map([[DATE, observedTotal]]),
   sessions: [],
   consumedThrough,
+  readSources: READ_BOTH,
 });
 
 const hrSnapshot = (samples: Parameters<typeof bucketMinutes>[0]): HealthSnapshot => ({
   dailySteps: new Map(),
   sessions: segmentSessions(bucketMinutes(samples, AGE_30), READ_AT),
   consumedThrough: READ_AT,
+  readSources: READ_BOTH,
 });
 
 const stepsOf = (deltas: readonly MintedDelta[]) => deltas.map((delta) => delta.stepsDelta);
+
+/**
+ * ↯ **A device's first read credits nothing.** tech-03 §4.1's window falls back to `now − 72h` when
+ * there is no watermark, and on a fresh install there never is — so without this rule the app
+ * harvests whatever history Health Connect already holds. Observed at P9 on a real phone: a first
+ * sync read four days back and put the player on Level 6 before they had taken a step *in the game*.
+ *
+ * Three things break without it, and they are the same situation seen from three angles:
+ *
+ *  1. Every Traverser is supposed to start at Level 1.
+ *  2. GDD 10 §6's tutorial battle is scripted with verified damage values against Level 1 stats, and
+ *     enemy level always equals the player's — arriving at Level 6 makes the script wrong.
+ *  3. A **restored** identity double-credits: the marks live in device-only tables that come back
+ *     empty on a new phone, so the client re-mints fresh delta ids for days the server already holds
+ *     and tech-02 §6.1's additive merge adds them twice. The idempotency ledger cannot catch it,
+ *     because those ids really are new.
+ */
+describe('the first read establishes a baseline', () => {
+  it('credits nothing and still raises the marks', () => {
+    const db = memoryDatabase();
+
+    const first = commitHealthRead(db, stepSnapshot(28_663), edtDates, READ_AT);
+
+    expect(first.deltas).toEqual([]);
+    expect(count(db)).toBe(0);
+    // The history is accounted for rather than ignored — that is what makes it a baseline.
+    expect(stepHighWater(db, DATE)).toBe(28_663);
+    expect(readWatermark(db)).toBe(new Date(READ_AT).toISOString());
+  });
+
+  it('credits everything walked after it', () => {
+    const db = memoryDatabase();
+
+    commitHealthRead(db, stepSnapshot(28_663), edtDates, READ_AT);
+    const second = commitHealthRead(db, stepSnapshot(30_663), edtDates, READ_AT);
+
+    expect(stepsOf(second.deltas)).toEqual([2000]);
+  });
+
+  it('baselines heart-rate minutes too', () => {
+    const db = memoryDatabase();
+
+    const first = commitHealthRead(
+      db,
+      hrSnapshot(minutes('2026-07-19T10:00', 140, TIER_1_BPM)),
+      edtDates,
+      READ_AT,
+    );
+
+    expect(first.deltas).toEqual([]);
+    expect(hrMinutesReported(db, DATE, 1)).toBe(140);
+  });
+
+  /** The restore case: the server already holds these days, so a fresh device must not re-mint them. */
+  it('does not re-credit history after an identity is restored onto a new device', () => {
+    const restored = memoryDatabase();
+
+    const first = commitHealthRead(restored, stepSnapshot(28_663), edtDates, READ_AT);
+
+    expect(first.deltas).toEqual([]);
+    expect(count(restored)).toBe(0);
+  });
+
+  /**
+   * ↯ The bug this rule was rewritten for, found on the device at P9. Heart rate needs a birth year
+   * and the birth year only exists from registration onward, so the **first** pass of a fresh install
+   * reads steps and not HR. A single device-wide baseline flag is consumed by that pass, and the
+   * first HR read then lands *after* it and credits the entire history: 142 Tier-1 minutes for a day
+   * the player had not walked in the app, while steps were correctly baselined to a 62-step delta.
+   */
+  it('baselines each source the first time that source is read, not the first time any is', () => {
+    const db = memoryDatabase();
+
+    // Pass one: steps readable, heart rate not — no birth year yet.
+    const stepsOnly = commitHealthRead(
+      db,
+      { ...stepSnapshot(28_663), readSources: { steps: true, heartRate: false } },
+      edtDates,
+      READ_AT,
+    );
+
+    expect(stepsOnly.deltas).toEqual([]);
+
+    // Pass two: birth year entered, heart rate readable for the first time. It must not credit the
+    // day's accumulated minutes just because *steps* were baselined earlier.
+    const withHr = commitHealthRead(
+      db,
+      {
+        ...hrSnapshot(minutes('2026-07-19T10:00', 142, TIER_1_BPM)),
+        readSources: READ_BOTH,
+      },
+      edtDates,
+      READ_AT,
+    );
+
+    expect(withHr.deltas).toEqual([]);
+    expect(hrMinutesReported(db, DATE, 1)).toBe(142);
+  });
+
+  /**
+   * ↯ A source read with nothing to show still has to be marked as read — otherwise "never read" and
+   * "read, found nothing" are indistinguishable and the next read baselines all over again. Registering
+   * at 6am before moving is enough to hit this.
+   */
+  it('marks a source as read even when it observed nothing', () => {
+    const db = memoryDatabase();
+
+    commitHealthRead(
+      db,
+      { dailySteps: new Map(), sessions: [], consumedThrough: READ_AT, readSources: READ_BOTH },
+      edtDates,
+      READ_AT,
+    );
+
+    // Later the same day, the first real activity appears — and is credited, not baselined away.
+    const walked = commitHealthRead(db, stepSnapshot(3000), edtDates, READ_AT);
+
+    expect(stepsOf(walked.deltas)).toEqual([3000]);
+  });
+
+  /** The same for heart rate, which is the source that actually arrives late. */
+  it('marks heart rate as read even when the window held no minutes', () => {
+    const db = memoryDatabase();
+
+    commitHealthRead(
+      db,
+      { dailySteps: new Map(), sessions: [], consumedThrough: READ_AT, readSources: READ_BOTH },
+      edtDates,
+      READ_AT,
+    );
+
+    const workout = commitHealthRead(
+      db,
+      hrSnapshot(minutes('2026-07-19T10:00', 30, TIER_1_BPM)),
+      edtDates,
+      READ_AT,
+    );
+
+    expect(workout.deltas.map((delta) => [delta.hrTier, delta.minutesDelta])).toEqual([[1, 30]]);
+  });
+
+  /** Sessions are still recorded — identity bookkeeping is not crediting. */
+  it('still records session identity, so a session spanning the install is not re-minted later', () => {
+    const db = memoryDatabase();
+
+    const first = commitHealthRead(
+      db,
+      hrSnapshot(minutes('2026-07-19T10:00', 15, TIER_1_BPM)),
+      edtDates,
+      READ_AT,
+    );
+
+    expect(first.sessions).toHaveLength(1);
+    expect(liveSessions(db)).toHaveLength(1);
+  });
+});
 
 describe('step high-water marks (fixtures §11.7)', () => {
   /**
@@ -43,7 +219,7 @@ describe('step high-water marks (fixtures §11.7)', () => {
    * credited.
    */
   it('mints 2000, 3400, nothing, then 200 across a rising total and a revision', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
     const minted: number[][] = [];
 
     for (const observed of [2000, 5400, 5100, 5600]) {
@@ -57,7 +233,7 @@ describe('step high-water marks (fixtures §11.7)', () => {
   });
 
   it('does not lower the mark on a downward revision', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     commitHealthRead(db, stepSnapshot(5400), edtDates, READ_AT);
     commitHealthRead(db, stepSnapshot(5100), edtDates, READ_AT);
@@ -66,7 +242,7 @@ describe('step high-water marks (fixtures §11.7)', () => {
   });
 
   it('mints nothing at all when a re-read observes exactly what it did before', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     commitHealthRead(db, stepSnapshot(2000), edtDates, READ_AT);
     const replay = commitHealthRead(db, stepSnapshot(2000), edtDates, READ_AT);
@@ -76,7 +252,7 @@ describe('step high-water marks (fixtures §11.7)', () => {
   });
 
   it('keeps each date on its own mark', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     const twoDays: HealthSnapshot = {
       dailySteps: new Map([
@@ -85,6 +261,7 @@ describe('step high-water marks (fixtures §11.7)', () => {
       ]),
       sessions: [],
       consumedThrough: READ_AT,
+      readSources: READ_BOTH,
     };
 
     const result = commitHealthRead(db, twoDays, edtDates, READ_AT);
@@ -104,7 +281,7 @@ describe('HR minute high-water marks (fixtures §11.6)', () => {
    * that pre-capped would mint 5 here and the day's `tier3_minutes` would read 20 forever.
    */
   it('mints the increment per (date, tier) and never caps Tier 3', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     const first = commitHealthRead(
       db,
@@ -128,7 +305,7 @@ describe('HR minute high-water marks (fixtures §11.6)', () => {
   });
 
   it('tracks tiers on the same day independently', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     const result = commitHealthRead(
       db,
@@ -151,13 +328,14 @@ describe('HR minute high-water marks (fixtures §11.6)', () => {
    * (fixtures §11.5).
    */
   it('splits a midnight-crossing session across two dates', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     const result = commitHealthRead(
       db,
       {
         ...hrSnapshot(minutes('2026-07-19T23:50', 26, TIER_1_BPM)),
         consumedThrough: edt('2026-07-20T02:00'),
+        readSources: READ_BOTH,
       },
       edtDates,
       edt('2026-07-20T02:00'),
@@ -185,7 +363,7 @@ describe('session identity (fixtures §11.4, §11.8)', () => {
   ];
 
   it('records both sessions when the gap has not yet closed', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     const result = commitHealthRead(db, hrSnapshot(beforeBackfill), edtDates, READ_AT);
 
@@ -202,7 +380,7 @@ describe('session identity (fixtures §11.4, §11.8)', () => {
    * re-arming the overactivity warning.
    */
   it('merges two sessions into the earlier id when backfill joins them', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     commitHealthRead(db, hrSnapshot(beforeBackfill), edtDates, READ_AT);
     const merged = commitHealthRead(db, hrSnapshot(afterBackfill), edtDates, READ_AT);
@@ -225,7 +403,7 @@ describe('session identity (fixtures §11.4, §11.8)', () => {
    * from the start, so a start that moves is a second session for one workout.
    */
   it('keeps the frozen start when backfill would place the session earlier', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     commitHealthRead(db, hrSnapshot(minutes('2026-07-19T10:00', 15, TIER_1_BPM)), edtDates, READ_AT);
 
@@ -241,7 +419,7 @@ describe('session identity (fixtures §11.4, §11.8)', () => {
   });
 
   it('mints a new id for a session that overlaps nothing in the ledger', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     commitHealthRead(db, hrSnapshot(minutes('2026-07-19T10:00', 15, TIER_1_BPM)), edtDates, READ_AT);
 
@@ -259,7 +437,7 @@ describe('session identity (fixtures §11.4, §11.8)', () => {
 
 describe('the outbox entry', () => {
   it('queues each delta under its own client_delta_id', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     const { deltas } = commitHealthRead(db, stepSnapshot(2000), edtDates, READ_AT);
     const queued = peek(db, 10);
@@ -285,7 +463,7 @@ describe('the outbox entry', () => {
    * would be silently dropped.
    */
   it('gives identical-valued deltas distinct ids', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     const first = commitHealthRead(db, stepSnapshot(2000), edtDates, READ_AT);
     const second = commitHealthRead(
@@ -294,6 +472,7 @@ describe('the outbox entry', () => {
         dailySteps: new Map([['2026-07-20', 2000]]),
         sessions: [],
         consumedThrough: READ_AT,
+        readSources: READ_BOTH,
       },
       edtDates,
       READ_AT,
@@ -306,7 +485,7 @@ describe('the outbox entry', () => {
 
 describe('the watermark advance (tech-03 §8.4)', () => {
   it('advances the read watermark to the end of the consumed window', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     commitHealthRead(db, stepSnapshot(2000, edt('2026-07-19T18:30')), edtDates, READ_AT);
 
@@ -324,7 +503,7 @@ describe('the watermark advance (tech-03 §8.4)', () => {
    * and only a re-entrant `transact` keeps that to one `BEGIN` rather than one per call.
    */
   it('performs the whole pass in a single transaction', () => {
-    const { db, statements } = recordingDatabase(memoryDatabase());
+    const { db, statements } = recordingDatabase(readyDatabase());
 
     commitHealthRead(
       db as SqliteDatabase,
@@ -335,6 +514,7 @@ describe('the watermark advance (tech-03 §8.4)', () => {
           READ_AT,
         ),
         consumedThrough: READ_AT,
+        readSources: READ_BOTH,
       },
       edtDates,
       READ_AT,
@@ -358,12 +538,13 @@ describe('the watermark advance (tech-03 §8.4)', () => {
 
   /** A read that observes nothing new must still not move anything it should not. */
   it('advances nothing when there is nothing to advance', () => {
-    const db = memoryDatabase();
+    const db = readyDatabase();
 
     const empty: HealthSnapshot = {
       dailySteps: new Map(),
       sessions: [],
       consumedThrough: READ_AT,
+      readSources: READ_BOTH,
     };
 
     const result = commitHealthRead(db, empty, edtDates, READ_AT);

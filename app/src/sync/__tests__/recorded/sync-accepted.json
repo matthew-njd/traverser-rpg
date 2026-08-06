@@ -1,0 +1,49 @@
+{
+  "server_time": "2026-08-06T00:46:56.1338448Z",
+  "content_version": 1,
+  "player": {
+    "player_id": "73816d1b-c140-435d-bdeb-f862abba4979",
+    "traverser_name": "WireProbe",
+    "timezone": "America/New_York",
+    "created_at": "2026-08-06T00:36:54.036189Z",
+    "level": 4,
+    "xp_current": 85,
+    "xp_to_next": 429,
+    "xp_lifetime": 709,
+    "unspent_stat_points": 9,
+    "alloc_vigor": 0,
+    "alloc_might": 0,
+    "alloc_resolve": 0,
+    "alloc_favor": 0,
+    "alloc_aegis": 0,
+    "alloc_stride": 0,
+    "vigor_current": 20,
+    "lifetime_steps": 8000,
+    "daily_step_goal": 7000,
+    "tutorial_completed_at": null
+  },
+  "leagues": 8,
+  "streak": {
+    "current": 0,
+    "longest": 0,
+    "last_credited_date": null
+  },
+  "level_ups": [],
+  "activity_days": [
+    {
+      "activity_date": "2026-08-06",
+      "steps": 0,
+      "tier1_minutes": 0,
+      "tier2_minutes": 0,
+      "tier3_minutes": 12,
+      "xp_awarded": 84,
+      "step_goal_snapshot": 7000,
+      "goal_met": false,
+      "streak_credit_method": null
+    }
+  ],
+  "accepted_delta_ids": [
+    "23fbf7c1-8a64-4cfc-9f78-579c553d7b9d"
+  ],
+  "duplicate_delta_ids": []
+}

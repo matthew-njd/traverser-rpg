@@ -269,6 +269,7 @@ export const healthConnectProvider: HealthProvider = {
       dailySteps,
       sessions: segmentSessions(bucketMinutes(samples, thresholds), window.endMs),
       consumedThrough: window.endMs,
+      readSources: granted,
     };
 
     return snapshot;

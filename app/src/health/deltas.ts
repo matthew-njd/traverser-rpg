@@ -59,6 +59,10 @@ export interface HealthReadResult {
 
 const DELTA_KIND: OutboxKind = 'sync_delta';
 
+/** Has this device ever recorded a mark for this source? Table names are literals, never input. */
+const isEmpty = (db: SqliteDatabase, table: 'step_watermark' | 'hr_minute_watermark'): boolean =>
+  (db.getFirstSync<{ n: number }>(`SELECT count(*) AS n FROM ${table}`)?.n ?? 0) === 0;
+
 const toOutboxEntry = (delta: MintedDelta) => ({
   clientOpId: delta.clientDeltaId,
   kind: DELTA_KIND,
@@ -251,6 +255,23 @@ function mintHrDeltas(
  * silently, because the app comes back up looking perfectly healthy with a watermark past a walk it
  * never queued.
  *
+ * ↯ **The first read of a device's life credits nothing** — it only establishes the marks. tech-03
+ * §4.1's window falls back to `now − 72h` when there is no watermark, and on a fresh install there
+ * never is, so without this rule the app harvests whatever history Health Connect already holds and
+ * the player arrives several levels deep before taking a step *in the game*. Observed at P9: a first
+ * sync read four days back and landed on Level 6.
+ *
+ * That is wrong three times over. It contradicts the design intent that every Traverser starts at
+ * Level 1; it breaks GDD 10 §6's tutorial battle, which is scripted with verified damage values
+ * against Level 1 stats and fights an enemy whose level always equals the player's; and it
+ * **double-credits a restore**, because the marks live in device-only tables (tech-04 §6.2) that
+ * come back empty on a new phone — so the client would re-mint fresh delta ids for days the server
+ * already holds, and tech-02 §6.1's additive merge would add them a second time. The idempotency
+ * ledger cannot catch that: the ids are genuinely new.
+ *
+ * One rule fixes all three, because all three are the same situation — a device that has never
+ * consumed a read has no basis for claiming any of the history it can see.
+ *
  * The transaction is re-entrant (`transact`), which is what lets this compose `commitReadCycle`,
  * `mergeSessions` and `recordSession` — each of which is itself transactional — into one unit of
  * work rather than five.
@@ -263,18 +284,45 @@ export function commitHealthRead(
 ): HealthReadResult {
   const recordedAt = new Date(now).toISOString();
 
+  // ↯ Per source, not per device. Steps and heart rate become readable at *different moments*:
+  // heart rate additionally needs a birth year, which only exists from registration onward, so the
+  // first pass of a fresh install reads steps and not HR. A single device-wide flag is consumed by
+  // that pass, and the first HR read then lands *after* the baseline and credits the whole history.
+  // Observed at P9: steps correctly baselined to a 62-step delta while HR credited 142 Tier-1
+  // minutes for the same day — 431 XP on an app that had not been walked with yet.
+  const firstSteps = snapshot.readSources.steps && isEmpty(db, 'step_watermark');
+  const firstHr = snapshot.readSources.heartRate && isEmpty(db, 'hr_minute_watermark');
+
   let result: HealthReadResult = { deltas: [], sessions: [] };
 
   transact(db, () => {
     const sessions = resolveSessions(db, snapshot.sessions);
     const steps = mintStepDeltas(db, snapshot.dailySteps, recordedAt, now);
     const hr = mintHrDeltas(db, snapshot.sessions, dates, recordedAt, now);
-    const deltas = [...steps.deltas, ...hr.deltas];
+
+    // The marks are raised either way — that is precisely what makes the baseline a baseline. Only
+    // the deltas are dropped, so everything observed before this moment is treated as already
+    // accounted for rather than as newly earned.
+    const deltas = [
+      ...(firstSteps ? [] : steps.deltas),
+      ...(firstHr ? [] : hr.deltas),
+    ];
+
+    // ↯ A source read with nothing to show for it still has to leave a mark, or "never read" and
+    // "read, found nothing" stay indistinguishable and the *next* read baselines all over again —
+    // which is the same bug one day later. Registering at 6am, before moving, is enough to hit it.
+    const today = dates.dateOf(snapshot.consumedThrough);
+    const stepMarks = snapshot.readSources.steps && steps.marks.length === 0
+      ? [{ activityDate: today, observedTotal: 0 }]
+      : steps.marks;
+    const hrMarks = snapshot.readSources.heartRate && hr.marks.length === 0
+      ? [{ activityDate: today, tier: 1, observedMinutes: 0 }]
+      : hr.marks;
 
     const cycle: ReadCycle = {
       deltas: deltas.map(toOutboxEntry),
-      stepMarks: steps.marks,
-      hrMarks: hr.marks,
+      stepMarks,
+      hrMarks,
       consumedThrough: new Date(snapshot.consumedThrough).toISOString(),
     };
 

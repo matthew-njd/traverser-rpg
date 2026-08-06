@@ -31,7 +31,7 @@ const ok = (body: unknown): typeof fetch =>
 
 describe('requests', () => {
   it('joins the base url and sends the bearer token', async () => {
-    const fetchImpl = ok({ version: 7 });
+    const fetchImpl = ok({ content_version: 7 });
 
     await api(fetchImpl).contentVersion();
 
@@ -81,7 +81,7 @@ describe('requests', () => {
   });
 
   it('sends no content-type on a GET', async () => {
-    const fetchImpl = ok({ version: 1 });
+    const fetchImpl = ok({ content_version: 1 });
 
     await api(fetchImpl).contentVersion();
 

@@ -53,6 +53,21 @@ No `WRITE_*`. No `READ_HEALTH_DATA_IN_BACKGROUND` (§1.5). No `READ_EXERCISE` �
 
 This is one of the places where mobile diverges sharply from anything web-side: a missing rationale target does not throw, it makes the permission dialog's privacy-policy link dead, and on a Play-distributed app it is a review rejection. Traverser sideloads, so the failure mode here is just a broken link — but it is exactly the kind of thing that silently rots until the day distribution changes.
 
+> **Amended 2026-08-05 (P9, found on the device).** There is a **third** piece of Android setup this
+> section omitted, and unlike the rationale plumbing it is not a slow rot — it is a hard crash on the
+> first permission request, which is GDD 10 screen 2. `react-native-health-connect` holds its
+> `ActivityResultLauncher` in a `lateinit` on an `object` singleton and **never initialises it**;
+> `HealthConnectPermissionDelegate.setPermissionDelegate(this)` in `MainActivity.onCreate` is
+> documented as the app's job. The library's own config plugin does not do it, so registering the
+> library and following its Expo instructions still crashes with
+> `UninitializedPropertyAccessException: lateinit property requestPermission has not been initialized`.
+> It must be `onCreate` — `registerForActivityResult` throws once the activity has STARTED — and it
+> must be a config plugin, because prebuild owns `android/` (tech-04 §1.1). Built as
+> `app/plugins/withHealthConnectPermissionDelegate.ts`, alongside the rationale plugin §2 already
+> required. **The 2026-07-26 spike could not have caught this**: it ran against a scratch app whose
+> `MainActivity` was hand-edited, so it proved the library works and proved nothing about how this
+> app wires it — worth remembering for every other spike finding in this document.
+
 **Availability.** Health Connect is part of the OS on Android 14+ and a separately-installable APK on 13 and below. `getSdkStatus` therefore has three outcomes, and `SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED` is a real state on real devices, not a theoretical one — it means the platform exists but is too old, and the fix is deep-linking the player to the store listing. Treating "not available" as a single state produces an app that is inexplicably dead on some phones.
 
 ---
@@ -96,6 +111,28 @@ One read pass per sync, immediately before the payload is assembled.
 72 hours is the smallest window that satisfies the design: GDD 11 §3.2's Auto Sync Grace looks back **48 hours** and needs synced totals to evaluate against, and provider backfill (a watch that syncs to the phone hours after a workout) can land data behind the wall clock. The extra 24 hours is that slack. Re-reading days already reported is normal and expected — §8 makes it safe.
 
 If the app has not been opened for longer than the window, days beyond it are simply never credited for streak purposes. That is not a bug: GDD 11 §3.2 caps the grace at 48 hours by design, and steps outside it still credit XP and Leagues if they fall inside the read window.
+
+> **Amended 2026-08-05 (P9, found on the device).** **A device's first read establishes a baseline
+> and credits nothing** — it raises the high-water marks (§8.1, §8.2) and advances the watermark
+> without minting a single delta.
+>
+> The 72-hour fallback in this section exists for *backfill and grace*, but a fresh install has no
+> watermark, so it also reaches back into whatever history Health Connect already holds. Observed:
+> a first sync read four days back, credited 28,663 pre-existing steps, and put the player on **Level
+> 6 before taking a step in the game**. Three things break, all the same situation:
+>
+> 1. Every Traverser is intended to start at Level 1.
+> 2. GDD 10 §6's tutorial battle is scripted with verified damage values against Level 1 stats, and
+>    enemy level always equals the player's — a Level 6 arrival makes the script wrong.
+> 3. **A restored identity double-credits.** The marks live in the device-only tables of tech-04
+>    §6.2, which come back empty on a new phone, so the client re-mints *fresh* delta ids for days
+>    the server already holds and tech-02 §6.1's additive merge adds them again. The idempotency
+>    ledger cannot catch this, because those ids genuinely are new — this is the one hole in the
+>    delta protocol that is not closed by `client_delta_id`.
+>
+> The rule is one line in `commitHealthRead` and covers all three, plus the case where permission is
+> granted later (the first *successful* read becomes the baseline). The cost is that steps taken
+> before the app existed never count, which is the intended behaviour rather than a compromise.
 
 **4.2 Steps — use aggregation, not raw records.**
 

@@ -73,6 +73,10 @@ const config: ExpoConfig = {
     // ...and this adds the Android 14+ half, which the library's plugin does not. Both are
     // required by §2; see the plugin's own header for why the omission is silent.
     './plugins/withHealthConnectRationale',
+    // ↯ Registers the library's permission delegate on MainActivity. Without it the app crashes on
+    // the permission tap at GDD 10 screen 2 — the library never initialises its own `lateinit`
+    // launcher and its bundled plugin does not either. Found on the device at P9.
+    './plugins/withHealthConnectPermissionDelegate',
     // Excludes the encrypted token store from Android Auto Backup. ↯ Not cosmetic: SecureStore
     // values are Keystore-encrypted with a device-bound key, so a backed-up blob restored onto
     // another device is undecryptable — the app would hold a bearer token it can never read.
@@ -93,10 +97,20 @@ const config: ExpoConfig = {
         // "Missing config for organization, project" warning on every build.
         organization: 'emde',
         project: 'traverser-app',
-        // ↯ Source-map upload is off. Turning it on needs a SENTRY_AUTH_TOKEN in the build
-        // environment plus the sentry-cli binary whose postinstall npm blocks by default — a
-        // second credential to manage for a benefit that only appears in a *release* build, since
-        // dev bundles are not minified. Revisit at M5 when a release APK is the artefact.
+        // ↯ **This option does not disable the Gradle upload task** — corrected at P9 by the first
+        // release build this project ever attempted, which failed in
+        // `createBundleReleaseJsAndAssets_SentryUpload`. `sentry.gradle` decides with
+        // `System.getenv('SENTRY_DISABLE_AUTO_UPLOAD') != 'true'` and reads nothing from here, so
+        // the real switch is that variable, set in `app/.env` and documented in `.env.example`.
+        //
+        // Nothing caught it for three milestones because the upload task is gated `onlyIf` on the
+        // *release* variant, and every build until P9 was a debug one. Kept set because it is still
+        // the correct declaration of intent for the parts of the toolchain that do read it.
+        //
+        // Turning upload on needs a SENTRY_AUTH_TOKEN in the build environment plus the sentry-cli
+        // binary whose postinstall npm blocks by default — a second credential to manage and back
+        // up, for a benefit that only appears in a release build since dev bundles are not
+        // minified. Deferred to M5 (M1 plan §2.2).
         disableAutoUpload: true,
       },
     ],

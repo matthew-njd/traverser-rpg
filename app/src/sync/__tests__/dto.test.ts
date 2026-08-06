@@ -144,7 +144,7 @@ describe('inbound', () => {
   });
 
   it('reads the content version poll', () => {
-    expect(parseContentVersion({ version: 7 })).toBe(7);
+    expect(parseContentVersion({ content_version: 7 })).toBe(7);
     expect(() => parseContentVersion({})).toThrow(/version/);
   });
 });
