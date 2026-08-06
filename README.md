@@ -300,14 +300,15 @@ Then register the schedule, from an ordinary (non-elevated) prompt:
 powershell -ExecutionPolicy Bypass -File infra\register-backup-task.ps1
 ```
 
-That `.ps1` is the **only** Windows-specific piece (tech-06 §11.2). `backup.sh` is POSIX sh with no
-GNU-only dependencies, so moving the stack to a Linux host means deleting the task and adding one
-cron line; the script itself goes across unchanged.
+That `.ps1` and its sibling `notify-backup-failure.ps1` are the **only** Windows-specific pieces
+(tech-06 §11.2). Both are scheduling furniture and contain no backup logic. `backup.sh` is POSIX sh
+with no GNU-only dependencies, so moving the stack to a Linux host means deleting the task, deleting
+both `.ps1` files and adding one cron line; the script itself goes across unchanged.
 
 ### When it runs
 
-Daily at 03:00 **and** at logon, with run-if-missed set. This machine is frequently asleep at 03:00,
-so the catch-up is the mechanism rather than a fallback.
+Daily at 03:00 **and** at logon, then hourly for the rest of the session, with run-if-missed set.
+This machine is frequently asleep at 03:00, so the catch-up is the mechanism rather than a fallback.
 
 ↯ **At logon, not at startup** — a deviation from §10.3's wording, recorded in `DECISIONS.md`.
 Docker Desktop is a user-session application: at true machine startup there is no engine to dump
@@ -316,6 +317,38 @@ from, so an at-startup trigger would fail on every boot.
 At most one dump per day. Both triggers fire on a day that begins with a reboot, and without that
 guard a power-cycled machine would spend three of its seven daily slots on a single day. Pass
 `--force` to override it for a manual run.
+
+The logon run is delayed 3 minutes and **runs with no console window** — the task launches
+`git-bash.exe --hide` rather than `bin\bash.exe`. Windowless means no stdout, which `log()`'s
+`tee` needs, so the task's command line redirects to `/dev/null`; leave that redirect in place if
+you ever edit it, and don't take `tee` out of `backup.sh` to compensate — the by-hand path wants it.
+
+**If Docker Desktop is not running, the run stands down in about a quarter of a second and says
+nothing.** The database cannot change while the engine is off, so a boot spent gaming has nothing
+to back up and a skipped run there is correct rather than a miss. The gate tests for Docker Desktop
+being *present*, not for the database answering — the engine has taken 8–10 minutes to serve
+Postgres from a cold boot, and `backup.sh`'s 600s wait is what absorbs that.
+
+Because one trigger at logon can only see a moment, the logon trigger then **repeats hourly for the
+rest of the session**. That is what covers booting at 18:00 to game and deciding at 20:00 to work on
+Traverser — without it, Docker would have to be up within ~13 minutes of logon (3m delay + 600s
+wait) or the day would get no backup at all, silently.
+
+The repeat is free because both guards run before anything expensive: a non-Docker hour stops at the
+Docker gate, an hour after a successful dump stops at the once-a-day guard, and neither reaches
+Postgres. A no-op run is ~1.8s. Its only trace is one "dump already exists" line in `backup.log` per
+hour worked — gaming hours log nothing at all.
+
+### When it complains
+
+A non-zero exit raises a Windows toast (`infra/notify-backup-failure.ps1`), which persists in Action
+Center so a 6pm failure is still readable at 11pm. It fires **only** when a run that actually
+started decided it had failed — never on a boot where Docker was absent.
+
+↯ Not a contradiction of §9.4's "no alerting", which rejects *uptime monitoring* on a host that is
+powered off by intention. The Docker gate is what keeps it on the right side of that line: an
+ungated toast would fire on every gaming night and be trained away inside a week. Silence is meant
+to be informative here, which is why it is worth protecting.
 
 ### Retention
 
