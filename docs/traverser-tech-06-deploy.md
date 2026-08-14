@@ -270,6 +270,39 @@ Written to a local folder **and** to a folder an existing OneDrive/Google Drive 
 
 **10.3 Schedule, adapted to a machine that is off.** A plain nightly task does not fit §1.1 — the PC is frequently asleep at 3am. Instead: a Windows Task Scheduler task with **both** a daily trigger and an at-startup trigger, configured to run if the scheduled start was missed. The effect is "at most one dump per day, taken the next time the machine is awake". ⟨Decide at M0 whether this is a Task Scheduler task on the host or a sidecar container with the same catch-up semantics; the host task is simpler and has fewer ways to silently not run.⟩
 
+> **Amended 2026-08-09 (P10 review, recording what M1 actually built across P2 and 2026-08-05).**
+> The ⟨Decide⟩ above is **resolved: a Task Scheduler task on the host** (`m1-plan` §3.1, DECISIONS
+> 2026-08-02). A sidecar cannot satisfy a catch-up trigger without Compose already being up, which
+> is the exact state the trigger exists to recover from. §11.2's portability is preserved by keeping
+> the task a thin wrapper around a portable `pg_dump` command line.
+>
+> **The trigger shape is not the one above.** As built it is **daily + at-logon (3-minute delay) +
+> an hourly repetition with no end**, not daily + at-startup. Four corrections, each forced by this
+> host rather than chosen:
+>
+> 1. **At-logon, not at-startup.** Docker Desktop is a per-user AppData install with no Windows
+>    service, so the engine does not exist before a logon and an at-startup trigger fires into a
+>    machine that cannot answer.
+> 2. **The hourly repetition is what makes the catch-up real.** A single logon trigger sees a
+>    *moment*; Matthew routinely boots hours before starting Docker. Repeating hourly lets one
+>    trigger see an evening. It is free: a no-op costs ~1.8s and never reaches Postgres.
+> 3. **The task stands down when Docker Desktop is not running** (a `tasklist` gate) and says
+>    nothing. On a night the stack was never started, no backup is the *correct* outcome — the
+>    database cannot have changed. **Consequence to know:** a stood-down day leaves no line in
+>    `backup.log` at all, so "Docker was off" and "the gate misfired" look identical from the log.
+>    The distinguishing evidence is `LastTaskResult 0` with no log line.
+> 4. **A non-zero exit raises a Windows toast** (`notify-backup-failure.ps1`). This is not §9.4's
+>    rejected alerting — §9.4 rejects *uptime* monitoring that would fire nightly about a machine
+>    that is off by intention. The Docker gate is what keeps this on the right side of that line.
+>    Added because the task runs windowless (`git-bash.exe --no-needs-console --hide`), and two runs
+>    had already failed their off-machine copy unnoticed *while the window was still visible* —
+>    silence was the pre-existing bug, not a cost of hiding it.
+>
+> ↯ Windowless means the process has **no stdout**, and `backup.sh`'s `log()` ends in `| tee -a`.
+> tee's write to a nonexistent fd 1 fails, `set -e` sees the failed pipeline, and the job dies at its
+> *first log line*. The launcher redirects `>/dev/null 2>&1` for that reason — it is load-bearing,
+> not tidiness, and `backup.sh` keeps `tee` for the by-hand path where stdout is the point.
+
 **10.4 Retention:** 7 daily, 4 weekly, 12 monthly, oldest pruned by the same script. The sizing is not about disk — the dumps are tiny — it is about the recovery *window*. A bad seed or a bug that corrupts progression may not be noticed for weeks, and a 7-day-only history would have already overwritten the last good copy.
 
 **10.5 The full backup set.** Everything needed to reconstitute the deployment, not just the data:
@@ -279,7 +312,16 @@ Written to a local folder **and** to a folder an existing OneDrive/Google Drive 
 | `pg_dump -Fc` output | local + cloud-synced folder | The fitness history. |
 | `.env` | cloud-synced folder, outside the repo | Contains the Postgres password. A dump you cannot authenticate against is not a restore. |
 | Release keystore + its passwords | cloud-synced folder, outside the repo | §7.3 — losing it forces an uninstall, which destroys the device identity. |
-| Device `player_id` + bearer token | **unresolved — §13.1** | §10.1. Without this the restore has no claimant. |
+| Device `player_id` + bearer token | cloud-synced folder, as `traverser-identity.json` | §10.1. Without this the restore has no claimant. |
+
+> **Amended 2026-08-09 (P10 review).** The identity row above is **resolved** — §13.1 landed at M1/P8
+> and the file has been in the Drive folder since 2026-08-06, making this a four-member set in
+> practice rather than on paper. ⚠️ **Two of the four are produced by hand and will drift silently.**
+> The dump is written nightly by the job; the keystore changes never. But `traverser-identity.json`
+> is only correct until the app is re-registered — a re-install that mints a new `player_id` makes
+> the stored copy claim a profile that no longer exists, and nothing detects that. Re-export after
+> any re-registration. Likewise `infra/.env` must be re-copied after a password rotation. Both are
+> in README's backup table for that reason.
 
 **10.6 The restore drill, because an untested backup is not a backup.**
 
@@ -287,6 +329,17 @@ Written to a local folder **and** to a folder an existing OneDrive/Google Drive 
 docker compose exec -T db createdb -U traverser traverser_restore_test
 docker compose exec -T db pg_restore -U traverser -d traverser_restore_test --clean --if-exists < traverser-YYYYMMDD-HHMM.dump
 ```
+
+> **Amended 2026-08-09 (P10 review): the two commands above do not run as written.** They use
+> `traverser` for both the role and the database; the real values are `traverser_admin` and
+> `traverser_db`, and they live in `infra/.env` as `POSTGRES_USER` / `POSTGRES_DB`. Substitute from
+> that file rather than trusting either this document or README — it is the only copy that is
+> authoritative, and a restore drill is exactly the wrong moment to discover a wrong role name.
+> **Run at M1: passed 2026-08-05**, twice — once as a rehearsal on seeded content and once against
+> real fitness history, which is the version this section is asking for. `xp_curve` level 60 was
+> checked specifically for its **null** `xp_to_next`: that null is the schema saying accrual stops
+> with nothing banked (GDD 1 §4), and a null quietly restoring as 0 is what a bad round trip looks
+> like.
 
 Then a spot-check query — a known `activity_day` row, the player's level, the `xp_curve` row count — and `dropdb`. **Run this once at M1, immediately after the first real step sync, and again at M5.** The M1 drill is the important one: it is the moment the backup stops being hypothetical, and the cheapest possible time to discover that the dump command has a typo in it.
 

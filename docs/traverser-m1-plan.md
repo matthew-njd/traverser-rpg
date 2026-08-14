@@ -51,6 +51,7 @@ Consequence for this plan: infrastructure packets (P2, P3) precede health and UI
 | Notification permission (GDD 10 screen 10) | M5 | Notifications are M5 |
 | Audio sliders in Settings (GDD 13 §7) | M5 | No audio bus until M5 |
 | `metro.config.js`, source-map upload | M5 | Recorded at M0 close-out |
+| T2 §5 backoff schedule + 5,000-entry coalescing cap | **M5** | *Added at the P10 review.* Deferred at P7 (DECISIONS 2026-08-03) with a reason but no milestone, which is the silent-deferral shape item 5 exists to catch. Neither has a trigger until sync can fire without the player opening the app — M5's notifications are the first thing that could produce one. `attempts` is already incremented on every failed upload, so the diagnostic half exists. |
 
 The Map and Inventory tabs ship as stubs so the 3-tab bar (GDD 13 §2.1) is built once rather than retrofitted at M3.
 

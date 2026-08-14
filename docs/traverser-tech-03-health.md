@@ -110,6 +110,19 @@ One read pass per sync, immediately before the payload is assembled.
 
 72 hours is the smallest window that satisfies the design: GDD 11 §3.2's Auto Sync Grace looks back **48 hours** and needs synced totals to evaluate against, and provider backfill (a watch that syncs to the phone hours after a workout) can land data behind the wall clock. The extra 24 hours is that slack. Re-reading days already reported is normal and expected — §8 makes it safe.
 
+> **Amended 2026-08-09 (P10 review; the code has been this way since P6, 2026-08-03).** The window's
+> start is **snapped back to local midnight**: `[startOfLocalDay(max(watermark, now − 72h)), now]`.
+> Without the snap the high-water scheme silently loses activity. §8.1 mints
+> `observed_total(date) − reported_high_water(date)`, and that subtraction is only correct when the
+> observed value is the day's *whole* total — a watermark at 18:00 yesterday makes the first daily
+> bucket cover 18:00→midnight alone, which sits **below** the mark already recorded for that day, so
+> the delta is zero and the evening is dropped. Permanently, because §8.1 forbids lowering a mark,
+> and invisibly, because a zero delta is what an unchanged day also produces. The same argument
+> applies to the per-`(date, tier)` HR marks. The snap costs nothing — this section already calls
+> re-reading reported days "normal and expected" and §8 is what makes it safe. Recorded here at the
+> P10 review because it only ever lived in `DECISIONS.md`, which is the failure mode item 1 of that
+> review exists to catch.
+
 If the app has not been opened for longer than the window, days beyond it are simply never credited for streak purposes. That is not a bug: GDD 11 §3.2 caps the grace at 48 hours by design, and steps outside it still credit XP and Leagues if they fall inside the read window.
 
 > **Amended 2026-08-05 (P9, found on the device).** **A device's first read establishes a baseline
@@ -130,9 +143,23 @@ If the app has not been opened for longer than the window, days beyond it are si
 >    ledger cannot catch this, because those ids genuinely are new — this is the one hole in the
 >    delta protocol that is not closed by `client_delta_id`.
 >
-> The rule is one line in `commitHealthRead` and covers all three, plus the case where permission is
-> granted later (the first *successful* read becomes the baseline). The cost is that steps taken
-> before the app existed never count, which is the intended behaviour rather than a compromise.
+> The rule covers all three, plus the case where permission is granted later (the first *successful*
+> read becomes the baseline). The cost is that steps taken before the app existed never count, which
+> is the intended behaviour rather than a compromise.
+>
+> **Corrected 2026-08-06 (found on the device, one day later): the baseline is per _source_, not per
+> device.** The first shipped version was a single device-wide flag and it was wrong, because steps
+> and heart rate become readable at different moments — HR additionally needs a birth year, which
+> only exists from registration onward, so the *first* pass of a fresh install reads steps and not
+> HR. Steps consumed the one baseline; the first HR read then landed afterwards and credited the
+> full 72 hours. Observed as Level 3 and 431 XP on a profile showing **0 steps**. Two rules, both
+> load-bearing:
+>
+> - The baseline is decided **per source** — `HealthSnapshot` carries which sources were actually
+>   read, so "read and found nothing" is distinguishable from "did not look". Only a source that has
+>   never been consumed is baselined.
+> - A source read with nothing to show still writes a **zero mark**, otherwise the next read
+>   baselines that source again — the same bug one day later, reachable by registering before moving.
 
 **4.2 Steps — use aggregation, not raw records.**
 
