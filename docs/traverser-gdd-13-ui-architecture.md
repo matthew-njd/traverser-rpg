@@ -17,8 +17,18 @@ This section defines the full screen list, navigation structure, and screen-by-s
 | Tab | Icon concept | Default landing |
 |---|---|---|
 | **Character** | Traverser silhouette | Yes — first screen after onboarding (Section 10 §2, Screen 11) |
-| **Map** | Road/compass | No |
-| **Inventory** | Satchel/pack | No |
+| **Road** | Road/compass | No |
+| **Satchel** | Satchel/pack | No |
+
+> **Amended 2026-08-14 (M1/P10, from the design pass).** The second and third tabs are **labelled
+> "Road" and "Satchel"**, not "Map" and "Inventory". This promotes this table's own icon-metaphor
+> column to the visible label — the words were already here, in the column describing what the tab
+> *is*, and they read as a walking journal rather than as phone-game furniture. **Display strings
+> only**: the routes remain `map.tsx` and `inventory.tsx`, every reference elsewhere in this document
+> and in Sections 4, 8 and 12 still names the Map screen and the Inventory tab, and no behaviour
+> changes. Decided by Matthew when the design pass surfaced the discrepancy; recorded here rather
+> than applied silently, because a locked section saying one word while the app says another is how
+> a spec stops being trustworthy.
 
 **Rationale for 3, not more.** A Stats screen, an Equip screen, a battle-item Inventory screen, and a Bestiary screen were each independently flagged by earlier sections (Sections 4, 8, 12, plus the planning doc's own Stats & Activity Log priority). Four additional top-level tabs would push total nav past what "simple, lightweight" supports on a phone-sized tab bar (5 is the practical ceiling before icons crowd). Instead, **Character** and **Inventory** each become a single tab hosting multiple sub-views — detailed in §3 and §5. This is the same consolidation logic Section 11 used when it decided the Rest Day control and streak display both live on the Character screen rather than spawning a separate "Engagement" tab.
 
@@ -75,6 +85,20 @@ Implements Section 9's full spec directly; this section resolves the two items S
 ### 4.1 Road orientation — decision: vertical, bottom-to-top scroll
 
 **Recommendation: vertical scrolling, Road climbing upward, Waymarker anchored near the bottom of the viewport with the unexplored Road extending above.** Two reasons: (1) phone screens are taller than wide, so a vertical Road uses the available viewport far more efficiently than a horizontal one that would need constant panning; (2) an *upward* climb reinforces the game's own mortal-to-divine framing (Section 8's gear tier arc, the "Old Roads... stirring again" ascension language from Section 10's story intro) — walking the Road is visually walking toward something higher, not just sideways. This mirrors the vertical-climb pattern already familiar from other mobile RPGs, so it costs nothing in player onboarding.
+
+> **Reaffirmed 2026-08-14 (M1/P10), against a design pass that proposed the opposite.** The "Dusk on
+> the Old Roads" pass drew the Road as a **freely pannable canvas** shown mid-pan, with the road
+> running off both edges, a "drag to look around" affordance and a recentre-on-you control — framed
+> as territory you cross rather than a list you descend. **This section stands**: both reasons above
+> survive the argument unchanged. ⚠️ Note that the recentre control is **not** the distinguishing
+> feature it first appears to be — §4.2 already specifies a "Return to the Road" floating action
+> button for exactly that purpose, because a vertical Road scrolls too and the Waymarker leaves the
+> viewport either way. The difference is one axis versus two, not scrolled versus anchored.
+>
+> What is adopted from that pass is the **visual language, not the geometry** — painted terrain
+> plates per zone, node labels set on ink plates so they stay legible over paint, an inset vignette
+> holding focus, and only the player marker animating. All four apply unchanged to a vertical Road.
+> Recorded here so M3 does not re-open a decision that was made twice.
 
 ### 4.2 Screen layout
 
