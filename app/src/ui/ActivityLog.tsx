@@ -2,7 +2,7 @@ import type { ReactElement } from 'react';
 import { FlatList, type RefreshControlProps, StyleSheet, Text, View } from 'react-native';
 
 import type { ActivityDay } from '../sync/dto';
-import { colors, radius, space, type } from './theme';
+import { colors, radius, space, tabular, type } from './theme';
 
 /**
  * GDD 13 §3.2's reverse-chronological activity log.
@@ -93,6 +93,6 @@ const styles = StyleSheet.create({
   },
   rowHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   date: { ...type.heading, color: colors.text },
-  xp: { ...type.body, color: colors.gold },
-  detail: { ...type.small, color: colors.textDim },
+  xp: { ...type.body, ...tabular, color: colors.gold },
+  detail: { ...type.small, ...tabular, color: colors.textDim },
 });

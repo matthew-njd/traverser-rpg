@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { StatDeltas } from '../sync/writes';
 import { NO_STATS, totalPoints } from '../sync/writes';
 import { Button, Card, Heading } from './primitives';
-import { MIN_TOUCH_TARGET, colors, radius, space, type } from './theme';
+import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme';
 
 /**
  * GDD 13 §3.2's six-stat allocation panel.
@@ -159,14 +159,14 @@ function Step({
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  unspent: { ...type.small, color: colors.gold, fontWeight: '600' },
+  unspent: { ...type.small, ...tabular, color: colors.gold, fontWeight: '600' },
   none: { ...type.small, color: colors.textDim },
 
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: MIN_TOUCH_TARGET },
   labels: { flex: 1 },
   label: { ...type.body, color: colors.text },
   note: { ...type.small, color: colors.textDim },
-  value: { ...type.heading, color: colors.text, minWidth: 56, textAlign: 'right' },
+  value: { ...type.heading, ...tabular, color: colors.text, minWidth: 56, textAlign: 'right' },
   pending: { color: colors.gold },
 
   stepper: { flexDirection: 'row', gap: space.xs },

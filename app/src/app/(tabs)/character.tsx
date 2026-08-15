@@ -15,7 +15,7 @@ import { HealthBanner } from '@/ui/HealthBanner';
 import { Card, Heading, Screen, SegmentedControl } from '@/ui/primitives';
 import { XpBar } from '@/ui/XpBar';
 import { StatPanel } from '@/ui/StatPanel';
-import { colors, radius, space, type } from '@/ui/theme';
+import { colors, radius, space, tabular, type } from '@/ui/theme';
 
 /**
  * GDD 13 §3 — the Character tab, and M1's default landing screen.
@@ -232,6 +232,6 @@ const styles = StyleSheet.create({
   },
   spriteGlyph: { fontSize: 72, color: colors.accent },
 
-  stat: { ...type.display, color: colors.gold },
-  statNote: { ...type.small, color: colors.textDim },
+  stat: { ...type.display, ...tabular, color: colors.gold },
+  statNote: { ...type.small, ...tabular, color: colors.textDim },
 });

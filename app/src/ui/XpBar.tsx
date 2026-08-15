@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, space, type } from './theme';
+import { colors, radius, space, tabular, type } from './theme';
 
 /**
  * GDD 13 §3.1 — level and progress toward the next, *"a thin progress bar rather than a raw number
@@ -55,8 +55,8 @@ export function XpBar({
 const styles = StyleSheet.create({
   wrapper: { gap: space.sm },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  level: { ...type.title, color: colors.text },
-  progress: { ...type.small, color: colors.textDim },
+  level: { ...type.title, ...tabular, color: colors.text },
+  progress: { ...type.small, ...tabular, color: colors.textDim },
   track: {
     height: 8,
     borderRadius: radius.pill,

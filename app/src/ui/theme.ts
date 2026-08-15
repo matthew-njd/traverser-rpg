@@ -1,3 +1,5 @@
+import type { TextStyle } from 'react-native';
+
 /**
  * The M1 token set — one fixed dark palette, deliberately.
  *
@@ -8,14 +10,14 @@
  * lands in.
  */
 export const colors = {
-  background: '#12100E',
-  surface: '#1C1916',
-  surfaceRaised: '#262119',
-  border: '#3A322A',
+  background: '#100E0C',
+  surface: '#191510',
+  surfaceRaised: '#241E17',
+  border: '#372F27',
 
   text: '#EDE4D3',
-  textMuted: '#A2968060',
-  textDim: '#A29680',
+  textMuted: '#9C907A60',
+  textDim: '#9C907A',
 
   /** Bronze — the road, progress, the primary action. */
   accent: '#C08A3E',
@@ -37,11 +39,30 @@ export const space = {
   xl: 32,
 } as const;
 
+/**
+ * ↯ Corners stay in the 2–8 range. The design pass is blunt about why: a 10px radius reads as a
+ * consumer app, a carved edge reads as stone. `pill` is exempt — it is a shape (the XP track), not
+ * a corner treatment.
+ */
 export const radius = {
-  sm: 6,
-  md: 10,
+  sm: 4,
+  md: 8,
   pill: 999,
 } as const;
+
+/**
+ * Spread into any style that renders a figure that changes while the player is looking at it.
+ *
+ * ↯ Not a cosmetic preference. Proportional digits have different widths, so a step count ticking
+ * 7,999 → 8,000 visibly reflows the text around it and the row jitters. Tabular figures are
+ * fixed-width, so the number changes and nothing else moves.
+ *
+ * ↯ Deliberately **not** `as const`, unlike everything else in this file. React Native types
+ * `fontVariant` as a mutable `FontVariant[]`, so a readonly tuple is rejected — and because
+ * `StyleSheet.create` infers over the whole object, one bad entry widens *every* style in that
+ * sheet to `ViewStyle | TextStyle | ImageStyle` and the errors surface on unrelated lines.
+ */
+export const tabular: Pick<TextStyle, 'fontVariant'> = { fontVariant: ['tabular-nums'] };
 
 /**
  * ↯ Deliberately **not** a theme token. 44dp is an accessibility floor, not a look — a restyle may
