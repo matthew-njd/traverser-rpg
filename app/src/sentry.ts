@@ -18,8 +18,7 @@ export function initSentry(): void {
     dsn: sentryDsn,
     environment: sentryEnvironment,
 
-    // ↯ §9.3 requires these be explicit rather than left at SDK defaults. The app handles step
-    // counts and heart-rate minutes; none of it should ride along on a crash report.
+    // §9.3 — explicit rather than SDK defaults. Step counts and HR minutes must not ride along.
     sendDefaultPii: false,
     attachScreenshot: false,
     attachViewHierarchy: false,
@@ -28,10 +27,8 @@ export function initSentry(): void {
     tracesSampleRate: 0,
     profilesSampleRate: 0,
 
-    // ↯ Off for a reason specific to this app, not just privacy. tech-02 §1.2 makes an unreachable
-    // API the *normal* case and tech-04 §8.1 makes the client treat it as success — so failed
-    // requests here are expected behaviour, not incidents. Capturing them would fill the free tier
-    // with events describing the design working correctly, and bury the real ones.
+    // Off because an unreachable API is the *normal* case here (tech-02 §1.2) — capturing those
+    // would fill the free tier with events describing the design working correctly.
     enableCaptureFailedRequests: false,
   });
 }

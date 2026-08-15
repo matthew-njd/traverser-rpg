@@ -48,7 +48,7 @@ describe('rates (GDD 1 §2)', () => {
   });
 
   /**
-   * ↯ Tier 3's daily cap is deliberately **not** applied. It is evaluated server-side against the
+   * Tier 3's daily cap is deliberately **not** applied. It is evaluated server-side against the
    * day's post-merge cumulative (tech-03 §5.5), which this device cannot know. 27 Peak minutes
    * project at 189 and settle to the server's 169 — the quiet correction §8.4 designs for, rather
    * than a guessed number that looks authoritative.
@@ -81,7 +81,7 @@ describe('applying gains', () => {
   });
 
   /**
-   * ↯ **Level-ups are never projected.** tech-04 §8.4 calls a Reveal Card celebrating a level-up that
+   * **Level-ups are never projected.** tech-04 §8.4 calls a Reveal Card celebrating a level-up that
    * then un-happens the single worst reconciliation artefact this design can produce, and the server
    * owns the curve — a projection that crossed the threshold would have to guess both the new level
    * and the carried remainder. The bar fills and stops.
@@ -114,7 +114,7 @@ describe('applying gains', () => {
   });
 
   /**
-   * ↯ **XP stops entirely at Level 60, with no banking** (GDD 1 §4, and a non-negotiable rule in
+   * **XP stops entirely at Level 60, with no banking** (GDD 1 §4, and a non-negotiable rule in
    * CLAUDE.md). `xp_to_next` is null there, and a projection that kept accruing would show the
    * player earning XP the server will never grant.
    */

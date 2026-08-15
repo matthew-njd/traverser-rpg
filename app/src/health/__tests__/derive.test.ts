@@ -11,11 +11,9 @@ import { MINUTE_MS } from '../localDate';
 import { TIER_1_BPM, TIER_3_BPM, edt, edtDates, minutes } from './fixtures';
 
 /**
- * tech-03 §5, asserted against `docs/traverser-test-fixtures.md` §11 — the eight cases T3 §10 owed,
- * machine-verified 2026-07-26 by executing the algorithms rather than transcribing prose.
+ * tech-03 §5 against fixtures §11 — the eight machine-verified cases T3 §10 owed.
  *
- * No device, no renderer, no Expo module: everything here is a pure function over plain data, which
- * is what tech-04 §12 asks of the derivation suite.
+ * No device, no renderer, no Expo module: pure functions over plain data (tech-04 §12).
  */
 
 const AGE_30 = thresholdsForAge(30);
@@ -29,8 +27,7 @@ describe('thresholds (fixtures §11.1)', () => {
   });
 
   /**
-   * ↯ The row that pins `ceil`. Three of age 55's bounds are non-integral before rounding — 82.5,
-   * 115.5, 140.25 — and a `round` implementation puts Tier 1 at 82 BPM and Tier 3 at 140, promoting
+   * The row that pins `ceil`: age 55's bounds are 82.5, 115.5, 140.25, and `round` would promote
    * minutes into tiers they are fractionally below.
    */
   it('converts age 55 to HRmax 165 and bounds 83 / 116 / 141, rounding up', () => {
@@ -46,7 +43,7 @@ describe('bucketing (fixtures §11.2)', () => {
     bpm,
   });
 
-  /** ↯ Mean, not max: one of these three samples is below the Tier 2 bound and the minute is Tier 2. */
+  /** Mean, not max: one of these three samples is below the Tier 2 bound and the minute is Tier 2. */
   it('scores 130/134/136 as Tier 2 on a mean of 133.33', () => {
     expect(tierOfMinute([at(0, 130), at(20, 134), at(40, 136)])).toBe(2);
   });
@@ -63,7 +60,7 @@ describe('bucketing (fixtures §11.2)', () => {
     expect(tierOfMinute([at(0, 90), at(30, 98)])).toBe(0);
   });
 
-  /** ↯ Sparse sampling must never invent minutes. A minute with no samples simply is not there. */
+  /** Sparse sampling must never invent minutes. A minute with no samples simply is not there. */
   it('produces no minute at all where there are no samples', () => {
     const gapped = [at(0, TIER_1_BPM), { at: edt('2026-07-19T10:05'), bpm: TIER_1_BPM }];
 
@@ -112,14 +109,12 @@ describe('segmentation (fixtures §11.3, §11.4)', () => {
   });
 
   /**
-   * ↯ The boundary row. GDD 11 §8.1 closes a session only after **more than** 10 consecutive
-   * sub-Tier-1 minutes, so exactly 10 does not close and 11 does. This is the single assertion in the
-   * file that a plausible `>= 10` implementation fails.
+   * The boundary row: **more than** 10 closes, so 10 does not and 11 does. The single assertion
+   * here that a plausible `>= 10` fails.
    *
-   * Note on the fixture: §11.3's boundary row states "26 min span, 25 tier-1 minutes", and those two
-   * numbers cannot both describe the same timeline — 25 tiered minutes either side of a 10-minute
-   * interior gap span 35. The property the row exists to pin, and states explicitly, is the strict
-   * inequality; that is what is asserted here, with the minute counts read off the stated timeline.
+   * ⚠️ §11.3's row states "26 min span, 25 tier-1 minutes", which cannot both describe one timeline
+   * — 25 tiered minutes either side of a 10-minute gap span 35. The property it pins is the strict
+   * inequality, which is what is asserted; counts are read off the stated timeline.
    */
   it('does not close on a gap of exactly 10 minutes', () => {
     // 10:00–10:14 tiered · 10:15–10:24 silent (10) · 10:25–10:34 tiered.
@@ -143,7 +138,7 @@ describe('segmentation (fixtures §11.3, §11.4)', () => {
     expect(sessions).toHaveLength(2);
 
     expect(sessions[0]?.startedAt).toBe(edt('2026-07-19T10:00'));
-    // ↯ The first session ends at its last Tier 1+ minute, not at the end of the gap that closed it.
+    // The first session ends at its last Tier 1+ minute, not at the end of the gap that closed it.
     expect(sessions[0]?.endedAt).toBe(edt('2026-07-19T10:14'));
     expect(sessions[0]?.tier1Minutes).toBe(15);
     expect(sessionIdFor(sessions[0]?.startedAt ?? 0)).toBe('hr:1784469600');
@@ -169,10 +164,8 @@ describe('segmentation (fixtures §11.3, §11.4)', () => {
 
 describe('day rollups (fixtures §11.5, §11.6)', () => {
   /**
-   * ↯ A session crossing local midnight is **one** session whose minutes split across two dates. The
-   * session is bounded by instants, not by a date — the overactivity rule reads the session while the
-   * XP rules read the days, and cutting the session in half would reset a 90-minute count at
-   * midnight.
+   * One session, minutes split across two dates. Cutting it in half at midnight would reset a
+   * 90-minute overactivity count.
    */
   it('keeps a midnight-crossing session whole and splits only the day totals', () => {
     // 23:50 on the 19th through 00:15 on the 20th, contiguous: 26 minutes.
@@ -191,11 +184,7 @@ describe('day rollups (fixtures §11.5, §11.6)', () => {
     ]);
   });
 
-  /**
-   * ↯ **Uncapped.** GDD 1 §2.2's 20-minute daily Peak cap is the server's, evaluated against the
-   * day's post-merge cumulative total (fixtures §11.6). A client that pre-capped here would store 20
-   * where the day really held 27, and the under-report is permanent.
-   */
+  /** Uncapped: the 20-minute cap is the server's, and pre-capping under-reports permanently. */
   it('reports raw Tier 3 minutes past the 20-minute daily cap', () => {
     const day = rollUpTierMinutes(bucketMinutes(minutes('2026-07-19T10:00', 27, TIER_3_BPM), AGE_30), edtDates);
 

@@ -13,16 +13,11 @@ const DATABASE_NAME = 'traverser.db';
 let database: SqliteDatabase | null = null;
 
 /**
- * ↯ Set at open and outside any transaction. `journal_mode` cannot be changed inside one, and
- * `foreign_keys` is silently a no-op inside one — a pragma that appears to apply and does not is
- * worse than an error, because the app then runs without referential integrity and nothing says so.
+ * Set at open, outside any transaction: `journal_mode` cannot change inside one and
+ * `foreign_keys` is silently a no-op inside one — a pragma that appears to apply and does not.
  *
- * `synchronous = FULL` rather than the usual `NORMAL` (tech-04 §6.1). The normal argument for
- * `NORMAL` is that a crash can lose the last transaction and that this is fine for a cache. It is
- * not fine here: the last transaction is frequently *the delta queue write that just consumed a
- * health read*, and tech-03 §8.4 orders the watermark advance strictly after that write precisely
- * so nothing is lost. `NORMAL` would put a hole in the middle of that guarantee, for a few
- * milliseconds on writes that happen a handful of times per session.
+ * `synchronous = FULL`, not `NORMAL` (tech-04 §6.1). `NORMAL` can lose the last transaction, which
+ * here is frequently the delta write that just consumed a health read.
  */
 const PRAGMAS = `
   PRAGMA journal_mode = WAL;
@@ -39,10 +34,8 @@ export function openTraverserDatabase(): SqliteDatabase {
     return database;
   }
 
-  // The cast is narrowing, not widening: expo's `SQLiteDatabase` has every method the port declares
-  // with the same runtime behaviour, but its `runSync` is overloaded (variadic *or* array params)
-  // and TypeScript will not structurally match an overload set against a single signature. The
-  // array form is the one used everywhere here.
+  // Narrowing, not widening: expo's `runSync` is overloaded (variadic *or* array), and TypeScript
+  // will not structurally match an overload set against a single signature.
   const db = openDatabaseSync(DATABASE_NAME) as unknown as SqliteDatabase;
 
   db.execSync(PRAGMAS);
@@ -53,11 +46,7 @@ export function openTraverserDatabase(): SqliteDatabase {
   return db;
 }
 
-/**
- * The open database. Throws rather than opening lazily: a caller reaching this before boot has
- * finished is reading a database whose migrations may not have run, and returning one anyway would
- * turn an ordering bug into a corrupt read.
- */
+/** Throws rather than opening lazily — a caller arriving before boot would read an unmigrated db. */
 export function getDatabase(): SqliteDatabase {
   if (database === null) {
     throw new Error('The database is not open yet. Call openTraverserDatabase() during boot.');

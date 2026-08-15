@@ -22,10 +22,8 @@ describe('outbox', () => {
   });
 
   /**
-   * ↯ Two deltas minted in the same millisecond are not hypothetical — tech-03 §8.1's high-water
-   * marks mint one delta per date and per tier from a single read, all stamped from the same clock
-   * read. Without the tie-break the drain order is whatever SQLite happens to return, which means a
-   * drain interrupted half-way cannot be resumed deterministically.
+   * Same-millisecond deltas are not hypothetical: one read mints one per date and per tier, all
+   * stamped from the same clock. Without the tie-break a half-drained queue cannot be resumed.
    */
   it('breaks created_at ties by client_op_id', () => {
     const db = memoryDatabase();
@@ -66,11 +64,7 @@ describe('outbox', () => {
     expect(queued!.attempts).toBe(0);
   });
 
-  /**
-   * ↯ Re-enqueueing the same id is the correct behaviour after an ambiguous failure, so it must be
-   * a no-op rather than a crash — and it must not duplicate, because `client_op_id` is the server's
-   * idempotency key and two rows would be two uploads of one fact.
-   */
+  /** Re-enqueueing after an ambiguous failure is correct, so it must be a no-op, never a duplicate. */
   it('ignores a duplicate client_op_id', () => {
     const db = memoryDatabase();
 
@@ -81,10 +75,7 @@ describe('outbox', () => {
     expect(JSON.parse(peek(db, 1)[0]!.payload).steps_delta).toBe(100);
   });
 
-  /**
-   * T2 §5: an entry is removed only once the server names its id. Both `accepted_delta_ids` and
-   * `duplicate_delta_ids` mean the same thing here — stop resending.
-   */
+  /** T2 §5 — both lists mean "stop resending". */
   it('removes only acknowledged entries', () => {
     const db = memoryDatabase();
 
@@ -99,9 +90,8 @@ describe('outbox', () => {
   });
 
   /**
-   * ↯ The entry the server did not name has *not* been accounted for. Dropping everything that was
-   * sent — rather than everything that was acknowledged — is the difference between at-least-once
-   * delivery and losing a day's steps to a truncated response.
+   * Dropping what was *sent* rather than what was *acknowledged* is the difference between
+   * at-least-once delivery and losing a day to a truncated response.
    */
   it('keeps entries the server did not acknowledge', () => {
     const db = memoryDatabase();
@@ -133,10 +123,9 @@ describe('outbox', () => {
   });
 
   /**
-   * ↯ **The durability requirement, tested by actually killing the connection.** T2 §5 fixes the
-   * contract as "an entry survives process death", and Android kills a backgrounded app without
-   * warning and without a callback (tech-04 §5.3) — so this is the ordinary case, not an edge case.
-   * A queue held in memory, or flushed on a lifecycle event that never fires, loses the walk.
+   * ↯ Durability tested by actually killing the connection. Android kills a backgrounded app with
+   * no warning and no callback (tech-04 §5.3), so this is the ordinary case — a queue flushed on a
+   * lifecycle event that never fires loses the walk.
    */
   it('survives process death with its order and payloads intact', () => {
     const file = new FileDatabase();
@@ -166,10 +155,7 @@ describe('outbox', () => {
     }
   });
 
-  /**
-   * A batch is enqueued in one transaction, so a failure part-way leaves none of it. Anything else
-   * would break tech-03 §8.4: the watermark would advance past activity only partially queued.
-   */
+  /** One transaction per batch, or the watermark advances past activity only partially queued. */
   it('enqueues a batch atomically', () => {
     const db = memoryDatabase();
 

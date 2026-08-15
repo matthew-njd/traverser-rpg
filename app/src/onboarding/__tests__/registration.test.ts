@@ -13,10 +13,8 @@ import { RestoreError, deviceTimezone, registerNewPlayer, restoreIdentity } from
 /**
  * GDD 10 screen 4's terminal step and tech-06 §13.1's restore branch beside it.
  *
- * ↯ The whole file is about *ordering*: what is persisted before what, and why each step guards the
- * one before it. Registration is one of only three things that genuinely need the server (tech-02
- * §3), so it is also the one place where a half-finished attempt has consequences that outlive the
- * screen.
+ * The whole file is about ordering — what is persisted before what. Registration is the one place
+ * where a half-finished attempt has consequences that outlive the screen.
  */
 
 const mockStore = new Map<string, string>();
@@ -72,8 +70,7 @@ describe('registering', () => {
     expect(readStreak(db)).toMatchObject({ current: 8 });
     expect(readBirthYear(db)).toBe(1990);
 
-    // ↯ The birth year is not part of `POST /players` — T3 §1.4's deviation lands on
-    // `PATCH /settings`, so it goes through the ordinary queued-write path like any other change.
+    // Not part of `POST /players` — T3 §1.4 puts it on `PATCH /settings`, so it queues normally.
     const queued = peek(db, 10);
 
     expect(queued[0]?.kind).toBe('settings');
@@ -112,10 +109,8 @@ describe('registering', () => {
   });
 
   /**
-   * ↯ The `player_id` is persisted **before** the request. A crash between the server inserting the
-   * row and the token reaching storage would otherwise orphan a profile nobody can claim — and
-   * minting a fresh id on retry would do it again on every attempt. Reusing the stored id is exactly
-   * what makes `POST /players` idempotent worth having.
+   * The id is persisted **before** the request, or a crash orphans an unclaimable profile — and a
+   * fresh id per retry would do it again on every attempt.
    */
   it('persists the player id before the request is made', async () => {
     const db = memoryDatabase();
@@ -172,11 +167,9 @@ describe('registering', () => {
   });
 
   /**
-   * ↯ The token is saved **before** the mirror, and this is the failure that proves why. If secure
-   * storage refuses the write, the device has no credential — and a mirror written anyway would make
-   * the player row exist, which is the whole registered/not-registered signal the boot router reads.
-   * The app would then launch straight into the tabs holding no token, 401 on every sync forever,
-   * and never show onboarding again. An empty mirror is recoverable; that state is not.
+   * The failure that proves why the token is saved before the mirror: a player row *is* the
+   * registered signal the boot router reads, so a mirror without a credential launches into the
+   * tabs and 401s forever. An empty mirror is recoverable; that state is not.
    */
   it('writes no mirror when the credential cannot be stored', async () => {
     const db = memoryDatabase();
@@ -236,11 +229,7 @@ describe('restoring an exported identity (tech-06 §13.1)', () => {
     expect(readPlayer(db)?.playerId).toBe(PLAYER_ID);
   });
 
-  /**
-   * ↯ Saving an unverified token would strand the device permanently: the app boots straight into
-   * the tabs, 401s on every sync, and never shows the restore screen again — because that screen
-   * only exists where there is no identity.
-   */
+  /** An unverified token strands the device — the restore screen only exists where there is no identity. */
   it('saves nothing when the token is rejected', async () => {
     const db = memoryDatabase();
 

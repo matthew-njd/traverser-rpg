@@ -5,14 +5,12 @@ import { useAppStore } from '@/state/appStore';
 /**
  * tech-04 §7.1 step 5 — the boot router.
  *
- * ↯ Renders nothing until boot has finished, and the native splash is still up while that is true
- * (`_layout.tsx` holds it). Redirecting before the mirror has been read would send a registered
- * player through onboarding for a frame, which on Android is a visible flash of the wrong screen
- * rather than the instant re-render a warm web DOM would forgive.
+ * ↯ Renders nothing until boot finishes, with the native splash still up. Redirecting before the
+ * mirror is read flashes onboarding at a registered player — visible on Android, where a warm DOM
+ * would have forgiven it.
  *
- * "Registered" is the whole onboarding-complete signal in M1: naming is the last onboarding step and
- * it is the step that writes the player row. When M2 inserts GDD 10's screens 5–7 between naming and
- * the hub that stops being true, and this needs a flag of its own.
+ * "Registered" is M1's whole onboarding-complete signal, because naming writes the player row. M2
+ * inserts GDD 10 screens 5–7 after naming, and this will need a flag of its own.
  */
 export default function BootRouter() {
   const booted = useAppStore((state) => state.booted);

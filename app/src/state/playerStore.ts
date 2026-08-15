@@ -9,15 +9,11 @@ import { leaguesFor } from '../sync/projection';
  * L3's hot slice (tech-04 §5.2) — a **hydrated projection of the mirror**, so screens read
  * synchronously without touching SQLite on every render.
  *
- * ↯ The rule that keeps this from rotting: **SQLite is written first, always.** The store is a cache
- * of a cache and may be stale in exactly one direction — SQLite is never behind it. Any read path
- * that could observe the store mid-write reads SQLite instead. On the web a `useState` plus a fetch
- * is usually enough because a reload rebuilds everything from the server; here a reload rebuilds
- * from a local database that is itself the source of truth between syncs.
+ * SQLite is written first, always. The store may be stale in exactly one direction — SQLite is
+ * never behind it — and any read that could observe a mid-write store reads SQLite instead.
  *
- * ↯ Only the small, hot slice lives here. The activity log, the bestiary and the item grid are
- * queried on demand and never mirrored into the store — paging a growing table into memory is how a
- * store becomes the thing that has to be invalidated.
+ * Only the small hot slice lives here; growing tables are queried on demand, because paging one
+ * into memory is how a store becomes the thing that has to be invalidated.
  */
 export interface PlayerSlice {
   /** False until registration has written a player row — the first-launch signal for the router. */
@@ -35,11 +31,8 @@ export interface PlayerSlice {
   readonly dailyStepGoal: number;
   readonly streak: Streak;
   /**
-   * ↯ The displayed numbers include an optimistic projection (tech-04 §8.4). Available so a screen
-   * *could* know — but it must not annotate: a correction animates on the same component with the
-   * same transition as any other value change, and a correction that reduces a displayed number is
-   * applied with **no indicator of any kind**. The player never learns a projection was optimistic;
-   * that is the entire point.
+   * The numbers include an optimistic projection (tech-04 §8.4). Exposed so a screen *could* know,
+   * but it must not annotate — a downward correction lands with no indicator of any kind.
    */
   readonly provisional: boolean;
 }
@@ -83,11 +76,7 @@ export function sliceFrom(player: MirrorPlayer | null, streak: Streak): PlayerSl
 }
 
 interface PlayerStore extends PlayerSlice {
-  /**
-   * Re-reads the mirror. Called at boot (tech-04 §7.1 step 4) and after **every** write to the
-   * mirror — there is no path that updates the store alone, because that is how the two start
-   * disagreeing.
-   */
+  /** Re-reads the mirror. No path updates the store alone — that is how the two start disagreeing. */
   hydrate(db: SqliteDatabase): void;
   reset(): void;
 }

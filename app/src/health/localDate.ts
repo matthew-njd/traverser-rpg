@@ -1,14 +1,10 @@
 /**
  * Local-date resolution, isolated behind an interface.
  *
- * ↯ tech-02 §2: *"`activity_date` is a bare `YYYY-MM-DD` and is always supplied by the client, never
- * derived server-side."* The client owns the local-midnight boundary because it owns the live
- * timezone — a server deriving it would put the day boundary in the wrong place for anyone who
- * travels. That makes every function below load-bearing for which day a walk lands on.
+ * The client owns the local-midnight boundary because it owns the live timezone (tech-02 §2) — a
+ * server deriving it puts the day boundary in the wrong place for anyone who travels.
  *
- * The seam exists because the fixtures are declared in **America/New_York (UTC−4, EDT)** and the
- * machine running the tests is not. Injecting the resolver keeps the derivation deterministic
- * without pinning `TZ` for the whole runner.
+ * The seam exists because fixtures are declared in America/New_York and the test machine is not.
  */
 export interface LocalDateResolver {
   /** The `YYYY-MM-DD` local date containing this instant. */

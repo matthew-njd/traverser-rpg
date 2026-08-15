@@ -39,7 +39,7 @@ describe('mintUuidV7', () => {
   });
 
   /**
-   * ↯ The property the whole design rests on. Two deltas minted in the same millisecond with the
+   * The property the whole design rests on. Two deltas minted in the same millisecond with the
    * same value must still differ — the high-water scheme makes identical-value deltas likely, so
    * anything derived from content or from the clock alone would collide and drop a real delta.
    */

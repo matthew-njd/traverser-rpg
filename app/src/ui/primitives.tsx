@@ -17,10 +17,8 @@ import { MIN_TOUCH_TARGET, colors, radius, space, type } from './theme';
 /**
  * GDD 13 §8's shared primitives, at the fidelity M1 needs.
  *
- * ↯ There is no CSS here and no cascade: every style is an object on the component that uses it, and
- * `StyleSheet.create` is a registry rather than a stylesheet. The habit that transfers worst from
- * web is expecting a parent's `color` or `fontFamily` to reach a child — in React Native only `Text`
- * inherits from an ancestor `Text`, and nothing else inherits at all.
+ * ↯ No CSS and no cascade — only `Text` inherits from an ancestor `Text`, nothing else inherits at
+ * all. Expecting a parent's `color` or `fontFamily` to reach a child is the habit that breaks here.
  */
 
 export function Screen({
@@ -122,10 +120,8 @@ export function Card({ children, style }: { children: ReactNode; style?: ViewSty
 }
 
 /**
- * ↯ Sub-views are **state, not routes** (tech-04 §4.3). Both panes stay mounted, so switching costs
- * nothing and loses nothing — where a route change would remount and re-run every effect, visibly.
- * The choice is component state and deliberately does not survive a cold start: GDD 13 §5.1 names
- * the default sub-view, so the default is what a fresh launch shows.
+ * Sub-views are state, not routes (tech-04 §4.3): both panes stay mounted, so switching loses
+ * nothing. Deliberately not persisted — GDD 13 §5.1 names what a fresh launch shows.
  */
 export function SegmentedControl<T extends string>({
   options,

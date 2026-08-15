@@ -25,20 +25,13 @@ import {
 } from './provider';
 
 /**
- * The Health Connect implementation of {@link HealthProvider} — **the only module in the app that
- * imports `react-native-health-connect`** (tech-03 §11).
+ * The only module that imports `react-native-health-connect` (tech-03 §11).
  *
- * Surface used, and nothing else: `getSdkStatus`, `initialize`, `requestPermission`,
- * `getGrantedPermissions`, `openHealthConnectSettings`, `readRecords`, `aggregateGroupByPeriod`. In
- * particular no `insertRecords`, no `deleteRecords*`, no `revokeAllPermissions` — Traverser is a
- * read-only consumer of health data and should never hold a write permission it could be blamed for
- * (tech-03 §2).
+ * Read-only surface by design — no `insertRecords`, `deleteRecords*` or `revokeAllPermissions`.
+ * Traverser must never hold a health write permission it could be blamed for (tech-03 §2).
  */
 
-/**
- * Declared here rather than imported: the library defines `TimeRangeFilter` in an internal module
- * that its entry point does not re-export. This is the one shape used, structurally identical.
- */
+/** Declared here: the library does not re-export `TimeRangeFilter` from its entry point. */
 type BetweenFilter = { operator: 'between'; startTime: string; endTime: string };
 
 const READ_PERMISSIONS: Permission[] = [
@@ -46,11 +39,7 @@ const READ_PERMISSIONS: Permission[] = [
   { accessType: 'read', recordType: 'HeartRate' },
 ];
 
-/**
- * ↯ A guard against an unbounded loop, **not a design limit**. 72 hours of dense Fitbit data at
- * roughly one record per minute is ~4,300 records, so about five pages; 50 is ample and reaching it
- * is reported rather than swallowed (tech-04 §8.2).
- */
+/** A guard against an unbounded loop, not a design limit — 72h of dense data is ~5 pages. */
 const MAX_PAGES = 50;
 
 function reasonFor(cause: unknown): HealthErrorReason {
@@ -67,12 +56,7 @@ function reasonFor(cause: unknown): HealthErrorReason {
   return 'unknown';
 }
 
-/**
- * ↯ Every call into the platform goes through here, because these **reject** rather than resolving
- * empty (tech-03 §3 as corrected by the spike, tech-04 §8.3). A read without permission raises
- * `SecurityException`; a call before `initialize()` raises "client not initialized". Both map to
- * banner state.
- */
+/** ↯ Platform calls **reject** rather than resolving empty (tech-03 §3, tech-04 §8.3). */
 async function guard<T>(action: string, run: () => Promise<T>): Promise<T> {
   try {
     return await run();
@@ -94,10 +78,8 @@ export function mapAvailability(status: number): SdkAvailability {
 }
 
 /**
- * ↯ Matched by **exact `recordType`**, never by array length or index. Granting Steps silently also
- * grants `StepsCadence` — a record type this app never requests — so the returned array can be
- * longer than the one asked for (tech-03 §3, spike probe 7). Length and position are both
- * meaningless here.
+ * ↯ Matched by exact `recordType`, never length or index: granting Steps silently also grants
+ * `StepsCadence`, so the returned array can be longer than the one asked for (tech-03 §3).
  */
 export function permissionsFrom(
   granted: readonly { accessType?: string; recordType?: string }[],
@@ -111,11 +93,8 @@ export function permissionsFrom(
 }
 
 /**
- * ↯ **No read of any record type bypasses this helper** (tech-04 §8.2). The spike found a 48-hour
- * `HeartRate` read returning exactly 1,000 records with a `pageToken` present — the default page cap
- * — and nothing in tech-03 anticipated it. A read that assumes one call returns the window
- * truncates silently, in the player's disfavour, and only for players active enough to exceed the
- * cap: the failure mode is invisible precisely where it matters most.
+ * ↯ No read bypasses this (tech-04 §8.2). Reads cap at 1,000 records with a `pageToken`; assuming
+ * one call returns the window truncates silently, and only for the most active players.
  */
 export async function readAllRecords<T extends RecordType>(
   recordType: T,
@@ -145,26 +124,18 @@ export async function readAllRecords<T extends RecordType>(
 const hasZoneDesignator = (instant: string): boolean => /(?:Z|[+-]\d{2}:\d{2})$/.test(instant);
 
 /**
- * ↯ The bucket boundary must be **local** midnight, or every day boundary shifts by the UTC offset
- * and the last hours of every evening walk are misattributed to the following day. The spike
- * confirmed `aggregateGroupByPeriod` slices on local midnight (probe 5) — the open question is only
- * how it *reports* the boundary, so both forms are handled: an instant is converted through the
- * device's own resolver, a zone-less local string is already a local date.
+ * ↯ The boundary must be local midnight or every evening walk shifts a day. The library slices
+ * locally; only how it *reports* the boundary varies, so both instant and zone-less forms are read.
  */
 function bucketDate(startTime: string, dates: LocalDateResolver): string {
   return hasZoneDesignator(startTime) ? dates.dateOf(Date.parse(startTime)) : startTime.slice(0, 10);
 }
 
 /**
- * tech-03 §4.2 — **aggregation, not raw records.**
+ * tech-03 §4.2 — aggregation, not raw records.
  *
- * ↯ Health Connect de-duplicates overlapping step contributions from multiple origins during
- * aggregation. A player wearing a watch while carrying a phone produces two `StepsRecord` streams
- * covering the same wall-clock minutes, and summing raw records double-counts the entire day — the
- * spike measured raw 601 against aggregate 373, a ~60% inflation avoided. Reconciling those streams
- * ourselves would be a real algorithm, and anti-cheat and data-integrity work is explicitly out of
- * sanctioned scope, so the right move is to let the platform do the thing it already does correctly.
- * Multi-origin is the steady state on this device, not an edge case.
+ * Aggregation de-duplicates across origins. A watch plus a phone writes two overlapping `Steps`
+ * streams, and summing raw records double-counts the day (spike: raw 601 vs aggregate 373).
  */
 async function readDailySteps(
   window: ReadWindow,
@@ -193,11 +164,7 @@ async function readDailySteps(
   return dailySteps;
 }
 
-/**
- * ↯ The time range filter must be a **UTC instant string**. A local-naive string throws
- * `Text '...' could not be parsed at index 19` (spike, probes 4–5); the library does the local
- * conversion itself.
- */
+/** ↯ Must be a UTC instant string — a local-naive one throws "could not be parsed at index 19". */
 function instantFilter(window: ReadWindow): BetweenFilter {
   return {
     operator: 'between',
@@ -207,16 +174,11 @@ function instantFilter(window: ReadWindow): BetweenFilter {
 }
 
 /**
- * tech-03 §4.3 — raw records, flattened into one time-ordered sample timeline.
+ * tech-03 §4.3 — raw records flattened into one sample timeline.
  *
- * ↯ Record grouping is **discarded**. Provider record boundaries are arbitrary and have nothing to
- * do with GDD 11 §8's session definition — the spike found Fitbit writes HR as roughly one record
- * per minute (median duration 57s, ~26 samples each), so a workout arrives as hundreds of adjacent
- * records. Segmenting from those would invent hundreds of sessions.
- *
- * Aggregation is deliberately not used for HR: the available metrics are min/max/average over a
- * span, and averaging a 45-minute workout to a single BPM destroys precisely the time-in-zone
- * information GDD 1 §2.2 charges XP against.
+ * Record grouping is discarded: providers write HR as ~one record per minute, so segmenting from
+ * record boundaries would invent hundreds of sessions. Aggregation is unusable here — averaging a
+ * workout to one BPM destroys the time-in-zone GDD 1 §2.2 charges against.
  */
 async function readHrSamples(window: ReadWindow): Promise<HrSample[]> {
   const records = await guard('heart-rate read', () =>
@@ -248,8 +210,7 @@ export const healthConnectProvider: HealthProvider = {
   },
 
   async requestPermissions() {
-    // ↯ The return value is deliberately dropped. tech-03 §3: `getGrantedPermissions` is the
-    // authority, and the player can grant one record type while denying the other.
+    // Return value dropped: `getGrantedPermissions` is the authority (tech-03 §3).
     await guard('permission request', () => requestPermission(READ_PERMISSIONS));
 
     return this.grantedPermissions();
@@ -260,8 +221,7 @@ export const healthConnectProvider: HealthProvider = {
   },
 
   async read(window, thresholds: TierThresholds, dates, granted) {
-    // A read of a type that was not granted throws rather than returning empty, so a partial grant
-    // is handled by not asking (tech-03 §3's Steps-only and HR-only rows are both legal states).
+    // Reading an ungranted type throws, so a partial grant is handled by not asking (tech-03 §3).
     const dailySteps = granted.steps ? await readDailySteps(window, dates) : new Map<string, number>();
     const samples = granted.heartRate ? await readHrSamples(window) : [];
 

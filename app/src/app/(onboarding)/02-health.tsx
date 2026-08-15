@@ -7,19 +7,11 @@ import { Body, Button, Card, Screen, Title } from '@/ui/primitives';
 import { space } from '@/ui/theme';
 
 /**
- * GDD 10 screen 2 — health permissions, requested **before any story content**, per the locked
- * ordering in §3.1. The copy below is that section's, verbatim; it is a promise made to the player
- * on screen 2 of 11, before they have agreed to anything, and tech-03 §1.1 is the constraint the
- * entire health pipeline is built around to keep it.
+ * GDD 10 screen 2 — permissions before any story content (§3.1). The copy is that section's
+ * verbatim, and tech-03 §1.1 is the constraint the health pipeline is built around to keep it.
  *
- * ↯ **Never a hard block** (§3.2). Whatever the player chooses — grant, deny, or dismiss — Continue
- * goes to the story. A fitness app that cannot be opened without granting permissions is a bad first
- * impression and risks an uninstall before the player has seen any value. The denied state gets a
- * persistent low-key banner on the Character screen and nothing else.
- *
- * ↯ The result of `requestPermission` is never trusted; `getGrantedPermissions` is the authority
- * (tech-03 §3), and the provider does that internally. Nothing here branches on the answer anyway —
- * which is the point.
+ * Never a hard block (§3.2): grant, deny or dismiss, Continue goes to the story. Nothing here
+ * branches on the answer — which is the point, and why `requestPermission`'s result is unused.
  */
 export default function HealthPermission() {
   const router = useRouter();
@@ -36,9 +28,8 @@ export default function HealthPermission() {
         await healthConnectProvider.requestPermissions();
       }
     } catch {
-      // ↯ These reject rather than resolving empty (tech-03 §3). A failure here is not a failure of
-      // onboarding — the banner will explain it later, from a state the app re-reads every
-      // foreground rather than from anything remembered on this screen.
+      // These reject rather than resolving empty (tech-03 §3), and a failure is not a failure of
+      // onboarding — the banner explains it later from re-read state, not from anything held here.
     } finally {
       setBusy(false);
       router.push('/03-story');

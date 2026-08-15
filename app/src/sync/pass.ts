@@ -22,7 +22,7 @@ import { applySyncResponse, readBirthYear, readPlayer, writeProjection } from '.
 import { projectGains, projectState } from './projection';
 
 /**
- * tech-04 §8.1 — the ordered foreground pass, steps 1–13.
+ * tech-04 §8.1 — the ordered foreground pass.
  *
  * ```
  *  1. AppState → 'active' (or cold start)      ── the caller's trigger, never a timer
@@ -40,21 +40,13 @@ import { projectGains, projectState } from './projection';
  * 13. render level-ups, banners
  * ```
  *
- * ↯ **Steps 10–13 are best-effort, and stopping after step 9 is a *success*.** tech-02 §1.2 makes an
- * unreachable server the normal case: the API is in Docker on a PC that is off between sessions, by
- * design. When it is off the deltas are durably queued, the watermark has advanced, the projection is
- * on screen and the player sees their steps. Treating that as a failed sync would put an error state
- * in front of the player for the app working exactly as specified.
+ * Steps 10–13 are best-effort and **stopping after step 9 is a success** — tech-02 §1.2 makes an
+ * unreachable server the normal case. Surfacing an error there would fault the app for working.
  *
- * ↯ Sync fires **only** on app open and foreground (T3 §1.5, T4 §7.2). Nothing here is scheduled,
- * nothing polls, and nothing assumes it can run while backgrounded.
+ * Fires only on app open and foreground (T3 §1.5, T4 §7.2). Nothing polls or runs backgrounded.
  */
 
-/**
- * M1 ships no content bundle — plan decision §3.2 defers it to M2 — so the client holds no content
- * and says so. The server records this and does not enforce it; `content_version_stale` becomes
- * reachable when the bundle does.
- */
+/** M1 ships no content bundle (plan §3.2 defers it to M2), so the client holds none and says so. */
 export const CLIENT_CONTENT_VERSION = 0;
 
 /** tech-02 §5's queue cap. One batch: a partial upload is never partially reconciled. */
@@ -62,12 +54,8 @@ export const MAX_BATCH = 5_000;
 
 export interface HealthPassResult {
   readonly availability: SdkAvailability;
-  /** What Health Connect reports as granted — the authority, re-read every pass. */
   readonly permissions: HealthPermissions;
-  /**
-   * Heart rate is granted but no birth year has been collected, so `HRmax` cannot be derived and HR
-   * was not read at all (tech-03 §1.4). A distinct state from a denied permission, and a fixable one.
-   */
+  /** HR granted but no birth year, so `HRmax` is underivable and HR was not read (tech-03 §1.4). */
   readonly ageMissing: boolean;
   readonly error: HealthErrorReason | null;
 }
@@ -86,13 +74,11 @@ export interface SyncPassResult {
   readonly health: HealthPassResult;
   /** Deltas minted by *this* pass. Not the queue depth. */
   readonly minted: number;
-  /** Entries still queued when the pass ended. Zero after a clean sync. */
   readonly queued: number;
   readonly server: ServerOutcome;
   readonly contentVersion: number | null;
-  /** The server's content moved past what this build holds. M2 acts on it; M1 reports it. */
   readonly contentStale: boolean;
-  /** ↯ The only source of a level-up. Never projected (§8.4). */
+  /** The only source of a level-up. Never projected (§8.4). */
   readonly levelUps: readonly LevelUp[];
 }
 
@@ -105,7 +91,7 @@ export interface SyncPassDeps {
   readonly now: number;
 }
 
-/** Steps 2–8. Every platform call is wrapped: these reject, they do not resolve empty (§8.3). */
+/** Steps 2–8. Platform calls reject rather than resolving empty (§8.3), so all are wrapped. */
 async function consumeHealth(
   deps: SyncPassDeps,
 ): Promise<{ health: HealthPassResult; minted: readonly MintedDelta[] }> {
@@ -129,8 +115,8 @@ async function consumeHealth(
 
     ageMissing = permissions.heartRate && birthYear === null;
 
-    // What is actually read, as opposed to what is granted. A read of an ungranted type throws, and
-    // HR without an age would be minutes scored against thresholds nobody chose.
+    // What is read, not what is granted: reading an ungranted type throws, and HR without an age
+    // would be minutes scored against thresholds nobody chose.
     const reading: HealthPermissions = {
       steps: permissions.steps,
       heartRate: permissions.heartRate && birthYear !== null,
@@ -140,8 +126,7 @@ async function consumeHealth(
       return { health: { availability, permissions, ageMissing, error: null }, minted: [] };
     }
 
-    // Age 0 is unreachable: `reading.heartRate` is false whenever `birthYear` is null, and the
-    // thresholds are consulted only on the HR path.
+    // Age 0 is unreachable: `reading.heartRate` is false whenever `birthYear` is null.
     const thresholds = thresholdsForAge(
       birthYear === null ? 0 : ageFromBirthYear(birthYear, now, dates),
     );
@@ -153,8 +138,8 @@ async function consumeHealth(
 
     return { health: { availability, permissions, ageMissing, error: null }, minted: deltas };
   } catch (error) {
-    // ↯ A health failure does not fail the pass. It becomes banner state and the sync continues —
-    // the outbox may well hold deltas from an earlier pass that this one can still deliver.
+    // A health failure does not fail the pass — it becomes banner state and the sync continues,
+    // because the outbox may hold deltas from an earlier pass that this one can still deliver.
     return {
       health: {
         availability,
@@ -178,25 +163,19 @@ function project(db: SqliteDatabase, minted: readonly MintedDelta[]): void {
   const current = readPlayer(db);
 
   if (current === null) {
-    // Nothing registered yet, so there is no row to project onto. The deltas are still queued.
     return;
   }
 
-  // Written to SQLite, never only to the store — tech-04 §5.2: the store is a cache of a cache and
-  // may be stale in one direction only.
+  // SQLite, never only the store — tech-04 §5.2 makes the store a cache of a cache.
   writeProjection(db, projectState(current, gains));
 }
 
 /**
- * Replays the queued progression writes, oldest first, and drops each once the server has taken it.
+ * Replay queued progression writes, oldest first, dropping each once the server takes it.
  *
- * ↯ The retry policy, which is the only place in this app where an entry is dropped without the
- * server naming it in `accepted`/`duplicate`: a **4xx is terminal** for that entry, a 5xx or an
- * unreachable host is retryable. A rejected write that stayed queued would be retried on every
- * foreground forever and block everything behind it — and it cannot succeed, because the server has
- * already stated an opinion about it (`insufficient_stat_points` after the mirror drifted, say,
- * which step 12's authoritative snapshot is about to correct anyway). Reported to Sentry rather
- * than swallowed, because a write the player made and the server refused is worth knowing about.
+ * A **4xx is terminal** for an entry; 5xx and unreachable stay queued. This is the only place a
+ * write is dropped without the server naming it — left queued it would retry forever and block
+ * everything behind it, and it cannot succeed because the server has already ruled on it.
  */
 async function replayWrites(db: SqliteDatabase, api: TraverserApi): Promise<void> {
   const queued = [
@@ -256,17 +235,14 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
     // ---- Step 10 ----
     contentVersion = await api.contentVersion();
 
-    // ---- Step 10a. Progression writes replay *before* the sync, not after.
+    // ---- Step 10a. Writes replay *before* the sync.
     //
-    // ↯ Order matters and the reason is not obvious. tech-02 §3's `•` endpoints apply optimistically
-    // to the mirror and replay to the server; step 12 then overwrites the mirror with the response's
-    // authoritative player block. Replaying an allocation *after* that block was computed means the
-    // response does not contain it — so the mirror is rewritten without the points the player just
-    // spent, and the allocation visibly reverts on screen until the next sync. Same for a step goal.
+    // Step 12 overwrites the mirror with the response's authoritative player block, so replaying
+    // an allocation after that block was computed rewrites the mirror without the points just spent
+    // and the allocation visibly reverts until the next pass.
     await replayWrites(db, api);
 
-    // ---- Step 11. The whole queue in one batch: tech-02 §5 requires it to drain completely before
-    // the response is applied, so a partial upload is never partially reconciled.
+    // ---- Step 11. The whole queue in one batch (tech-02 §5).
     const response = await api.sync(
       pending.map((entry) => JSON.parse(entry.payload) as MintedDelta),
       CLIENT_CONTENT_VERSION,

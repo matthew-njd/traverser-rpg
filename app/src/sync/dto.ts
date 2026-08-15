@@ -3,15 +3,11 @@ import type { MintedDelta } from '../health/deltas';
 /**
  * **The one place in the app that sees a wire key** (tech-04 §8.1).
  *
- * tech-02 §2 puts `snake_case` on the wire so payload fields match tech-01's column names 1:1 and a
- * body can be read against the schema with no mental translation. Everything above this module works
- * in camelCase domain shapes; everything below it is JSON. Letting a `steps_delta` leak upward would
- * mean the boundary is wherever someone last touched it.
+ * Above this module everything is camelCase domain shapes; below it everything is JSON. Let a
+ * `steps_delta` leak upward and the boundary becomes wherever someone last touched it.
  *
- * ↯ The parsing is explicit rather than a cast. A cast would let a renamed or missing field arrive as
- * `undefined`, land in the mirror as `NaN` or `null`, and only surface as a wrong number on screen
- * days later — and the mirror is the thing the player's progress lives in between syncs. A wire break
- * should fail loudly at the boundary, where the message can name the field.
+ * Explicit parsing, never a cast: a cast lets a renamed field arrive `undefined`, land in the
+ * mirror as `NaN`, and surface as a wrong number days later. Fail loudly, naming the field.
  */
 
 export class WireFormatError extends Error {
@@ -73,10 +69,7 @@ function flag(value: unknown, field: string): boolean {
 
 // ---- Outbound ---------------------------------------------------------------------------------
 
-/**
- * ↯ `client_delta_id` is sent exactly as it was minted and persisted (tech-02 §5). This mapping must
- * never regenerate it, and there is no code path here that could — the id arrives as data.
- */
+/** `client_delta_id` is sent exactly as minted (tech-02 §5) — never regenerated here. */
 export function toWireDelta(delta: MintedDelta): Json {
   return {
     client_delta_id: delta.clientDeltaId,
@@ -102,7 +95,7 @@ export interface PlayerState {
   readonly createdAt: string;
   readonly level: number;
   readonly xpCurrent: number;
-  /** ↯ Null at Level 60 — the schema's way of saying accrual stops with nothing banked (GDD 1 §4). */
+  /** Null at Level 60 — the schema's way of saying accrual stops with nothing banked (GDD 1 §4). */
   readonly xpToNext: number | null;
   readonly xpLifetime: number;
   readonly unspentStatPoints: number;
@@ -151,9 +144,8 @@ export interface SyncResponse {
   readonly levelUps: readonly LevelUp[];
   readonly activityDays: readonly ActivityDay[];
   /**
-   * ↯ Both lists mean the same thing to the queue — *stop resending this* — and an entry the server
-   * did not name has **not** been accounted for and must survive to be resent (tech-02 §4, §5). The
-   * split exists only so a duplicate-heavy sync is visible in logs rather than invisible.
+   * Both lists mean "stop resending" to the queue; an entry the server did not name must survive
+   * (tech-02 §4, §5). The split exists only to make a duplicate-heavy sync visible in logs.
    */
   readonly acceptedDeltaIds: readonly string[];
   readonly duplicateDeltaIds: readonly string[];
@@ -236,14 +228,9 @@ export function parseSyncResponse(value: unknown): SyncResponse {
 }
 
 /**
- * ↯ The field is `content_version`, **not** `version` — `ContentVersionResponse(int ContentVersion)`.
- *
- * This was wrong until P9 put the client in front of the real server. The unit tests could not catch
- * it: the wire fixture was hand-written from the C# record's *shape* rather than from a response, so
- * the fixture and the parser agreed with each other and both disagreed with the server. Every sync
- * pass would have thrown `WireFormatError` at step 10 and reported the server as `rejected` — with
- * the deltas still safely queued, so the symptom would have been "sync never works" rather than
- * anything pointing here.
+ * The field is `content_version`, **not** `version`. Wrong until P9: the fixture was written from
+ * the C# record's shape rather than a real response, so fixture and parser agreed and both
+ * disagreed with the server. Recorded responses now guard this — see `__tests__/recorded/`.
  */
 export function parseContentVersion(value: unknown): number {
   return int(object(value, 'response').content_version, 'content_version');
@@ -253,17 +240,16 @@ export function parseContentVersion(value: unknown): number {
 
 export interface PlayerSettings {
   readonly dailyReminderTime: string | null;
-  /** ↯ Decimal *strings*, not numbers — tech-02 §2. M5 owns the sliders; the mirror carries them. */
+  /** Decimal *strings*, not numbers — tech-02 §2. M5 owns the sliders; the mirror carries them. */
   readonly musicVolume: string;
   readonly sfxVolume: string;
-  /** ↯ Null means *not yet collected*, not "unknown age" (tech-03 §1.4). */
+  /** Null means *not yet collected*, not "unknown age" (tech-03 §1.4). */
   readonly birthYear: number | null;
 }
 
 /**
- * `GET /players/me` and the body of a registration. tech-02 §3 calls this the mirror's **one-shot
- * repair path**: when the client suspects drift it refetches this whole document rather than
- * reconciling field by field, so anything the mirror persists has to appear here.
+ * `GET /players/me` and a registration body — tech-02 §3's one-shot repair path. Drift is fixed by
+ * refetching the whole document, so anything the mirror persists must appear here.
  */
 export interface PlayerProfile {
   readonly player: PlayerState;
@@ -274,10 +260,7 @@ export interface PlayerProfile {
 }
 
 export interface Registration {
-  /**
-   * ↯ Returned exactly once and never again — only its SHA-256 is stored server-side, so no endpoint
-   * can re-read it. This value must reach `expo-secure-store` before anything else can fail.
-   */
+  /** Returned exactly once — only its SHA-256 is stored. Must reach secure storage first. */
   readonly token: string;
   readonly profile: PlayerProfile;
 }

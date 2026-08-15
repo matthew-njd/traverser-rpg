@@ -13,10 +13,8 @@ import { changeSettings } from '../sync/writes';
 /**
  * GDD 10 screens 2–4's terminal step, and tech-06 §13.1's restore branch beside it.
  *
- * ↯ Registration is one of only three things that genuinely require the server (tech-02 §3) — the
- * others being the content bundle and sync itself. Everything else in this app has a mirror answer,
- * so this is the single screen where "the PC is off" is a wall rather than a shrug, and the caller
- * has to say so rather than failing silently.
+ * One of only three things that genuinely require the server (tech-02 §3), so this is the one
+ * screen where "the PC is off" is a wall rather than a shrug. The caller must say so.
  */
 
 /** GDD 10 §5.1 — 20 characters, "Traverser" pre-filled so a player who doesn't care taps through. */
@@ -24,10 +22,8 @@ export const DEFAULT_TRAVERSER_NAME = 'Traverser';
 export const MAX_TRAVERSER_NAME_LENGTH = 20;
 
 /**
- * ↯ `Intl` on Hermes comes from Android's ICU and its surface varies by OS version, so this is
- * guarded. `UTC` is a poor guess but a harmless one in M1 — the server stores the timezone for
- * GDD 11 §3.2's grace window, which is M4, and the *client* owns every local-date decision that
- * matters today (tech-02 §2).
+ * ↯ `Intl` on Hermes comes from Android's ICU and varies by OS version, so this is guarded. The
+ * `UTC` fallback is harmless in M1 — the client owns every local-date decision (tech-02 §2).
  */
 export function deviceTimezone(): string {
   try {
@@ -45,17 +41,12 @@ export interface RegistrationOptions {
 /**
  * Registers a guest profile and leaves the device able to sync.
  *
- * ↯ The order is deliberate and each step guards the one before it:
+ * The order is load-bearing — each step guards the one before it:
  *
- * 1. **The `player_id` is persisted before the request is made.** A crash between the server
- *    inserting the row and the token reaching storage would otherwise orphan a profile nobody can
- *    claim — and re-minting an id on retry would do it again on every attempt. Reusing the stored id
- *    is exactly what makes `POST /players` idempotent worth having.
- * 2. **The token is saved before the mirror is written.** The mirror is rebuildable from
- *    `GET /players/me`; the token is returned exactly once and is unrecoverable if dropped.
- * 3. **The birth year goes through the normal queued-write path**, not through registration, because
- *    `POST /players` does not accept it (T3 §1.4's deviation lands on `PATCH /settings`). It applies
- *    to the mirror immediately and replays with the next sync like any other progression write.
+ * 1. `player_id` persisted **before** the request, or a crash orphans an unclaimable profile.
+ * 2. Token saved **before** the mirror — the mirror rebuilds from `GET /players/me`, the token is
+ *    returned exactly once. A mirror without a token boots into the tabs and 401s forever.
+ * 3. Birth year goes through the queued-write path: `POST /players` does not accept it (T3 §1.4).
  */
 export async function registerNewPlayer(
   db: SqliteDatabase,
@@ -96,14 +87,9 @@ export class RestoreError extends Error {
 /**
  * tech-06 §13.1's restore branch: accept an exported `player_id` + token instead of registering.
  *
- * ↯ **The credentials are proved before they are stored.** `GET /players/me` is the cheapest call
- * that can only succeed with a valid token, and saving an unverified one would strand the device
- * permanently: the app would boot straight into the tabs, 401 on every sync, and never show this
- * screen again — because the restore path only exists where there is no identity.
- *
- * ↯ This is also the only reason the Postgres backup is restorable at all (§10.1). A perfect dump
- * recovered onto new hardware is a database full of history that no client can claim, because the
- * identity needed to claim it lived only in app storage on a phone that is gone.
+ * Credentials are **proved before they are stored**. Saving an unverified token strands the
+ * device — it boots into the tabs, 401s forever, and never shows this screen again, because the
+ * restore path only exists where there is no identity.
  */
 export async function restoreIdentity(
   db: SqliteDatabase,

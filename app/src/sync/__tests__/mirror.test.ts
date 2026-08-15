@@ -38,10 +38,8 @@ describe('applying a sync response', () => {
   });
 
   /**
-   * ↯ The whole point. tech-02 §6.1's additive rule is the **server's** discipline — every write
-   * there is `col = col + delta` so nothing can erase real effort. What comes back is the *result*
-   * of that merge, an absolute total, and the client stores it verbatim. Adding it to what the
-   * mirror already holds would double every sync, and the mistake is easy to make precisely because
+   * The whole point. tech-02 §6.1's `col = col + delta` is the *server's* discipline; what comes
+   * back is the absolute result, stored verbatim. Adding it doubles every sync, and the mistake is
    * the word "delta" is everywhere else in this protocol.
    */
   it('replaces the mirror rather than adding to it', () => {
@@ -74,7 +72,7 @@ describe('applying a sync response', () => {
   });
 
   /**
-   * ↯ Acknowledged from `accepted ∪ duplicate`, never from "everything we sent". Both lists mean
+   * Acknowledged from `accepted ∪ duplicate`, never from "everything we sent". Both lists mean
    * *stop resending*; an entry the server did not name has not been accounted for and must survive.
    */
   it('drops the entries the server named, in either list', () => {
@@ -102,7 +100,7 @@ describe('applying a sync response', () => {
   });
 
   /**
-   * ↯ Response and dequeue are one transaction. The dangerous order is dropping the queue first: a
+   * Response and dequeue are one transaction. The dangerous order is dropping the queue first: a
    * crash before the mirror is written loses the only local record those deltas existed, and the
    * health watermark moved past them a step earlier.
    */
@@ -143,7 +141,7 @@ describe('the provisional flag (tech-04 §8.4)', () => {
   });
 
   /**
-   * ↯ A projection writes three columns and no others. It has no authority over level, unspent
+   * A projection writes three columns and no others. It has no authority over level, unspent
    * points or allocations — and those are exactly the fields a player can change from another screen
    * while a sync is in flight.
    */
@@ -173,7 +171,7 @@ describe('reads', () => {
     });
   });
 
-  /** ↯ Null means *not yet collected*, which is why it is not defaulted (tech-03 §1.4). */
+  /** Null means *not yet collected*, which is why it is not defaulted (tech-03 §1.4). */
   it('reads the birth year, and reports null when it has not been collected', () => {
     const db = registeredDatabase();
 

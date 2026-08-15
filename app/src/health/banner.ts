@@ -3,13 +3,8 @@ import type { HealthPassResult } from '../sync/pass';
 /**
  * GDD 10 §3.2 / GDD 13 §3.1 — the health banner, and which one to show.
  *
- * ↯ **Never a hard block.** GDD 10 §3.2 is explicit: onboarding continues, the app stays fully
- * usable, and the only consequence is that no step or HR XP accrues. A fitness app that cannot be
- * opened without granting permissions is a bad first impression and risks an uninstall before the
- * player has seen any value.
- *
- * ↯ And never punitive in tone. These read as an offer, not a warning — the copy for the denied case
- * is GDD 10 §3.2's, verbatim.
+ * Never a hard block (GDD 10 §3.2): onboarding continues and the app stays usable; the only
+ * consequence is that no XP accrues. Never punitive in tone — an offer, not a warning.
  */
 export type BannerKind =
   | 'permission_denied'
@@ -61,16 +56,11 @@ export const BANNER_COPY: Record<BannerKind, BannerContent> = {
 };
 
 /**
- * The single banner to render, or null for none.
+ * The single banner to render, or null. One at a time, ordered by how much the player is missing —
+ * stacking them turns a nudge into a wall of complaints about a legal state.
  *
- * ↯ One at a time, and the order is by how much the player is missing out on. Stacking banners on
- * the Character screen would turn a gentle nudge into a wall of complaints about a state the design
- * explicitly says is legal.
- *
- * A read *error* is deliberately not its own banner: the spike found that a revoked permission
- * throws rather than returning empty (tech-03 §3), so `permission_denied` is what the player
- * actually needs to see and act on — and it is what `getGrantedPermissions` will report on the next
- * pass anyway.
+ * A read *error* is deliberately not its own banner: a revoked permission throws rather than
+ * returning empty (tech-03 §3), and `permission_denied` is what the next pass reports anyway.
  */
 export function bannerFor(health: HealthPassResult): BannerKind | null {
   if (health.availability === 'update_required') {
@@ -93,8 +83,8 @@ export function bannerFor(health: HealthPassResult): BannerKind | null {
     return 'heart_rate_denied';
   }
 
-  // Granted but unusable: without a birth year there is no HRmax, so tier minutes are not charged
-  // at all (tech-03 §1.4). Fixable in Settings rather than in OS settings, hence its own target.
+  // Granted but unusable — no birth year means no HRmax (tech-03 §1.4). Fixable in Settings, not
+  // in OS settings, hence its own target.
   if (health.ageMissing) {
     return 'age_missing';
   }

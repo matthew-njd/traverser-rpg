@@ -6,18 +6,13 @@ import { colors } from '@/ui/theme';
 /**
  * GDD 13 §2.1 — three tabs, in this order, Character first.
  *
- * ↯ Three and not more, deliberately. Stats, Equip, battle Items and Bestiary were each flagged by
- * earlier sections as wanting a home; four extra top-level tabs would push past what a phone tab bar
- * supports (five is the practical ceiling). Character and Inventory each host their sub-views
- * instead, as **state rather than routes** (tech-04 §4.3) — so both panes stay mounted, switching
- * costs nothing, and no effect re-runs.
+ * Three and not more: Character and Inventory host their sub-views as state rather than routes
+ * (tech-04 §4.3), which is what keeps the bar under a phone's practical ceiling of five.
  *
- * Battle and Settings are deliberately **not** tabs. Battle opens over whatever screen the player
- * was on and returns to it, which is a root-level route (M2). Settings is pushed from the Character
- * screen's gear icon — low-frequency enough not to warrant permanent nav real estate.
+ * Battle and Settings are deliberately not tabs — Battle opens over the current screen and returns
+ * to it (a root route, M2); Settings is pushed from the gear icon.
  *
- * The icons are text glyphs until the art phase (tech-04 §9.3); the tab bar's shape is what M1 is
- * building once rather than retrofitting at M3.
+ * Icons are text glyphs until the art phase (tech-04 §9.3).
  */
 export default function TabsLayout() {
   return (

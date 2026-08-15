@@ -6,12 +6,8 @@ import { colors, space, type } from '@/ui/theme';
 import { Screen } from '@/ui/primitives';
 
 /**
- * GDD 10 screen 3 — the story intro. Four lines, tap to advance, **not skippable on first launch**
- * (§4: it is brief enough not to warrant a skip, and the Skip link exists only for a reinstall where
- * an existing account was detected — which M1 has no way to detect, so there is no Skip here).
- *
- * The lines are §4's, verbatim and in order. This is premise, not detail; the deeper lore is
- * drip-fed later through zone transitions.
+ * GDD 10 screen 3 — four lines, tap to advance, not skippable on first launch (§4). The Skip link
+ * exists only for a detected reinstall, which M1 cannot detect. Lines are §4's, verbatim and in order.
  */
 const LINES = [
   'Long before memory, roads connected every realm — Olympion, Valheon, Imperion, and worlds beyond. They call it Omnivium: the realm of all roads.',

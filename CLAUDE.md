@@ -38,3 +38,13 @@ Analytics deferred (Sentry only) · guest-only local profile, no auth flows · n
 - Record any deviation from the GDD or tech specs in `/docs/DECISIONS.md` (date, what, why) — one line each; this is the dev-phase changelog.
 - Asset lookups by manifest key only (`enemy_harpy`, `mus_hub`) — no hardcoded filenames or display strings in logic.
 - C#: standard .NET conventions, EF Core migrations checked in. TypeScript: strict mode.
+
+### Comments — guardrails, not documentation
+
+The reasoning behind a decision belongs in `DECISIONS.md`, not in the code. A comment earns its place only if it **stops a wrong edit at the line it sits on**.
+
+- **Keep:** a trap, an ordering requirement, or an invariant the types cannot express (*"not `as const` — RN types `fontVariant` mutable"*). A bare spec pointer where a value looks arbitrary (`// GDD 1 §2.1` beside `/ 20`). In tests, what a mutation would slip past.
+- **Cut:** anything restating the code or the type. *Why* a decision was made. Alternatives considered and rejected. Multi-paragraph file headers.
+- Prefer one or two lines. If the explanation is longer than the code, it belongs in `/docs`.
+
+**The `↯` marker means one thing: the mobile platform behaves unlike what a .NET or web developer would assume.** It is not an emphasis marker and not a "this is subtle" marker. Rarity is the entire mechanism — there are ~27 in the whole client and it should stay that order of magnitude. Matthew is expert in .NET/C# and web React; `↯` is how a genuine RN/Android divergence gets flagged for him, and it stops working the moment it appears on things he'd have guessed.

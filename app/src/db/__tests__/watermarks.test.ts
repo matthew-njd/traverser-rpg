@@ -27,11 +27,8 @@ describe('step high-water mark (tech-03 §8.1)', () => {
   });
 
   /**
-   * **fixtures §11.7, walked exactly.** Four successive reads of one date, including a downward
-   * revision. Total minted across all reads must equal the final observed total — 5,600.
-   *
-   * ↯ Read 4 is the trap: the delta is against the *unlowered* mark (5,600 − 5,400 = 200), never
-   * against the revised observation (5,600 − 5,100 = 500 would re-send 300 already-reported steps).
+   * fixtures §11.7 walked exactly: total minted must equal the final observed total, 5,600. Read 4
+   * is the trap — the delta is against the unlowered mark (200), not the revision (500).
    */
   it('follows the fixtures §11.7 sequence including the downward revision', () => {
     const db = memoryDatabase();
@@ -57,10 +54,7 @@ describe('step high-water mark (tech-03 §8.1)', () => {
     expect(stepHighWater(db, DATE)).toBe(5600);
   });
 
-  /**
-   * ↯ The mark is never lowered. XP already granted is never taken back (GDD 1 §1), and lowering it
-   * would re-send the same steps the moment the provider's count recovered.
-   */
+  /** Never lowered: XP is never taken back (GDD 1 §1), and the steps would re-send on recovery. */
   it('refuses to lower the mark even if asked directly', () => {
     const db = memoryDatabase();
 
@@ -92,11 +86,7 @@ describe('HR minute watermark (tech-03 §8.2)', () => {
     expect(hrMinuteDelta(db, DATE, 3, 12)).toBe(12);
   });
 
-  /**
-   * tech-03 §5.5 / fixtures §11.6 — the client ships **raw uncapped** Tier 3 minutes and the server
-   * charges the 20-minute cap against the day's cumulative. A client that pre-capped would under-
-   * report the day's stored `tier3_minutes` permanently.
-   */
+  /** tech-03 §5.5 — raw uncapped Tier 3; pre-capping under-reports `tier3_minutes` permanently. */
   it('reports raw tier 3 minutes without applying the daily cap', () => {
     const db = memoryDatabase();
 
@@ -153,13 +143,8 @@ describe('read watermark ordering (tech-03 §8.4)', () => {
   });
 
   /**
-   * ↯ **The ordering guarantee, tested as tech-03 §8.4 states it.** The watermark advances only
-   * after the deltas are durably queued — not after a successful read. A crash between read and
-   * enqueue must re-read the same window and produce the same deltas.
-   *
-   * Ordering it the other way loses activity in exactly the case the whole delta protocol exists to
-   * protect against, and it loses it *silently*: the app comes back up looking perfectly healthy,
-   * with a watermark sitting past a walk it never queued.
+   * tech-03 §8.4's ordering: the watermark advances only after the deltas are queued, so a crash
+   * between read and enqueue re-reads the same window. The other order loses a walk silently.
    */
   it('leaves the watermark untouched when a cycle fails part-way', () => {
     const db = memoryDatabase();
@@ -191,19 +176,13 @@ describe('read watermark ordering (tech-03 §8.4)', () => {
   });
 
   /**
-   * ↯ **The ordering guarantee, asserted structurally.** Every write in a read cycle must land
-   * inside one transaction — the delta enqueue, the per-date marks, and the watermark advance.
+   * White-box on purpose — the black-box versions cannot see this failure. **Verified by
+   * mutation:** moving `setReadWatermark` outside the transaction, in either direction, passes
+   * every other test in this file. Before it a crash loses the walk; after it the re-read mints
+   * fresh UUIDv7s the idempotency ledger cannot match, and the day is credited twice.
    *
-   * This is a white-box test on purpose, because the black-box versions cannot see the failure.
-   * Verified by mutation: moving `setReadWatermark` outside the transaction, in either direction,
-   * passes every other test in this file. Before it, a crash mid-cycle leaves a watermark sitting
-   * past deltas that were never queued — the walk is gone and the app looks healthy. After it, a
-   * crash between commit and advance re-reads a window whose deltas are already queued, and since
-   * P6 mints a fresh UUIDv7 per delta the re-read produces *different* ids, which the server's
-   * idempotency ledger cannot recognise as duplicates — so the day is credited twice.
-   *
-   * The earlier "fails part-way" test could not catch either: it wraps the cycle in an outer
-   * transaction, whose rollback hides any write that escaped the inner one.
+   * The "fails part-way" test cannot catch either — its outer transaction's rollback hides any
+   * write that escaped the inner one.
    */
   it('performs every write of a cycle inside one transaction', () => {
     const db = memoryDatabase();
@@ -248,8 +227,7 @@ describe('read watermark ordering (tech-03 §8.4)', () => {
     expect(begin).toBe(0);
     expect(commit).toBe(statements.length - 1);
 
-    // Both writes inside the one transaction, and the queue write first — the order the spec states
-    // even though the transaction is what makes it safe.
+    // Both inside the one transaction, queue write first — the order the spec states.
     expect(queued).toBeGreaterThan(begin);
     expect(advanced).toBeGreaterThan(queued);
     expect(advanced).toBeLessThan(commit);
@@ -258,10 +236,7 @@ describe('read watermark ordering (tech-03 §8.4)', () => {
     expect(statements.filter((s) => s.startsWith('BEGIN'))).toHaveLength(1);
   });
 
-  /**
-   * The same guarantee across a real process death: whatever the reopened database reports must be
-   * self-consistent — a watermark implies its deltas are already queued.
-   */
+  /** Across a real process death: a watermark in the reopened database implies its deltas. */
   it('keeps deltas and watermark consistent across process death', () => {
     const file = new FileDatabase();
 
@@ -295,10 +270,7 @@ describe('read watermark ordering (tech-03 §8.4)', () => {
     }
   });
 
-  /**
-   * Re-reading the same window after a crash must produce the same deltas — which, given the marks
-   * did not move, it does. This is the property that makes the re-read safe rather than duplicative.
-   */
+  /** The re-read produces the same deltas, which is what makes it safe rather than duplicative. */
   it('re-reading the same window after a failed cycle mints the same delta', () => {
     const db = memoryDatabase();
 
@@ -344,12 +316,7 @@ describe('session ledger (tech-03 §6)', () => {
   const early = { sessionId: 'hr:1000', startedAt: '2026-08-03T10:00:00Z', endedAt: '2026-08-03T10:20:00Z' };
   const late = { sessionId: 'hr:2000', startedAt: '2026-08-03T10:28:00Z', endedAt: '2026-08-03T10:45:00Z' };
 
-  /**
-   * ↯ **The frozen start.** The session id is derived from `started_at`, so a start that moves is an
-   * id that moves — a watch syncing late would shift the start, mint a second id, and the server
-   * would hold two sessions for one workout, double-counting encounter rolls and re-arming the
-   * overactivity warning (tech-03 §6.1).
-   */
+  /** The frozen start: the id derives from `started_at`, so a moved start is a second session. */
   it('freezes started_at on first observation and only grows ended_at', () => {
     const db = memoryDatabase();
 

@@ -4,10 +4,8 @@ import type { SqliteDatabase } from './types';
 /**
  * The durable write queue (tech-02 §5, tech-04 §6.2).
  *
- * The contract T2 §5 fixes: an entry survives process death, entries drain FIFO, and an entry is
- * removed **only** after the server names its id in `accepted_delta_ids` or `duplicate_delta_ids`.
- * Both of those lists mean the same thing to this queue — stop resending — which is why
- * {@link acknowledge} takes them together.
+ * Entries survive process death, drain FIFO, and are removed only once the server names the id in
+ * `accepted_delta_ids` or `duplicate_delta_ids` — both mean "stop resending" to this queue.
  */
 export type OutboxKind = 'sync_delta' | 'allocation' | 'settings';
 
@@ -37,14 +35,11 @@ const toEntry = (row: OutboxRow): OutboxEntry => ({
 });
 
 /**
- * ↯ `client_op_id` is minted by the caller and **never regenerated on retry** (tech-02 §5) — it is
- * the server's idempotency key, so a fresh id on a resend is a double-credit. It must also never be
- * derived from the payload: two legitimately distinct deltas can be identical in value, and
- * tech-03 §8.1's high-water-mark scheme makes identical-value deltas *likely* rather than merely
- * possible, so a content-derived key would silently drop real steps.
+ * `client_op_id` is the server's idempotency key (tech-02 §5): **never regenerated on retry**, or a
+ * resend double-credits, and **never derived from the payload**, because two distinct deltas can be
+ * identical in value and §8.1's marks make that likely.
  *
- * `INSERT OR IGNORE`, so enqueueing the same id twice is a no-op rather than a crash — the caller
- * that re-enqueues after an ambiguous failure is doing the right thing.
+ * `INSERT OR IGNORE` — re-enqueueing after an ambiguous failure is correct, not an error.
  */
 export function enqueue(
   db: SqliteDatabase,
@@ -58,9 +53,8 @@ export function enqueue(
 }
 
 /**
- * Enqueues a batch in one transaction. Used by delta minting (P6), where the whole point of
- * tech-03 §8.4's ordering is that the deltas are durable *before* the watermark moves — a partially
- * written batch would leave the watermark describing activity that was never queued.
+ * One transaction: a partially written batch would leave the watermark describing activity that was
+ * never queued (tech-03 §8.4).
  */
 export function enqueueAll(
   db: SqliteDatabase,
@@ -80,10 +74,8 @@ export function enqueueAll(
 /**
  * The oldest `limit` entries, FIFO. Does not remove them — see {@link acknowledge}.
  *
- * `kind` narrows to one write type. The queue is deliberately one table (tech-04 §6.2) because every
- * kind shares the same durability, ordering and retry rules — but they do not share an *endpoint*,
- * so the drain reads one kind at a time rather than sending a mixed batch somewhere that only
- * understands part of it.
+ * One table for every kind (tech-04 §6.2), but kinds do not share an endpoint, so `kind` narrows
+ * the drain rather than posting a mixed batch somewhere that understands part of it.
  */
 export function peek(db: SqliteDatabase, limit: number, kind?: OutboxKind): OutboxEntry[] {
   const where = kind === undefined ? '' : 'WHERE kind = ?';
@@ -108,9 +100,8 @@ export function count(db: SqliteDatabase): number {
 /**
  * Removes entries the server has accounted for.
  *
- * ↯ Called with `accepted ∪ duplicate` from the sync response, never with "everything we sent".
- * An entry the server did not name has not been accounted for and must survive to be resent — that
- * is the difference between at-least-once delivery and losing a day's steps to a truncated response.
+ * Called with `accepted ∪ duplicate`, never "everything we sent" — an entry the server did not name
+ * must survive to be resent.
  */
 export function acknowledge(db: SqliteDatabase, clientOpIds: readonly string[]): number {
   if (clientOpIds.length === 0) {
@@ -128,11 +119,7 @@ export function acknowledge(db: SqliteDatabase, clientOpIds: readonly string[]):
   return removed;
 }
 
-/**
- * Records a failed drain attempt. Nothing reads this to make a decision yet — tech-02 §5's backoff
- * is time-based and lives in the drain loop (P7) — but a queue that cannot say how many times it
- * has tried is a queue you cannot diagnose when it stops moving.
- */
+/** Records a failed drain attempt. Diagnostic only — nothing decides on it yet (tech-02 §5). */
 export function recordAttempt(db: SqliteDatabase, clientOpIds: readonly string[]): void {
   if (clientOpIds.length === 0) {
     return;

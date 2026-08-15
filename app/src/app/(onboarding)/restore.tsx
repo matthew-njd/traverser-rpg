@@ -13,14 +13,9 @@ import { colors, space, type } from '@/ui/theme';
 /**
  * tech-06 §13.1 — restore an exported identity instead of registering.
  *
- * ↯ This screen is why the Postgres backup is worth taking. §10.1: a perfect dump restored onto new
- * hardware is a database full of history that **no client can claim**, because `player_id` and the
- * bearer token live only in app storage (tech-04 §6.5) and uninstall destroys both. Without this
- * branch the backup set restores data nobody can reach.
- *
- * ↯ Its weakness is stated plainly in §13.1 and is not fixable here: it only helps if the export was
- * taken *before* the loss. That is the argument for Settings surfacing it prominently rather than
- * burying it, and for it being the fourth member of the backup set at P9.
+ * This screen is why the Postgres backup is worth taking (§10.1): `player_id` and the token live
+ * only in app storage (tech-04 §6.5), so without this branch a restored dump holds history no
+ * client can claim. Its weakness (§13.1): it only helps if the export was taken *before* the loss.
  */
 export default function Restore() {
   const router = useRouter();

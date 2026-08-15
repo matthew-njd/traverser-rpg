@@ -3,7 +3,7 @@ import type { TextStyle } from 'react-native';
 /**
  * The M1 token set — one fixed dark palette, deliberately.
  *
- * ↯ `app.config.ts` sets `userInterfaceStyle: 'automatic'`, which governs system chrome; the app's
+ * `app.config.ts` sets `userInterfaceStyle: 'automatic'`, which governs system chrome; the app's
  * own surfaces do not follow it. GDD 13 describes one visual world (the old roads at dusk) rather
  * than a light and a dark variant of it, and a second palette would have to be designed rather than
  * derived. When the art phase lands (tech-04 §9.3 replaces the placeholders) this is the file it
@@ -40,7 +40,7 @@ export const space = {
 } as const;
 
 /**
- * ↯ Corners stay in the 2–8 range. The design pass is blunt about why: a 10px radius reads as a
+ * Corners stay in the 2–8 range. The design pass is blunt about why: a 10px radius reads as a
  * consumer app, a carved edge reads as stone. `pill` is exempt — it is a shape (the XP track), not
  * a corner treatment.
  */
@@ -53,7 +53,7 @@ export const radius = {
 /**
  * Spread into any style that renders a figure that changes while the player is looking at it.
  *
- * ↯ Not a cosmetic preference. Proportional digits have different widths, so a step count ticking
+ * Not a cosmetic preference. Proportional digits have different widths, so a step count ticking
  * 7,999 → 8,000 visibly reflows the text around it and the row jitters. Tabular figures are
  * fixed-width, so the number changes and nothing else moves.
  *
@@ -65,7 +65,7 @@ export const radius = {
 export const tabular: Pick<TextStyle, 'fontVariant'> = { fontVariant: ['tabular-nums'] };
 
 /**
- * ↯ Deliberately **not** a theme token. 44dp is an accessibility floor, not a look — a restyle may
+ * Deliberately **not** a theme token. 44dp is an accessibility floor, not a look — a restyle may
  * change every colour and radius in this file, and must not be able to shrink a tap target below
  * this. Kept here so it is next to the values it constrains, and named so a future palette pass
  * reads it as a limit rather than a preference.

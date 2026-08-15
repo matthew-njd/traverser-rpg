@@ -3,12 +3,12 @@ import { render, screen } from '@testing-library/react-native';
 import { XpBar } from '../XpBar';
 
 /**
- * ↯ Rendered rather than eyeballed for one reason: **`xpToNext` is null at Level 60**, and that null
+ * Rendered rather than eyeballed for one reason: **`xpToNext` is null at Level 60**, and that null
  * is meaningful — it is the schema saying XP accrual has stopped with nothing banked (GDD 1 §4). The
  * plausible bug is treating it as a missing number, which renders an empty bar and reads to the
  * player as having lost everything at the moment they reached the cap.
  *
- * ↯ `render` is `await`ed — RNTL v14 made it async.
+ * `render` is `await`ed — RNTL v14 made it async.
  */
 describe('XpBar', () => {
   it('shows progress toward the next level', async () => {

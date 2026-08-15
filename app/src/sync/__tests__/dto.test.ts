@@ -37,7 +37,7 @@ describe('outbound', () => {
   });
 
   /**
-   * ↯ The id is sent exactly as minted (tech-02 §5). A mapping that regenerated it would break
+   * The id is sent exactly as minted (tech-02 §5). A mapping that regenerated it would break
    * idempotency in the one place that cannot be noticed from the client: the retry would be treated
    * as new work and the day would credit twice.
    */
@@ -86,7 +86,7 @@ describe('inbound', () => {
     expect(parsed.duplicateDeltaIds).toEqual(['b']);
   });
 
-  /** ↯ Null at Level 60 is meaningful — accrual has stopped with nothing banked (GDD 1 §4). */
+  /** Null at Level 60 is meaningful — accrual has stopped with nothing banked (GDD 1 §4). */
   it('keeps a null xp_to_next as null rather than coercing it to zero', () => {
     const parsed = parseSyncResponse(
       wireSyncResponse({ player: wirePlayer({ level: 60, xp_to_next: null }) }),
@@ -104,7 +104,7 @@ describe('inbound', () => {
   });
 
   /**
-   * ↯ A wire break must fail at the boundary, not sink into the mirror. The mirror is where the
+   * A wire break must fail at the boundary, not sink into the mirror. The mirror is where the
    * player's progress lives between syncs, and a missing field arriving as `undefined` would be
    * stored as null or NaN and only surface as a wrong number on screen days later.
    */

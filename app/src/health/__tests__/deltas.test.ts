@@ -27,12 +27,7 @@ const readyDatabase = () => {
 
 /**
  * tech-03 §8 — delta minting against the high-water marks, asserted against fixtures §11.6, §11.7
- * and §11.8.
- *
- * ↯ The one sentence the whole suite is about: **the read is cumulative and the merge is additive.**
- * tech-02 §6.1 merges steps with `col = col + delta` and §4.1 re-reads days already reported, so a
- * client that shipped the day's observed total would multiply a day's steps by the number of times
- * the app was opened.
+ * and §11.8. The property under test: the read is cumulative and the merge is additive.
  */
 
 const AGE_30 = thresholdsForAge(30);
@@ -56,20 +51,9 @@ const hrSnapshot = (samples: Parameters<typeof bucketMinutes>[0]): HealthSnapsho
 const stepsOf = (deltas: readonly MintedDelta[]) => deltas.map((delta) => delta.stepsDelta);
 
 /**
- * ↯ **A device's first read credits nothing.** tech-03 §4.1's window falls back to `now − 72h` when
- * there is no watermark, and on a fresh install there never is — so without this rule the app
- * harvests whatever history Health Connect already holds. Observed at P9 on a real phone: a first
- * sync read four days back and put the player on Level 6 before they had taken a step *in the game*.
- *
- * Three things break without it, and they are the same situation seen from three angles:
- *
- *  1. Every Traverser is supposed to start at Level 1.
- *  2. GDD 10 §6's tutorial battle is scripted with verified damage values against Level 1 stats, and
- *     enemy level always equals the player's — arriving at Level 6 makes the script wrong.
- *  3. A **restored** identity double-credits: the marks live in device-only tables that come back
- *     empty on a new phone, so the client re-mints fresh delta ids for days the server already holds
- *     and tech-02 §6.1's additive merge adds them twice. The idempotency ledger cannot catch it,
- *     because those ids really are new.
+ * A device's first read credits nothing (tech-03 §4.1). Guards three things at once: every
+ * Traverser starts at Level 1, GDD 10 §6's tutorial battle is scripted against Level 1 stats, and a
+ * restored identity would otherwise re-mint fresh ids for days the server already holds.
  */
 describe('the first read establishes a baseline', () => {
   it('credits nothing and still raises the marks', () => {
@@ -118,11 +102,8 @@ describe('the first read establishes a baseline', () => {
   });
 
   /**
-   * ↯ The bug this rule was rewritten for, found on the device at P9. Heart rate needs a birth year
-   * and the birth year only exists from registration onward, so the **first** pass of a fresh install
-   * reads steps and not HR. A single device-wide baseline flag is consumed by that pass, and the
-   * first HR read then lands *after* it and credits the entire history: 142 Tier-1 minutes for a day
-   * the player had not walked in the app, while steps were correctly baselined to a 62-step delta.
+   * The per-source rule. HR needs a birth year, so a fresh install's first pass reads steps and
+   * not HR — a single device-wide flag is consumed by steps and HR then credits the whole history.
    */
   it('baselines each source the first time that source is read, not the first time any is', () => {
     const db = memoryDatabase();
@@ -153,11 +134,7 @@ describe('the first read establishes a baseline', () => {
     expect(hrMinutesReported(db, DATE, 1)).toBe(142);
   });
 
-  /**
-   * ↯ A source read with nothing to show still has to be marked as read — otherwise "never read" and
-   * "read, found nothing" are indistinguishable and the next read baselines all over again. Registering
-   * at 6am before moving is enough to hit this.
-   */
+  /** A source read with nothing to show still marks, or the next read baselines all over again. */
   it('marks a source as read even when it observed nothing', () => {
     const db = memoryDatabase();
 
@@ -213,10 +190,8 @@ describe('the first read establishes a baseline', () => {
 
 describe('step high-water marks (fixtures §11.7)', () => {
   /**
-   * ↯ The four-read fixture, in order, on one database. Read 4 is the trap: after a downward
-   * revision the delta is against the *unlowered* mark (5,600 − 5,400 = 200), never against the
-   * revised observation — 5,600 − 5,100 = 500 would re-send 300 steps the server has already
-   * credited.
+   * fixtures §11.7 in order on one database. Read 4 is the trap: the delta is against the unlowered
+   * mark (200), not the revised observation (500 would re-send 300 already-credited steps).
    */
   it('mints 2000, 3400, nothing, then 200 across a rising total and a revision', () => {
     const db = readyDatabase();
@@ -275,10 +250,8 @@ describe('step high-water marks (fixtures §11.7)', () => {
 
 describe('HR minute high-water marks (fixtures §11.6)', () => {
   /**
-   * ↯ The client column of fixtures §11.6. First sync mints 15 Peak minutes, a later read observing
-   * 27 for the day mints **12** — the increment — and the day's stored total reaches 27 rather than
-   * the capped 20. The cap is the server's, evaluated against its own post-merge cumulative; a client
-   * that pre-capped would mint 5 here and the day's `tier3_minutes` would read 20 forever.
+   * The client column of fixtures §11.6 — 15 then 12, reaching 27, not the capped 20. A client that
+   * pre-capped would mint 5 here and the day's `tier3_minutes` would read 20 forever.
    */
   it('mints the increment per (date, tier) and never caps Tier 3', () => {
     const db = readyDatabase();
@@ -374,10 +347,8 @@ describe('session identity (fixtures §11.4, §11.8)', () => {
   });
 
   /**
-   * ↯ **The earlier id wins** (tech-03 §6.2). The later session's minutes fold into it and the later
-   * id is tombstoned locally, never sent again. Minting a third id here — or keeping the later one —
-   * would leave the server holding two sessions for one workout, double-counting encounter rolls and
-   * re-arming the overactivity warning.
+   * The earlier id wins (tech-03 §6.2). Minting a third id, or keeping the later one, leaves the
+   * server holding two sessions for one workout.
    */
   it('merges two sessions into the earlier id when backfill joins them', () => {
     const db = readyDatabase();
@@ -397,11 +368,7 @@ describe('session identity (fixtures §11.4, §11.8)', () => {
     expect(live[0]?.endedAt).toBe(new Date(edt('2026-07-19T10:35')).toISOString());
   });
 
-  /**
-   * ↯ **The start instant is frozen** (tech-03 §6.1). A later read whose samples now begin earlier —
-   * a watch that synced late — keeps the id and start it was first observed with. The id is derived
-   * from the start, so a start that moves is a second session for one workout.
-   */
+  /** The start is frozen (tech-03 §6.1): a late-syncing watch keeps the id and start first seen. */
   it('keeps the frozen start when backfill would place the session earlier', () => {
     const db = readyDatabase();
 
@@ -457,10 +424,8 @@ describe('the outbox entry', () => {
   });
 
   /**
-   * ↯ Never derived from the content (tech-02 §5, tech-03 §8.3). Two legitimately distinct deltas
-   * can be identical in value — and the high-water scheme makes that *likely*, since two days of the
-   * same walk produce the same number — so a content-derived key would collide and the second
-   * would be silently dropped.
+   * Never derived from content (tech-02 §5): two days of the same walk produce the same number, so
+   * a content key would collide and silently drop the second.
    */
   it('gives identical-valued deltas distinct ids', () => {
     const db = readyDatabase();
@@ -493,14 +458,9 @@ describe('the watermark advance (tech-03 §8.4)', () => {
   });
 
   /**
-   * ↯ The structural assertion, and the reason this test is white-box: **every write of the pass is
-   * one transaction** — the session ledger, the queued deltas, the marks and the watermark. The rule
-   * is that the watermark advances only after the deltas are durably queued, and a violation is
-   * invisible in the resulting rows: the app comes back up from a crash looking perfectly healthy
-   * with a watermark sitting past a walk it never queued.
-   *
-   * It also pins the composition. `commitHealthRead` calls four separately-transactional functions,
-   * and only a re-entrant `transact` keeps that to one `BEGIN` rather than one per call.
+   * White-box on purpose: a violation is invisible in the resulting rows — the app comes back from
+   * a crash looking healthy with a watermark past a walk it never queued. Also pins the composition,
+   * since only a re-entrant `transact` keeps four transactional calls to one `BEGIN`.
    */
   it('performs the whole pass in a single transaction', () => {
     const { db, statements } = recordingDatabase(readyDatabase());

@@ -14,17 +14,15 @@ import { usePlayerStore } from './state/playerStore';
  * The composition root: the one place that wires the database, the health provider, the API client
  * and the stores together. Routes call into here; nothing in `app/` constructs a dependency.
  *
- * ↯ tech-04 §13 keeps `app/` to routes and no logic. This module is what makes that possible without
- * a provider tree — the singletons are process-scoped because the database and the identity are
- * too, and a React context would only add a way for them to be missing.
+ * tech-04 §13 keeps `app/` to routes and no logic. Singletons rather than a provider tree: the
+ * database and the identity are process-scoped anyway, and a context adds a way for them to be missing.
  */
 
 let identity: DeviceIdentity | null = null;
 
 /**
- * tech-04 §7.1 steps 2–4. **Touches the network zero times and the health provider zero times** —
- * a sync that takes eight seconds against a PC that is off must never be something the player waits
- * through, so the boot path cannot contain one.
+ * tech-04 §7.1 steps 2–4. Touches the network and the health provider zero times — the player must
+ * never wait eight seconds on a PC that is off.
  */
 export async function bootRuntime(): Promise<SqliteDatabase> {
   const db = openTraverserDatabase();
@@ -54,10 +52,8 @@ function apiClient(): TraverserApi | null {
 }
 
 /**
- * ↯ Re-entrancy guard. `AppState` can deliver `'active'` more than once in quick succession — a
- * permission dialog dismissing, a system sheet closing — and two overlapping passes would both read
- * the same health window. The second would mint nothing (the watermarks see to that), but it would
- * still double the upload, so the cheap fix is to let the second caller await the first.
+ * ↯ Re-entrancy guard: `AppState` delivers `'active'` more than once in quick succession — a
+ * permission dialog dismissing, a sheet closing. The second pass mints nothing but still uploads.
  */
 let inFlight: Promise<SyncPassResult> | null = null;
 
@@ -79,8 +75,7 @@ export function syncNow(now = Date.now()): Promise<SyncPassResult> {
         now,
       });
 
-      // ↯ SQLite first, store second, always — tech-04 §5.2. The pass has already written the
-      // mirror; this is the hydration that makes the screens agree with it.
+      // SQLite first, store second, always (tech-04 §5.2).
       usePlayerStore.getState().hydrate(db);
       useAppStore.getState().syncFinished(result, bannerFor(result.health));
 

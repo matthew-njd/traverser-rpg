@@ -9,11 +9,9 @@ import { readPlayer, writeSettings } from './mirror';
  * tech-02 §3's progression writes — the endpoints marked `•`, which **apply optimistically to the
  * mirror and replay to the server**.
  *
- * ↯ The local write and the queue entry are one transaction, always. A mirror updated without a
- * queued replay is a change the server never hears about; a queued replay without the mirror update
- * is a change the player does not see until the next sync. Neither half is safe alone, and the app
- * is expected to be offline most of the time (tech-02 §1.2), so "it will be fixed on the next sync"
- * is not a recovery — it is the state the app lives in.
+ * The local write and the queue entry are one transaction, always. A mirror without a replay is a
+ * change the server never hears; a replay without the mirror is a change the player cannot see.
+ * "Fixed on the next sync" is not a recovery here — offline is the state the app lives in.
  */
 
 export interface StatDeltas {
@@ -45,15 +43,11 @@ export class AllocationError extends Error {
 }
 
 /**
- * Spends unspent stat points (GDD 1 §5, GDD 13 §3.2).
+ * Spends unspent stat points (GDD 1 §5, GDD 13 §3.2). Permanent on confirm — the GDD names no
+ * respec mechanic, which is why the stepper's ± stays in component state until confirmed.
  *
- * ↯ **Permanent on confirm.** The locked GDD states no respec mechanic anywhere, so there is no
- * undo and no "unallocate" path — which is why the stepper's ± lives in component state (L4) and
- * only the confirmed total reaches here.
- *
- * ↯ The operation id is minted **once**, here, and reused on every retry (tech-02 §2). An additive
- * write with a fresh id per attempt is the difference between idempotent and doubling — the server
- * rejects a replay on this id rather than silently re-adding it.
+ * The operation id is minted once and reused on every retry (tech-02 §2). On an additive write a
+ * fresh id per attempt is the difference between idempotent and doubling.
  */
 export function allocateStatPoints(
   db: SqliteDatabase,
@@ -120,11 +114,10 @@ export function allocateStatPoints(
 }
 
 /**
- * Changes step goal and/or birth year. Null means *leave alone*, matching the wire.
+ * Step goal and/or birth year. Null means leave alone, matching the wire.
  *
- * ↯ Changing the birth year re-derives HR thresholds for **future reads only** and never recomputes
- * past days (tech-03 §1.4). XP is never taken back (GDD 1 §1), so a correction to the age is not a
- * correction to history — it is a correction to what happens next.
+ * A new birth year re-derives thresholds for future reads only (tech-03 §1.4) — XP is never taken
+ * back (GDD 1 §1), so correcting an age does not correct history.
  */
 export function changeSettings(db: SqliteDatabase, settings: SettingsPayload, now: number): void {
   if (settings.dailyStepGoal === null && settings.birthYear === null) {

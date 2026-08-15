@@ -2,7 +2,7 @@ import { ApiStatusError, ApiUnreachableError, createApi } from '../api';
 import { wireSyncResponse } from './fixtures';
 
 /**
- * ↯ The distinction this module exists to draw: `fetch` **rejects** on a network error and
+ * The distinction this module exists to draw: `fetch` **rejects** on a network error and
  * **resolves** on a 500. One means "the PC is off, try later, nothing is wrong" — the normal case
  * per tech-02 §1.2 — and the other means the server has an opinion. Collapsing them would either
  * put an error in front of the player for the app working as designed, or hide a real server fault

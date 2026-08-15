@@ -2,31 +2,17 @@ import type { DerivedSession, TierThresholds } from './derive';
 import type { LocalDateResolver } from './localDate';
 
 /**
- * The platform seam (tech-03 §11).
- *
- * Everything Health-Connect-specific — availability, permissions, the read calls, pagination — lives
- * behind this interface in `healthconnect.ts`. Everything from tech-03 §5 down is platform-neutral
- * and knows nothing about it.
- *
- * ↯ **Nothing is being built for iOS here** (CLAUDE.md is Android-only). The seam exists because
- * tech-03 §11 asks that §5–§9 never reach for a Health Connect type, which is good hygiene whether
- * or not an iOS port ever happens — and it is what makes the derivation testable with no device.
+ * The platform seam (tech-03 §11). Health-Connect-specific code lives behind this in
+ * `healthconnect.ts`; §5 downward is platform-neutral and testable with no device.
  */
 
 /**
- * ↯ Three states, not two. Health Connect is part of the OS on Android 14+ and a separately
- * installable APK below it, so `update_required` is a state real devices are in — the platform
- * exists but is too old, and the fix is a store deep link rather than the Health Connect settings
- * deep link. Collapsing it into `unavailable` produces an app that is inexplicably dead on some
- * phones (tech-03 §2).
+ * Three states, not two. Health Connect is part of the OS on Android 14+ and a separate APK below
+ * it, so `update_required` is a real state — and its fix is a store link, not the settings link.
  */
 export type SdkAvailability = 'available' | 'update_required' | 'unavailable';
 
-/**
- * ↯ Per record type, never a boolean. The player can grant steps and deny heart rate — Health
- * Connect's dialog is per-record-type — and tech-03 §3's table gives each combination its own
- * first-class behaviour, including the degenerate HR-only case.
- */
+/** Per record type, never a boolean — the player can grant steps and deny heart rate. */
 export interface HealthPermissions {
   readonly steps: boolean;
   readonly heartRate: boolean;
@@ -39,20 +25,14 @@ export interface ReadWindow {
   readonly endMs: number;
 }
 
-/**
- * What the provider hands back, already bucketed, tiered and assigned to local dates (tech-03 §11).
- * Integers and instants only — no BPM crosses this boundary (§1.1).
- */
+/** Already bucketed, tiered and dated (tech-03 §11). Integers and instants only — no BPM (§1.1). */
 export interface HealthSnapshot {
-  /** `activity_date` → the day's observed step total. Health Connect de-duplicates across origins. */
   readonly dailySteps: ReadonlyMap<string, number>;
   readonly sessions: readonly DerivedSession[];
-  /** The end of the window this snapshot consumed. */
   readonly consumedThrough: number;
   /**
-   * Which sources were actually read, as opposed to granted. An empty `dailySteps` means "no steps
-   * that window" when steps were read and "we did not look" when they were not, and delta minting
-   * has to tell those apart to know whether it has ever seen a source before.
+   * Which sources were read, as opposed to granted. Empty `dailySteps` means "none that window"
+   * when steps were read and "did not look" when they were not; delta minting must tell them apart.
    */
   readonly readSources: HealthPermissions;
 }
@@ -64,11 +44,8 @@ export type HealthErrorReason =
   | 'unknown';
 
 /**
- * ↯ Health Connect **throws**; it does not return empty (tech-03 §3 as corrected by the spike, and
- * tech-04 §8.3). A read without permission raises `SecurityException`, and a read before
- * `initialize()` raises "client not initialized". This is a place the web instinct actively misleads
- * — a failed `fetch` resolves and you check `res.ok`, whereas these reject — so every call into the
- * platform is wrapped and the reason is mapped to banner state rather than to a crash.
+ * ↯ Health Connect **throws**; it does not return empty (tech-03 §3, tech-04 §8.3). A failed `fetch`
+ * resolves and you check `res.ok` — these reject. Every platform call is wrapped.
  */
 export class HealthError extends Error {
   constructor(
@@ -85,18 +62,14 @@ export interface HealthProvider {
   availability(): Promise<SdkAvailability>;
 
   /**
-   * ↯ Called on **every** pass, not once at onboarding. Changing permissions in Health Connect
-   * settings restarts the app process, after which every call fails with "client not initialized"
-   * (tech-03 §3, spike-amended). It is per-process, not per-install.
+   * ↯ Called on every pass, not once at onboarding. Changing permissions restarts the app process,
+   * after which every call fails with "client not initialized" (tech-03 §3).
    */
   initialize(): Promise<void>;
 
   requestPermissions(): Promise<HealthPermissions>;
 
-  /**
-   * ↯ The authority on what is granted — never `requestPermission`'s return value, and re-checked on
-   * every foreground because revocation from OS settings is silent from the app's point of view.
-   */
+  /** The authority on what is granted — never `requestPermissions`' return value (tech-03 §3). */
   grantedPermissions(): Promise<HealthPermissions>;
 
   read(
@@ -110,7 +83,7 @@ export interface HealthProvider {
    * The banner's tap target (tech-03 §3).
    *
    * ↯ Deep-link to settings; do **not** re-trigger `requestPermissions` after a denial. Android
-   * suppresses repeat prompts, so the button would simply appear broken.
+   * suppresses repeat prompts, so the button would just appear broken.
    */
   openSettings(): void;
 }
@@ -119,19 +92,11 @@ export interface HealthProvider {
 export const READ_WINDOW_HOURS = 72;
 
 /**
- * The read window: `[max(watermark, now − 72h), now]`, **snapped back to local midnight**.
+ * `[max(watermark, now − 72h), now]`, snapped back to local midnight (tech-03 §4.1).
  *
- * 72 hours is the smallest span that satisfies the design — GDD 11 §3.2's Auto Sync Grace looks back
- * 48 hours and needs synced totals to evaluate against, and provider backfill (a watch that syncs
- * hours after a workout) can land data behind the wall clock; the extra 24 hours is that slack.
- *
- * ↯ **The snap to local midnight is not in tech-03 §4.1, and without it the high-water scheme loses
- * activity.** §8.1 mints `observed_total(date) − reported_high_water(date)`, which requires the
- * observed value to be the day's *whole* total. A watermark at 18:00 yesterday would make the first
- * daily bucket cover 18:00→midnight only; that partial total sits below the mark already recorded
- * for the day, the delta is zero, and the evening's steps are dropped — silently, and permanently,
- * because §8.1 also forbids lowering the mark. Widening the start is free: re-reading days already
- * reported is normal and expected, and §8 is what makes it safe.
+ * The snap is load-bearing. §8.1 mints `observed_total − mark`, which needs the day's *whole*
+ * total; a watermark at 18:00 would make the first bucket cover 18:00→midnight, land below the
+ * existing mark, and drop the evening silently and permanently.
  */
 export function readWindowFor(
   watermark: string | null,

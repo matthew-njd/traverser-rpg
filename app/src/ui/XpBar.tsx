@@ -6,13 +6,11 @@ import { colors, radius, space, tabular, type } from './theme';
  * GDD 13 §3.1 — level and progress toward the next, *"a thin progress bar rather than a raw number
  * to keep the read glanceable"*.
  *
- * ↯ `xpToNext` is **null at Level 60** and that is not a missing value — it is the schema saying
- * accrual has stopped with nothing banked (GDD 1 §4). The bar reads MAX and fills completely; it
- * must never render as 0 or as an empty bar, which would look like a loss.
+ * `xpToNext` is null at Level 60 — not missing, but accrual stopped with nothing banked (GDD 1 §4).
+ * The bar reads MAX and fills; rendering 0 or empty would look like a loss.
  *
- * ↯ There is no annotation for a provisional value (tech-04 §8.4). A projection that corrects
- * downward animates on this same component with the same transition as any other change, and the
- * player never learns it was optimistic — so `provisional` deliberately does not reach this file.
+ * No annotation for a provisional value (tech-04 §8.4) — a downward correction animates like any
+ * other change, so `provisional` deliberately does not reach this file.
  */
 export function XpBar({
   level,
@@ -36,9 +34,8 @@ export function XpBar({
       </View>
 
       <View
-        // ↯ `accessible` is not implied by a role. A `View` defaults to `accessible={false}`, so
-        // TalkBack skips it entirely and the role is decorative — the bar would be invisible to a
-        // screen reader, and to any query that looks for it.
+        // ↯ `accessible` is not implied by a role — a `View` defaults to `accessible={false}`, so
+        // TalkBack skips it and the role is decorative.
         accessible
         accessibilityRole="progressbar"
         accessibilityValue={

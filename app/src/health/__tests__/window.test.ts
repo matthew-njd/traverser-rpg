@@ -58,7 +58,7 @@ describe('the read window (tech-03 §4.1)', () => {
   });
 
   /**
-   * ↯ The snap to local midnight, which is not in tech-03 §4.1 and without which the high-water
+   * The snap to local midnight, which is not in tech-03 §4.1 and without which the high-water
    * scheme loses activity. §8.1 mints `observed_total(date) − mark(date)`, which needs the observed
    * value to be the day's *whole* total. A window opening at 18:00 would make the first daily bucket
    * cover 18:00→midnight only; that partial total sits below the mark already recorded for the day,

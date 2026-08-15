@@ -18,15 +18,11 @@ import { colors, space, type } from '@/ui/theme';
 /**
  * GDD 10 screen 4 — naming, **plus the birth year** (tech-03 §1.4).
  *
- * ↯ The birth-year field is a **logged deviation from GDD 10**, not an addition of convenience. GDD
- * 1 §2.2 requires `HRmax = 220 − age` and GDD 10's eleven screens never ask for it — a genuine gap
- * between two locked specs. It lands here because it is one tap on a screen the player is already
- * filling in, and because it has to happen before any HR data could be misclassified. Health Connect
- * exposes no dependable date-of-birth record, so reading it from the platform is not an option.
+ * The birth-year field is a logged deviation from GDD 10: GDD 1 §2.2 needs `HRmax = 220 − age` and
+ * the eleven screens never ask. Health Connect exposes no dependable date-of-birth record.
  *
- * ↯ This is also the one screen in the app where an unreachable server is a **wall** rather than a
- * shrug. Registration is one of only three things that genuinely require the API (tech-02 §3), so
- * the failure has to be said out loud here instead of being queued like everything else.
+ * The one screen where an unreachable server is a wall rather than a shrug — registration is one
+ * of three things that genuinely require the API (tech-02 §3), so the failure is said out loud.
  */
 const MIN_AGE = 10;
 const MAX_AGE = 100;
@@ -44,12 +40,9 @@ export default function NameYourTraverser() {
     /^\d{4}$/.test(birthYear) && thisYear - year >= MIN_AGE && thisYear - year <= MAX_AGE;
 
   /**
-   * ↯ tech-04 §4.2 — every screen needs an explicit answer to "what does hardware back do here".
-   * The answer for this one: **nothing, while a registration is in flight.** Backing out mid-request
-   * would leave the server holding a profile the device is no longer trying to claim. It is not
-   * unrecoverable — the `player_id` is persisted before the call and `POST /players` is idempotent
-   * on it, so a retry reclaims the same profile — but interrupting is still never what the player
-   * meant by a back press two seconds after tapping Continue.
+   * tech-04 §4.2 — every screen answers "what does hardware back do here". Here: nothing while a
+   * registration is in flight. Recoverable (the id is persisted and `POST /players` is idempotent),
+   * but interrupting is not what a back press two seconds after Continue meant.
    */
   useFocusEffect(
     useCallback(() => {
@@ -73,14 +66,12 @@ export default function NameYourTraverser() {
 
       await refreshIdentity();
 
-      // ↯ Sync immediately, rather than waiting for the next foreground. Two reasons, both observed
-      // at P9: the health banner is whatever the *last* pass concluded, and the last pass ran before
-      // this screen existed — so a player who has just typed their birth year gets asked for it again
-      // until they background the app. And this is the pass that baselines heart rate, which only
-      // became readable a moment ago when the birth year landed in the mirror.
+      // Sync now, not on the next foreground: the banner reflects the *last* pass, which ran
+      // before this screen existed — so the player is asked for a birth year they just typed. This
+      // is also the pass that baselines HR, readable only now that the year is in the mirror.
       void syncNow().catch(() => undefined);
 
-      // `replace`, not `push` — onboarding must not be reachable by a back press once it is done.
+      // `replace`, not `push` — onboarding must not survive a back press.
       router.replace('/character');
     } catch (caught) {
       setError(

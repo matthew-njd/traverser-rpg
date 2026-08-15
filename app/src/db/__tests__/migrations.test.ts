@@ -37,10 +37,7 @@ describe('schema migrations', () => {
     );
   });
 
-  /**
-   * M1 plan decision §3.2 defers the content bundle to M2, and M1's client reads no seeded content
-   * at all. An empty content table would look like a bundle that failed to arrive.
-   */
+  /** The bundle is M2 (plan §3.2) — an empty content table would look like one that failed to arrive. */
   it('creates no content tables', () => {
     const db = memoryDatabase();
 
@@ -61,10 +58,8 @@ describe('schema migrations', () => {
   });
 
   /**
-   * ↯ The path every device that already shipped actually takes, and the one an all-at-once test
-   * never exercises: a database sitting at an older version, upgraded in place with its rows intact.
-   * The rule that makes it safe is that migrations are append-only — an edit to V1 would never run
-   * on a device that already applied it, and the two databases would diverge in silence.
+   * The path every shipped device takes and an all-at-once test never exercises: an older
+   * database upgraded in place with its rows intact.
    */
   it('upgrades an older database in place, keeping its rows', () => {
     const db = memoryDatabase();
@@ -115,20 +110,16 @@ describe('schema migrations', () => {
   });
 
   /**
-   * ↯ The crash-safety guarantee tech-04 §6.3 depends on. The `user_version` bump lives inside the
-   * same transaction as the DDL, so a migration that throws part-way leaves *neither* the tables nor
-   * the version behind and the next boot re-applies cleanly. Bumping outside the transaction would
-   * strand a database that reports itself migrated and is not — and since there are no
-   * down-migrations, the only recovery from that is an uninstall, which destroys the profile
-   * (tech-04 §6.5).
+   * The bump is inside the DDL's transaction, so a migration that throws leaves neither behind.
+   * Outside it, a database reports itself migrated and is not — and with no down-migrations the
+   * only recovery is an uninstall, which destroys the profile (tech-04 §6.5).
    */
   it('rolls the version back with the DDL when a migration throws', () => {
     const raw = new DatabaseSync(':memory:');
 
     const db = {
       execSync: (sql: string) => {
-        // Fail on the version bump specifically: the DDL has already run inside the transaction, so
-        // this is the exact interleaving that would strand a half-migrated database.
+        // Fail on the bump specifically — the interleaving that would strand a half-migrated db.
         if (sql.includes('user_version =')) {
           throw new Error('simulated crash mid-migration');
         }
@@ -153,11 +144,7 @@ describe('schema migrations', () => {
     expect(tables).not.toContain('outbox');
   });
 
-  /**
-   * Editing a shipped migration is invisible to a device that already applied it, so the two
-   * devices diverge with no error anywhere. Versions must be unique and ascending so "append only"
-   * is checkable rather than merely intended.
-   */
+  /** Unique and ascending, so "append only" is checkable rather than merely intended. */
   it('declares strictly ascending, unique versions starting at 1', () => {
     const versions = MIGRATIONS.map((m) => m.version);
 

@@ -9,13 +9,11 @@ import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme'
 /**
  * GDD 13 §3.2's six-stat allocation panel.
  *
- * ↯ **The stepper's ± values are L4 ephemeral state** (tech-04 §5.4) — they live in this component
- * and nowhere else until Confirm, which moves them to L2 and the replay queue in one transaction.
- * That split is the whole reason a draft is safe: nothing is spent, queued or shown to the server
- * until the player says so.
+ * The stepper's ± values are L4 ephemeral state (tech-04 §5.4) — nothing is spent, queued or sent
+ * until Confirm, which moves them to L2 and the replay queue in one transaction.
  *
- * ↯ **Permanent on confirm.** The locked GDD names no respec mechanic anywhere, so there is no undo
- * — which is why Confirm is a deliberate second action rather than each `+` spending a point.
+ * Permanent on confirm: the GDD names no respec mechanic, so there is no undo. That is why
+ * Confirm is a second deliberate action rather than each `+` spending a point.
  */
 const STATS = [
   { key: 'vigor', label: 'Vigor', note: 'Health pool' },
@@ -29,11 +27,9 @@ const STATS = [
 /**
  * One press applied to a draft, or the draft unchanged if it would break the budget.
  *
- * ↯ Exported and pure so the rule can be tested without a renderer, and so it is checked against the
- * draft it is updating *from* rather than against the balance closed over by whatever render
- * dispatched the press. React batches state updates: two presses in one tick both see the same
- * render, and the `+` button's `disabled` prop is stale for exactly the same reason — so the prop
- * cannot be the only guard even though it is the one the player normally meets.
+ * Pure and checked against the draft it updates *from*, not the balance closed over by the render
+ * that dispatched the press. React batches, so two presses in one tick see the same render and the
+ * `disabled` prop is stale — it cannot be the only guard.
  */
 export function nextDraft(
   draft: StatDeltas,

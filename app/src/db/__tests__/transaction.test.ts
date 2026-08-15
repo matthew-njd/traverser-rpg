@@ -32,7 +32,7 @@ describe('transact', () => {
   });
 
   /**
-   * ↯ The bug this helper exists for. `expo-sqlite`'s `withTransactionSync` issues a bare `BEGIN`,
+   * The bug this helper exists for. `expo-sqlite`'s `withTransactionSync` issues a bare `BEGIN`,
    * and SQLite has no nested transactions — so one transactional function calling another throws
    * `cannot start a transaction within a transaction`. That is the required arrangement here, not an
    * exotic one: tech-03 §8.4 makes `commitReadCycle` wrap an atomic enqueue plus the watermark

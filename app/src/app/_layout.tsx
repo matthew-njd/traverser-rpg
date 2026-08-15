@@ -18,10 +18,8 @@ void SplashScreen.preventAutoHideAsync();
 function RootLayout() {
   const booted = useAppStore((state) => state.booted);
 
-  // ↯ tech-04 §7.1: boot touches the network **zero times** and the health provider zero times. It
-  // opens SQLite, migrates, reads the boot slice and hydrates. A sync that takes eight seconds
-  // against a PC that is off must never be something the player waits through, so the first sync
-  // starts *after* the first frame — the effect below, gated on `booted`.
+  // tech-04 §7.1: boot touches the network zero times. The first sync starts after the first frame,
+  // via the effect below, gated on `booted`.
   useEffect(() => {
     void (async () => {
       try {
@@ -33,14 +31,10 @@ function RootLayout() {
   }, []);
 
   /**
-   * ↯ `AppState` replaces `visibilitychange`, and a transition to `'active'` is the **only** sync
-   * trigger (tech-04 §7.2, tech-03 §1.5). Nothing polls and nothing is scheduled.
-   *
-   * Two divergences that matter: `'background'` is not `beforeunload` — the process may be killed
-   * later with no further callback, so nothing may be deferred to it — and the first foreground
-   * after a permission change in Health Connect settings is a *cold start*, because changing
-   * permissions restarts the app process. That is why the pass re-runs `getSdkStatus` →
-   * `initialize` → `getGrantedPermissions` every time rather than caching them.
+   * ↯ `AppState` replaces `visibilitychange`, and `'active'` is the only sync trigger (tech-04
+   * §7.2, tech-03 §1.5). Two divergences: `'background'` is **not** `beforeunload` — the process
+   * may die later with no further callback, so nothing may be deferred to it — and a permission
+   * change in Health Connect restarts the process, so the next foreground is a cold start.
    */
   useEffect(() => {
     if (!booted) {

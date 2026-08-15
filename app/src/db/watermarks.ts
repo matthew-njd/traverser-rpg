@@ -3,12 +3,10 @@ import { transact } from './transaction';
 import type { SqliteDatabase } from './types';
 
 /**
- * The high-water marks that make a *cumulative* health read safe to feed an *additive* merge
- * (tech-03 §8).
+ * The high-water marks that make a cumulative read safe to feed an additive merge (tech-03 §8).
  *
- * ↯ The whole reason these exist: tech-02 §6.1 merges steps with `col = col + delta`, and tech-03
- * §4.1 re-reads days that were already reported. Sending the day's observed total on every sync
- * would multiply a day's steps by the number of times the app was opened.
+ * tech-02 §6.1 merges with `col = col + delta` and tech-03 §4.1 re-reads reported days, so
+ * sending the observed total would multiply a day by the number of app opens.
  */
 
 // ---- Steps (tech-03 §8.1) --------------------------------------------------------------------
@@ -23,12 +21,10 @@ export function stepHighWater(db: SqliteDatabase, activityDate: string): number 
 }
 
 /**
- * The delta to mint for an observed total, or 0 for "mint nothing".
+ * The delta to mint, or 0 for "mint nothing".
  *
- * ↯ A **negative** difference means the provider revised a total downward — a duplicate record was
- * removed, or a source was disconnected. Mint nothing, and do not lower the mark either: XP already
- * granted is never taken back (GDD 1 §1), and lowering the mark would re-send the same steps once
- * the count recovered. fixtures §11.7 walks the four-read case this protects.
+ * A negative difference is a downward revision by the provider: mint nothing and do not lower the
+ * mark, or the same steps re-send once the count recovers (fixtures §11.7).
  */
 export function stepDelta(db: SqliteDatabase, activityDate: string, observedTotal: number): number {
   return Math.max(0, observedTotal - stepHighWater(db, activityDate));
@@ -82,10 +78,7 @@ export function raiseHrMinutesReported(
 
 // ---- The read watermark (tech-03 §4.1, §8.4) --------------------------------------------------
 
-/**
- * The end instant of the last successfully-consumed read. Null before the first one, which is what
- * makes the first window fall back to tech-03 §4.1's `now − 72h` floor.
- */
+/** End of the last consumed read. Null before the first, which is what triggers §4.1's 72h floor. */
 export function readWatermark(db: SqliteDatabase): string | null {
   return (
     db.getFirstSync<{ consumed_through: string }>(
@@ -95,9 +88,8 @@ export function readWatermark(db: SqliteDatabase): string | null {
 }
 
 /**
- * ↯ **Do not call this directly from a read.** tech-03 §8.4 orders the advance strictly after the
- * resulting deltas are durably queued; {@link commitReadCycle} is the only correct caller, and it
- * exists so that ordering cannot be got wrong by accident at a call site.
+ * Never call this directly from a read — §8.4 orders the advance strictly after the deltas are
+ * queued. {@link commitReadCycle} is the only correct caller.
  */
 function setReadWatermark(db: SqliteDatabase, consumedThrough: string): void {
   db.runSync(
@@ -117,21 +109,13 @@ export interface ReadCycle {
 }
 
 /**
- * Commits one health-read cycle: queue the deltas, raise the per-date marks, then advance the read
- * watermark — **all in one transaction**.
+ * Queue the deltas, raise the marks, advance the watermark — all in one transaction.
  *
- * ↯ This function is tech-03 §8.4 made unbreakable. The rule is that the watermark advances only
- * after the deltas are durably queued: not after a successful *read*, and not after a successful
- * *upload*. A crash between read and enqueue must re-read the same window and produce the same
- * deltas; a crash after enqueue is already covered by the queue's durability and the server's
- * idempotency ledger. Ordering it the other way loses activity in exactly the case the entire delta
- * protocol exists to protect against — and it loses it silently, because the app comes back up
- * looking perfectly healthy with a watermark past the activity it never queued.
- *
- * Wrapping all three writes in one transaction is what makes "queued before advanced" true even
- * under process death rather than merely true in the order the statements are written. It is also
- * why tech-04 §6.1 insists on `synchronous = FULL` — `NORMAL` can lose the last transaction on a
- * crash, which would put a hole in precisely this guarantee.
+ * tech-03 §8.4: the watermark advances only after the deltas are durably queued — not after a
+ * successful read, and not after a successful upload. The reverse loses activity silently, because
+ * the app returns looking healthy with a watermark past a walk it never queued. The single
+ * transaction is what makes that true under process death, and why tech-04 §6.1 wants
+ * `synchronous = FULL`: `NORMAL` can lose the last transaction on a crash.
  */
 export function commitReadCycle(db: SqliteDatabase, cycle: ReadCycle): void {
   transact(db, () => {
@@ -182,12 +166,10 @@ export function findSession(db: SqliteDatabase, sessionId: string): LedgerSessio
 }
 
 /**
- * Records a session the first time it is seen, and **freezes its `started_at`**.
+ * Records a session the first time it is seen and freezes its `started_at` (tech-03 §6.1).
  *
- * ↯ On a later read the same session keeps this start even if newly-backfilled earlier samples
- * would now place it earlier (tech-03 §6.1). The session id is derived from the start instant, so a
- * start that moves is an id that moves — the server would then hold two sessions for one workout,
- * double-counting encounter rolls and re-arming the overactivity warning. Only `ended_at` grows.
+ * The id derives from the start instant, so a start that moves is an id that moves — two server
+ * sessions for one workout. Only `ended_at` grows.
  */
 export function recordSession(
   db: SqliteDatabase,
@@ -203,9 +185,8 @@ export function recordSession(
 }
 
 /**
- * tech-03 §6.2 — two previously-separate sessions grew into each other when backfill closed the gap
- * below 10 minutes. **The earlier id wins**: the later session's minutes fold into it, and the later
- * id is tombstoned locally and never sent again.
+ * tech-03 §6.2 — backfill closed the gap between two sessions. The earlier id wins; the later is
+ * tombstoned locally and never sent again.
  */
 export function mergeSessions(db: SqliteDatabase, survivingId: string, tombstonedId: string): void {
   transact(db, () => {
@@ -216,8 +197,7 @@ export function mergeSessions(db: SqliteDatabase, survivingId: string, tombstone
       throw new Error(`Cannot merge unknown sessions ${survivingId} / ${tombstonedId}.`);
     }
 
-    // Guards the invariant rather than trusting the caller — "earlier wins" is the whole rule, and
-    // getting it backwards would move a frozen start, which §6.1 exists to prevent.
+    // Guards the invariant rather than trusting the caller: backwards would move a frozen start.
     if (surviving.startedAt > tombstoned.startedAt) {
       throw new Error(
         `Merge must keep the earlier session: ${survivingId} starts after ${tombstonedId}.`,

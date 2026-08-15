@@ -17,19 +17,15 @@ import {
   wireSyncResponse,
 } from './fixtures';
 
-// ↯ Importing the real SDK starts a `setInterval` at module load, which keeps the Jest worker alive
-// after the run and reports as a leaked handle. Mocked here for the same reason `healthconnect.test`
-// mocks it — the pass reports a refused write, and nothing about that needs a live client.
+// ↯ The real SDK starts a `setInterval` at module load, which keeps the Jest worker alive and
+// reports as a leaked handle.
 jest.mock('@sentry/react-native', () => ({ captureMessage: jest.fn() }));
 
 /**
  * tech-04 §8.1 — the ordered foreground pass.
  *
- * ↯ The property most of this file is about: **stopping after step 9 is a success.** tech-02 §1.2
- * makes an unreachable server the normal case — the API is in Docker on a PC that is off between
- * sessions, by design — so a pass that queues the deltas, advances the watermark and shows the
- * projection has done its whole job. A suite that only tested the happy path would let someone
- * "fix" that into an error state and never notice.
+ * The property most of this file is about: stopping after step 9 is a **success** (tech-02 §1.2).
+ * A suite testing only the happy path would let someone "fix" that into an error state.
  */
 
 const NOW = Date.parse('2026-08-03T16:00:00Z');
@@ -68,11 +64,7 @@ function fakeApi(
   };
 }
 
-/**
- * A registered device that has already consumed one read. The first read of a device's life is a
- * baseline that credits nothing (see `commitHealthRead`), and these cases are about the steady state
- * after it — the baseline itself has its own describe block below.
- */
+/** A registered device past its first read — the baseline itself has its own describe block. */
 const registeredDatabase = (overrides: Record<string, unknown> = {}) => {
   const db = freshDatabase(overrides);
 
@@ -131,11 +123,8 @@ describe('the offline pass', () => {
     });
   });
 
-  /**
-   * ↯ Never projected, in either direction (tech-04 §8.4). A Reveal Card for a level-up that then
-   * un-happens is the worst artefact this design can produce, so the level in the mirror after an
-   * offline pass is the one the server last reported.
-   */
+  /** Never projected in either direction (tech-04 §8.4) — a level-up that un-happens is the worst
+   * artefact this design can produce. */
   it('never projects a level-up, however large the day', async () => {
     const db = registeredDatabase({ level: 11, xp_current: 1200, xp_to_next: 1240 });
 
@@ -155,7 +144,7 @@ describe('the offline pass', () => {
     expect(result.contentVersion).toBeNull();
   });
 
-  /** ↯ The same ids are resent, because they were persisted with the delta and never regenerated. */
+  /** The same ids are resent, because they were persisted with the delta and never regenerated. */
   it('resends the same delta ids on the next pass', async () => {
     const db = registeredDatabase();
     const offline = fakeApi({
@@ -201,7 +190,7 @@ describe('the online pass', () => {
     expect(count(db)).toBe(0);
   });
 
-  /** ↯ The server's numbers replace the projection outright — never added, never reconciled. */
+  /** The server's numbers replace the projection outright — never added, never reconciled. */
   it('replaces the projection with the server values', async () => {
     const db = registeredDatabase({ lifetime_steps: 205_000 });
 
@@ -251,12 +240,8 @@ describe('the online pass', () => {
   });
 
   /**
-   * ↯ The outbox is deliberately one table for every write kind (tech-04 §6.2) — same durability,
-   * same ordering, same retry rules — but they do **not** share an endpoint. `/sync` accepts deltas
-   * and nothing else, so the drain reads one kind at a time. A mixed batch would be sent to a
-   * server that understands part of it, and the older entry sorts *first* under FIFO, so this is
-   * the entry a naive drain reaches for. The progression writes arrive with the screens at P8; this
-   * test is what stops them being swept into the wrong request when they do.
+   * One table for every kind (tech-04 §6.2), but they do not share an endpoint. The older entry
+   * sorts first under FIFO, so a mixed batch is exactly what a naive drain reaches for.
    */
   it('sends each write kind to its own endpoint, never a mixed batch to /sync', async () => {
     const db = registeredDatabase();
@@ -284,10 +269,8 @@ describe('the online pass', () => {
   });
 
   /**
-   * ↯ Progression writes replay **before** the sync, and the reason is not obvious. Step 12
-   * overwrites the mirror with the response's authoritative player block; replaying an allocation
-   * after that block was computed means the response does not contain it, so the mirror is
-   * rewritten without the points the player just spent and the allocation visibly reverts.
+   * Writes replay before the sync: step 12 overwrites the mirror with the response's player
+   * block, so replaying after it was computed reverts the points the player just spent.
    */
   it('replays a queued allocation before posting the sync', async () => {
     const db = registeredDatabase();
@@ -317,9 +300,8 @@ describe('the online pass', () => {
   });
 
   /**
-   * ↯ The one place an entry is dropped without the server naming it. A 4xx cannot succeed on
-   * retry — the server has stated an opinion — so leaving it queued would retry it on every
-   * foreground forever and block everything behind it. A 5xx or an unreachable host stays queued.
+   * The one place an entry is dropped without the server naming it: a 4xx cannot succeed on retry
+   * and would block everything behind it. 5xx and unreachable stay queued.
    */
   it('drops a write the server refuses, and keeps one it merely failed to answer', async () => {
     const rejected = registeredDatabase();
@@ -419,11 +401,7 @@ describe('health states (tech-03 §3)', () => {
     expect(read.mock.calls[0]?.[3]).toEqual({ steps: true, heartRate: false });
   });
 
-  /**
-   * ↯ A distinct state from a denied permission, and a fixable one. Without a birth year there is no
-   * `HRmax`, so tier minutes are not charged at all rather than scored against an assumed age
-   * (tech-03 §1.4) — a wrong age would silently misclassify every workout.
-   */
+  /** Distinct from a denial and fixable: no birth year means no `HRmax`, so nothing is charged. */
   it('does not read heart rate without a birth year', async () => {
     const db = registeredDatabase();
 
@@ -450,9 +428,8 @@ describe('health states (tech-03 §3)', () => {
   });
 
   /**
-   * ↯ A health failure is banner state, not a failed pass. The outbox may hold deltas from an
-   * earlier pass that this one can still deliver, and refusing to try would strand them behind a
-   * permission the player revoked.
+   * A health failure is banner state, not a failed pass — the outbox may hold deltas an earlier
+   * pass minted, and refusing to try strands them behind a revoked permission.
    */
   it('surfaces a read failure and still runs the sync', async () => {
     const db = registeredDatabase();
@@ -470,7 +447,7 @@ describe('health states (tech-03 §3)', () => {
     expect(result.server).toBe('synced');
   });
 
-  /** ↯ Per-process, not per-install: a permission change in settings restarts the app process. */
+  /** Per-process, not per-install: a permission change in settings restarts the app process. */
   it('checks availability, initializes and re-reads permissions on every pass', async () => {
     const availability = jest.fn(async () => 'available' as const);
     const initialize = jest.fn();

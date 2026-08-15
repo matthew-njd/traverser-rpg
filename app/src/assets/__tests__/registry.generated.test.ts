@@ -1,4 +1,4 @@
-// ↯ Relative, not `@/assets/...`. `tsconfig.json` maps `@/assets/*` to the *binary* `assets/`
+// Relative, not `@/assets/...`. `tsconfig.json` maps `@/assets/*` to the *binary* `assets/`
 // directory (PNG/audio files), which shadows `src/assets/` — the two directories share a name and
 // the more specific alias wins. Anything importing these generated modules by path must use a
 // relative import, or the alias must be renamed first.

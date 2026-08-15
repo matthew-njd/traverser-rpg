@@ -6,9 +6,8 @@ import { colors, space, type } from '@/ui/theme';
 /**
  * GDD 13 §4 — the Map, stubbed.
  *
- * ↯ It ships as a stub rather than not at all so the 3-tab bar (GDD 13 §2.1) is built once here
- * instead of being retrofitted at M3, when the road, the Waymarker and the gate nodes arrive. The
- * Boss Gate Detail push (§4.3) and the Zone Entry overlay (§4.4) land with it.
+ * A stub rather than nothing, so the 3-tab bar (GDD 13 §2.1) is built once here rather than
+ * retrofitted at M3 with the road, the Waymarker and the gate nodes.
  */
 export default function Map() {
   return (

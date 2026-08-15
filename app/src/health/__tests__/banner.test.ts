@@ -4,7 +4,7 @@ import { BANNER_COPY, bannerFor } from '../banner';
 /**
  * GDD 10 §3.2 / GDD 13 §3.1 — which banner, and whether one at all.
  *
- * ↯ The denied state is **legal**, not broken: onboarding completes, the app stays fully usable, and
+ * The denied state is **legal**, not broken: onboarding completes, the app stays fully usable, and
  * battles still award XP. These tests exist to keep that true, because the instinct when a
  * permission is missing is to block, and blocking here risks an uninstall before the player has seen
  * any value.
@@ -37,14 +37,14 @@ describe('bannerFor', () => {
     );
   });
 
-  /** ↯ Granted but unusable — fixable in Settings rather than in OS settings (tech-03 §1.4). */
+  /** Granted but unusable — fixable in Settings rather than in OS settings (tech-03 §1.4). */
   it('asks for a birth year when heart rate is granted without one', () => {
     expect(bannerFor(health({ ageMissing: true }))).toBe('age_missing');
     expect(BANNER_COPY.age_missing.target).toBe('app_settings');
   });
 
   /**
-   * ↯ "Too old" and "not there" are different states with different fixes — a store deep link and
+   * "Too old" and "not there" are different states with different fixes — a store deep link and
    * nothing at all. Collapsing them produces an app that is inexplicably dead on some phones.
    */
   it('separates an out-of-date platform from a missing one', () => {

@@ -6,9 +6,8 @@ import { colors, space, type } from '@/ui/theme';
 /**
  * GDD 13 §5 — Inventory, stubbed.
  *
- * ↯ Same reason as the Map: the tab exists so the bar's shape is settled. Its three sub-views (Gear,
- * Items, Bestiary) are **state, not routes** when they arrive (tech-04 §4.3), and the road-find
- * badge on this tab's icon has one owner for the same reason.
+ * Stubbed so the bar's shape is settled once. Its three sub-views (Gear, Items, Bestiary) arrive as
+ * state rather than routes (tech-04 §4.3).
  */
 export default function Inventory() {
   return (

@@ -15,15 +15,12 @@ import { type ProjectedState, leaguesFor } from './projection';
 /**
  * L2, the mirror (tech-04 §5.2) — tech-01's player tables, on-device.
  *
- * Written **only** by a sync response, by an optimistic projection, or by a local write that is
- * simultaneously queued for replay. Never by a UI component.
+ * Written only by a sync response, an optimistic projection, or a local write queued for replay in
+ * the same transaction. Never by a UI component.
  *
- * ↯ The mirror *mirrors*; it does not merge. tech-02 §6.1's additive rule is the **server's**
- * discipline — every write there is `col = col + delta` so nothing can erase real effort. What comes
- * back on the wire is the result of that merge, an absolute authoritative total, and the client's
- * job is to store it verbatim. Adding a response to what the mirror already holds would double every
- * sync, and it is an easy mistake to make precisely because the word "delta" is everywhere else in
- * this protocol.
+ * The mirror **mirrors**; it does not merge. tech-02 §6.1's `col = col + delta` is the *server's*
+ * discipline — what comes back is the absolute result, to be stored verbatim. Adding it to what the
+ * mirror holds doubles every sync, and the word "delta" everywhere else makes that easy to do.
  */
 
 export interface MirrorPlayer extends PlayerState {
@@ -85,11 +82,7 @@ export function readPlayer(db: SqliteDatabase): MirrorPlayer | null {
   };
 }
 
-/**
- * Writes the whole player block, clearing `provisional`. Used for a sync response and for
- * `GET /players/me`'s one-shot repair path (tech-02 §3) — which is the same operation, and is why it
- * takes a {@link PlayerState} rather than a `SyncResponse`.
- */
+/** The whole player block, clearing `provisional`. Shared by sync and §3's repair path. */
 export function writePlayer(db: SqliteDatabase, player: PlayerState): void {
   db.runSync(
     `INSERT INTO player (
@@ -145,10 +138,8 @@ export function writePlayer(db: SqliteDatabase, player: PlayerState): void {
 }
 
 /**
- * ↯ Touches only the three projected columns and sets the flag — it is not a partial `writePlayer`.
- * A projection that also rewrote level, unspent points or allocations would be inventing authority
- * it does not have, and the fields it would overwrite are exactly the ones the player can change
- * from another screen while a sync is in flight.
+ * Only the three projected columns plus the flag — never a partial `writePlayer`. Level, unspent
+ * points and allocations are not the client's to invent, and are what the player changes elsewhere.
  */
 export function writeProjection(db: SqliteDatabase, projected: ProjectedState): void {
   db.runSync(
@@ -233,18 +224,13 @@ export function readActivityDay(db: SqliteDatabase, activityDate: string): Activ
 }
 
 /**
- * Step 12 of the foreground pass (tech-04 §8.1): apply the response and drop the drained entries,
- * **in one transaction**.
+ * Step 12 (tech-04 §8.1): apply the response and drop the drained entries, in one transaction.
  *
- * ↯ The two halves must not be separable. If the mirror were updated and the crash came before the
- * outbox rows were deleted, the next pass would resend deltas the server has already merged — safe,
- * because the ledger recognises the ids, but noise. The dangerous direction is the other one:
- * dropping the queue first and crashing before the mirror is written loses the only local record
- * that those deltas were ever produced, and the health watermark has long since moved past them.
+ * Dropping the queue before the mirror is written loses the only local record those deltas
+ * existed, and the watermark has long since passed them. The other order merely resends.
  *
- * ↯ Entries are acknowledged from `accepted ∪ duplicate`, **never from "everything we sent"**. An
- * entry the server did not name has not been accounted for and must survive to be resent — that is
- * the difference between at-least-once delivery and losing a day's steps to a truncated response.
+ * Acknowledged from `accepted ∪ duplicate`, never from "everything we sent" — an entry the
+ * server did not name must survive to be resent.
  */
 export function applySyncResponse(db: SqliteDatabase, response: SyncResponse): void {
   transact(db, () => {
@@ -278,11 +264,7 @@ function writeSettingsRow(db: SqliteDatabase, playerId: string, settings: Player
   );
 }
 
-/**
- * The whole authoritative document — registration's response and tech-02 §3's repair path are the
- * same write, which is why they share a function. A repair that touched only some tables would
- * leave the rest of the mirror stale in exactly the situation where drift was already suspected.
- */
+/** The whole authoritative document — registration and §3's repair are the same write. */
 export function writeProfile(db: SqliteDatabase, profile: PlayerProfile): void {
   transact(db, () => {
     writePlayer(db, profile.player);
@@ -301,12 +283,10 @@ export function writeProfile(db: SqliteDatabase, profile: PlayerProfile): void {
 }
 
 /**
- * Applies a settings change locally. The caller queues the same change for replay in the same
- * transaction (tech-02 §3: these endpoints apply optimistically to the mirror and replay to the
- * server) — which is why this writes and does not queue.
+ * Applies a settings change locally; the caller queues the same change in the same transaction.
  *
- * Null means *leave alone*, matching the wire: last-write-wins is correct for point-in-time
- * preferences, and a null that meant "clear" would make a partial update destructive (§6.3).
+ * Null means leave alone, matching the wire — a null meaning "clear" would make a partial update
+ * destructive (§6.3).
  */
 export function writeSettings(db: SqliteDatabase, settings: SettingsPayload): void {
   if (settings.dailyStepGoal !== null) {
@@ -321,9 +301,8 @@ export function writeSettings(db: SqliteDatabase, settings: SettingsPayload): vo
 /**
  * The activity log, newest first (GDD 13 §3.2).
  *
- * ↯ Paged out of SQLite on demand and **never mirrored into the store** (tech-04 §5.2) — the store
- * holds the small hot slice, and a growing table cached in memory is how a store becomes the thing
- * that has to be invalidated.
+ * Paged from SQLite on demand, never mirrored into the store (tech-04 §5.2) — a growing table in
+ * memory is how a store becomes the thing that has to be invalidated.
  */
 export function readActivityDays(db: SqliteDatabase, limit: number): ActivityDay[] {
   return db
@@ -366,10 +345,8 @@ export function readStreak(db: SqliteDatabase): Streak {
 }
 
 /**
- * ↯ Null means **not yet collected**, not "unknown age" (tech-03 §1.4). Without it there is no
- * `HRmax`, so tier minutes are not charged at all rather than being charged against some assumed
- * age — which would silently misclassify every workout until the player noticed. Step XP is
- * unaffected either way.
+ * Null means not yet collected (tech-03 §1.4). Without it there is no `HRmax`, so tier minutes
+ * are not charged at all rather than charged against an assumed age. Step XP is unaffected.
  */
 export function readBirthYear(db: SqliteDatabase): number | null {
   return (

@@ -9,7 +9,7 @@ import type { SqlParam, SqliteDatabase } from '../types';
 /**
  * Binds the {@link SqliteDatabase} port to Node's built-in `node:sqlite`.
  *
- * ↯ Why not `expo-sqlite` directly: it is a native module, so under Jest it resolves to a mock with
+ * Why not `expo-sqlite` directly: it is a native module, so under Jest it resolves to a mock with
  * no SQL engine behind it — every assertion about a migration, a FIFO drain or a watermark would be
  * checking a stub's return value. `node:sqlite` is a real SQLite (Node 24 ships it built in, so this
  * costs no dependency), which means the DDL and the SQL under test are the ones that ship.

@@ -12,8 +12,8 @@ const extra = Constants.expoConfig?.extra as
   | undefined;
 
 if (!extra?.apiBaseUrl) {
-  // app.config.ts already throws at build time if the variable is unset, so reaching this means
-  // the installed binary was built against a different config than the one in the repo.
+  // app.config.ts throws at build time if this is unset, so reaching it means the installed binary
+  // was built against a different config than the repo's.
   throw new Error(
     'apiBaseUrl missing from expoConfig.extra — rebuild the app (tech-04 §3.2: config changes need a rebuild, not a reload).'
   );

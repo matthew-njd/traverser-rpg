@@ -10,18 +10,12 @@ import { wireActivityDay, wireProfile, wireSyncResponse } from './fixtures';
  * The parsers, run against **responses recorded from the real API** rather than against fixtures
  * written by the same person who wrote the parser.
  *
- * ↯ This file exists because of a bug the rest of the suite could not catch. `parseContentVersion`
- * read `version`; the server sends `content_version` (`ContentVersionResponse(int ContentVersion)`).
- * The hand-written fixture agreed with the parser, both disagreed with the server, and every test
- * passed. On the device it would have thrown `WireFormatError` at step 10 of every sync pass and
- * reported the server as `rejected` — with the deltas still safely queued, so the symptom would have
- * been "sync silently never works" and nothing would have pointed here.
+ * Exists because of a bug the rest of the suite could not catch: `parseContentVersion` read
+ * `version` where the server sends `content_version`. The hand-written fixture agreed with the
+ * parser, both disagreed with the server, and every test passed.
  *
- * The recordings were taken at P9 from a throwaway `WireProbe` player, which was deleted afterwards;
- * the token is redacted. They are checked in deliberately — a recorded response is evidence, and
- * evidence that lives only in a terminal scrollback is not evidence. Re-record them whenever a
- * contract changes: the API is the authority, and these files are how that authority reaches the
- * client suite.
+ * Recorded at P9 from a throwaway player, token redacted. **Re-record whenever a contract changes**
+ * — the API is the authority, and these files are how it reaches the client suite.
  */
 
 describe('parsing recorded responses', () => {
@@ -44,7 +38,7 @@ describe('parsing recorded responses', () => {
   /**
    * A real replay of an already-consumed delta.
    *
-   * ↯ `activity_days` comes back **empty**, and that is the protocol working rather than a gap in
+   * `activity_days` comes back **empty**, and that is the protocol working rather than a gap in
    * the recording. tech-02 §4 step 3 rolls up only the rows step 1's `RETURNING` produced, so a
    * replay has nothing to roll up — the same property the whole idempotency design rests on, seen
    * from the client side for the first time.
@@ -78,7 +72,7 @@ describe('parsing recorded responses', () => {
 });
 
 /**
- * ↯ The guard that would have caught the original bug on its own: the synthetic fixtures the rest of
+ * The guard that would have caught the original bug on its own: the synthetic fixtures the rest of
  * the suite builds on must carry **exactly** the key set the server sends. A field the server has
  * and the fixture lacks is a parser that was never exercised; a field the fixture has and the server
  * does not is a parser asserting something untrue.

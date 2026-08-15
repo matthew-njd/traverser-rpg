@@ -4,7 +4,7 @@ import { NO_STATS, type StatDeltas } from '../../sync/writes';
 import { StatPanel, nextDraft } from '../StatPanel';
 
 /**
- * ↯ tech-04 §12 reserves RNTL for components with **real logic**, never for layout. This one
+ * tech-04 §12 reserves RNTL for components with **real logic**, never for layout. This one
  * qualifies: the draft is L4 ephemeral state (§5.4), it must not be able to overspend, and what it
  * hands to Confirm is exactly what gets written to the mirror and queued for the server.
  *
@@ -22,7 +22,7 @@ const add = async (stat: string, times = 1) => {
 };
 
 /**
- * ↯ The budget rule, tested without a renderer. The `+` button's `disabled` prop is what the player
+ * The budget rule, tested without a renderer. The `+` button's `disabled` prop is what the player
  * meets, but it is computed from the render that dispatched the press — so two presses in one React
  * batch would both see it enabled. The rule therefore lives in the state updater, checked against
  * the draft it is updating from, and that is what these cases pin.
@@ -60,7 +60,7 @@ describe('StatPanel', () => {
   });
 
   /**
-   * ↯ The draft cannot overspend. The server validates too, but a UI that lets the player build an
+   * The draft cannot overspend. The server validates too, but a UI that lets the player build an
    * invalid allocation and only then rejects it has already wasted their decision.
    */
   it('will not spend more points than are unspent', async () => {
@@ -124,7 +124,7 @@ describe('StatPanel', () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  /** ↯ Permanent on confirm — the locked GDD names no respec mechanic, so this is not decoration. */
+  /** Permanent on confirm — the locked GDD names no respec mechanic, so this is not decoration. */
   it('says allocation is permanent before it can be confirmed', async () => {
     await render(<StatPanel unspent={3} current={CURRENT} onConfirm={jest.fn()} />);
 

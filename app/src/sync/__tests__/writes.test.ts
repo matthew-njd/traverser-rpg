@@ -41,7 +41,7 @@ describe('stat allocation', () => {
   });
 
   /**
-   * ↯ Neither half is safe alone. A mirror updated without a queued replay is a change the server
+   * Neither half is safe alone. A mirror updated without a queued replay is a change the server
    * never hears about; a queued replay without the mirror update is a change the player cannot see.
    * The app is offline most of the time by design, so "the next sync will fix it" is not a recovery.
    */
@@ -92,7 +92,7 @@ describe('stat allocation', () => {
     expect(readPlayer(db)).toMatchObject({ allocStride: 3, unspentStatPoints: 0 });
   });
 
-  /** ↯ Minted once and reused on retry — a fresh id per attempt is the difference from doubling. */
+  /** Minted once and reused on retry — a fresh id per attempt is the difference from doubling. */
   it('gives each allocation its own operation id', () => {
     const db = registeredDatabase({ unspent_stat_points: 6 });
 
@@ -129,7 +129,7 @@ describe('settings', () => {
     expect(readBirthYear(db)).toBe(1985);
   });
 
-  /** ↯ Null means *leave alone*, not *clear* — a partial update must not be destructive (§6.3). */
+  /** Null means *leave alone*, not *clear* — a partial update must not be destructive (§6.3). */
   it('leaves a null field untouched', () => {
     const db = registeredDatabase();
 

@@ -4,20 +4,12 @@ import type { SqliteDatabase } from './types';
 /**
  * Forward-only schema migrations under `PRAGMA user_version` (tech-04 §6.3).
  *
- * ↯ There is no `dotnet ef database update` here and no migration runner you can re-run by hand.
- * The database is on a device you may not be holding, and **a migration that throws at boot is an
- * app that cannot start** — the only recovery is `adb uninstall`, which per tech-04 §6.5 destroys
- * `player_id`, the bearer token, and the whole mirror with no path back to the server-side profile.
+ * A migration that throws at boot is an app that cannot start, and the only recovery is
+ * `adb uninstall` — which destroys `player_id`, the token and the mirror (tech-04 §6.5).
  *
- * Rules, all of them load-bearing:
- *
- * 1. **Append only.** Never edit a shipped migration — a device that already applied version N will
- *    never see the edit, so the two devices diverge silently. Add N+1 instead.
+ * 1. **Append only** — a device that applied version N never sees an edit to it. Add N+1.
  * 2. **No down-migrations.** A rollback in dev is an uninstall.
- * 3. **The `user_version` bump lives inside the same transaction as the DDL.** That is what makes a
- *    crash mid-apply safe to re-run: either both landed or neither did. SQLite keeps
- *    `user_version` in the database header and it is fully transactional, so a rollback takes the
- *    version with it.
+ * 3. **The `user_version` bump goes inside the DDL's transaction**, so a crash mid-apply re-runs.
  */
 export interface Migration {
   readonly version: number;
@@ -25,18 +17,12 @@ export interface Migration {
 }
 
 /**
- * Version 1 — the M1 schema.
- *
- * Mirror tables are the M1 subset of tech-01 §4, named exactly as the server names them so a sync
- * response maps column-for-column with no translation layer (tech-02 §2). Content tables (tech-01
- * §3) are deliberately absent: M1 plan decision §3.2 defers the content bundle to M2, and M1's
- * client reads no seeded content at all.
+ * Version 1 — the M1 schema. Mirror tables are named exactly as the server names them, so a sync
+ * response maps column-for-column (tech-02 §2). Content tables are M2 (plan §3.2).
  */
 const V1_MIRROR: readonly string[] = [
-  // ↯ `one_row` rather than a bare uuid primary key. On the server `player` is keyed by uuid because
-  // it will one day hold many; on a device there is exactly one, forever (tech-04 §6.5), and a
-  // second row would be a silently split mirror rather than a visible error. `id` stays UNIQUE so
-  // the child tables' foreign keys still target it.
+  // `one_row`, not a bare uuid PK: a device holds exactly one player forever (tech-04 §6.5), and
+  // a second row would be a silently split mirror. `id` stays UNIQUE for the child foreign keys.
   `CREATE TABLE player (
      one_row               INTEGER PRIMARY KEY CHECK (one_row = 1),
      id                    TEXT    NOT NULL UNIQUE,
@@ -45,9 +31,7 @@ const V1_MIRROR: readonly string[] = [
      created_at            TEXT    NOT NULL,
      level                 INTEGER NOT NULL DEFAULT 1,
      xp_current            INTEGER NOT NULL DEFAULT 0,
-     -- Mirrored from the server's snapshot rather than derived: the level curve is seeded
-     -- server-side and M1 ships no content bundle, so the device has no curve to look it up in.
-     -- Null at level 60, which is how the XP bar knows to render MAX (GDD 1 §4).
+     -- Mirrored, not derived — M1 ships no curve. Null at level 60, which renders MAX (GDD 1 §4).
      xp_to_next            INTEGER,
      xp_lifetime           INTEGER NOT NULL DEFAULT 0,
      unspent_stat_points   INTEGER NOT NULL DEFAULT 0,
@@ -66,19 +50,16 @@ const V1_MIRROR: readonly string[] = [
   `CREATE TABLE player_settings (
      player_id           TEXT PRIMARY KEY NOT NULL REFERENCES player(id) ON DELETE CASCADE,
      daily_reminder_time TEXT,
-     -- Stored as text, matching the wire (tech-02 §2 — decimal strings, never floats). SQLite has
-     -- no exact decimal type and REAL would be the float this project spent a spec paragraph
-     -- avoiding.
+     -- Text, matching the wire (tech-02 §2 — decimal strings, never floats).
      music_volume        TEXT NOT NULL DEFAULT '1.00',
      sfx_volume          TEXT NOT NULL DEFAULT '1.00',
-     -- Null means *not yet collected*, not "unknown age" (tech-03 §1.4). Tier minutes are not
-     -- charged at all without it, which is correct behaviour rather than a silent default.
+     -- Null means not yet collected (tech-03 §1.4). Tier minutes are not charged without it.
      birth_year          INTEGER
    )`,
 
   `CREATE TABLE activity_day (
      player_id            TEXT    NOT NULL REFERENCES player(id) ON DELETE CASCADE,
-     -- Bare YYYY-MM-DD, the client's own local date. Never derived from an instant (tech-02 §2).
+     -- Bare YYYY-MM-DD, client-local. Never derived from an instant (tech-02 §2).
      activity_date        TEXT    NOT NULL,
      steps                INTEGER NOT NULL DEFAULT 0,
      tier1_minutes        INTEGER NOT NULL DEFAULT 0,
@@ -107,9 +88,7 @@ const V1_MIRROR: readonly string[] = [
 ];
 
 const V1_DEVICE: readonly string[] = [
-  // tech-04 §6.2 — **one** outbox, not one per write type. tech-02 §3's progression writes and §5's
-  // activity deltas share the same durability, ordering and retry requirements, and splitting them
-  // would mean two drain loops that can disagree about order.
+  // tech-04 §6.2 — one outbox, not one per write type: two drain loops can disagree about order.
   `CREATE TABLE outbox (
      client_op_id TEXT    PRIMARY KEY NOT NULL,
      kind         TEXT    NOT NULL,
@@ -118,13 +97,11 @@ const V1_DEVICE: readonly string[] = [
      attempts     INTEGER NOT NULL DEFAULT 0
    )`,
 
-  // FIFO by created_at, tie-broken by the id. The tie-break is not cosmetic: two deltas minted in
-  // the same millisecond would otherwise drain in whatever order SQLite happened to return, and a
-  // drain that is not a total order cannot be resumed deterministically after a crash.
+  // The id tie-break is not cosmetic — without a total order a drain cannot be resumed
+  // deterministically after a crash, and two deltas can share a millisecond.
   `CREATE INDEX ix_outbox_fifo ON outbox (created_at, client_op_id)`,
 
-  // tech-03 §8.1 — the per-date step high-water mark. What has already been handed to the queue,
-  // never the observed total.
+  // tech-03 §8.1 — what has already been queued, never the observed total.
   `CREATE TABLE step_watermark (
      activity_date       TEXT PRIMARY KEY NOT NULL,
      reported_high_water INTEGER NOT NULL
@@ -138,18 +115,13 @@ const V1_DEVICE: readonly string[] = [
      PRIMARY KEY (activity_date, tier)
    )`,
 
-  // tech-03 §6.1 — the session ledger exists to **freeze `started_at`**. The session id is
-  // "hr:{started_at epoch seconds}", so if the start moves the id moves: a watch syncing late would
-  // shift the start, mint a second id, and the server would hold two sessions for one workout,
-  // double-counting encounter rolls and re-arming the overactivity warning.
+  // tech-03 §6.1 — this ledger exists to freeze `started_at`. The id is "hr:{started_at}", so a
+  // late-syncing watch that shifts the start would mint a second id for one workout.
   `CREATE TABLE hr_session_ledger (
      session_id      TEXT PRIMARY KEY NOT NULL,
      started_at      TEXT NOT NULL,
      ended_at        TEXT NOT NULL,
-     -- tech-03 §6.2's merge: when backfill closes the gap between two sessions the **earlier id
-     -- wins**, and the later one is tombstoned locally and never sent again. The server keeps its
-     -- orphaned row, which is inert once nothing references it — deleting server rows from the
-     -- client is not a capability this protocol has.
+     -- tech-03 §6.2 — on merge the earlier id wins; the later is tombstoned and never re-sent.
      tombstoned_into TEXT REFERENCES hr_session_ledger(session_id)
    )`,
 
@@ -161,17 +133,10 @@ const V1_DEVICE: readonly string[] = [
 ];
 
 /**
- * Version 2 — tech-04 §8.4's provisional flag.
+ * Version 2 — tech-04 §8.4's provisional flag: the player row holds an optimistic projection, which
+ * a sync response replaces and clears. Separate migration per rule 1, not folded into V1.
  *
- * ↯ Added as a second migration rather than folded into V1, per rule 1 above: V1 has already been
- * applied on this device, so an edit to it would never run and the two databases would diverge
- * silently. That is the whole discipline, and it starts costing something the first time it is
- * inconvenient.
- *
- * The flag says *the player row currently holds an optimistic projection* (§8.4). A sync response
- * replaces those values and clears it. It is one flag rather than one per column because the
- * projection is written as a set and replaced as a set — a half-provisional row is not a state this
- * design has.
+ * One flag rather than one per column — the projection is written and replaced as a set.
  */
 const V2_PROVISIONAL: readonly string[] = [
   'ALTER TABLE player ADD COLUMN provisional INTEGER NOT NULL DEFAULT 0',
@@ -206,13 +171,11 @@ export function runMigrations(db: SqliteDatabase): number {
         db.execSync(statement);
       }
 
-      // ↯ Interpolated, not bound — PRAGMA does not accept bound parameters, and this is the one
-      // place in the app where SQL is built by concatenation. The value is a number literal from
-      // the array above and never touches anything a user or a server can influence.
+      // Interpolated, not bound — PRAGMA takes no parameters. The one concatenated SQL in the
+      // app; the value is a number literal from the array above, never external input.
       //
-      // ↯ Inside the transaction, which is the entire crash-safety guarantee: SQLite keeps
-      // `user_version` in the database header and it participates in the transaction, so a crash
-      // between the DDL and the bump rolls back both and the next boot re-applies cleanly.
+      // Inside the transaction: `user_version` lives in the header and participates, so a crash
+      // between the DDL and the bump rolls back both.
       db.execSync(`PRAGMA user_version = ${migration.version}`);
     });
   }

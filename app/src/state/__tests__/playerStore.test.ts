@@ -38,7 +38,7 @@ describe('hydration', () => {
     expect(usePlayerStore.getState().leagues).toBe(219);
   });
 
-  /** ↯ The first-launch signal the router reads — an empty mirror is a device that never registered. */
+  /** The first-launch signal the router reads — an empty mirror is a device that never registered. */
   it('reports an unregistered device rather than inventing a player', () => {
     const db = registeredDatabase();
 
@@ -96,7 +96,7 @@ describe('projections and corrections', () => {
     );
     usePlayerStore.getState().hydrate(db);
 
-    // ↯ Down from 800 to 795, and the slice carries no indicator of that having happened. tech-04
+    // Down from 800 to 795, and the slice carries no indicator of that having happened. tech-04
     // §8.4: a correction that reduces a displayed number is applied with no annotation whatsoever.
     expect(usePlayerStore.getState()).toMatchObject({ xpCurrent: 795, provisional: false });
   });

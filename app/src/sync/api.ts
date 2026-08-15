@@ -18,15 +18,11 @@ import {
 /**
  * The HTTP client for everything the app asks of the server.
  *
- * ↯ **An unreachable server is the normal case, not the error case** (tech-02 §1.2, tech-04 §8.1).
- * The API runs in Docker on a PC that is off between sessions by design, so this module's job is to
- * fail *fast and quietly* and let the caller carry on. Everything a sync pass earns is already
- * durable in the outbox before a request is ever made.
+ * An unreachable server is the **normal** case (tech-02 §1.2) — the API is on a PC that is off
+ * between sessions by design. Fail fast and quietly; the outbox is durable before any request.
  *
- * ↯ And note the shape of the failure: `fetch` **rejects** on a network error, it does not resolve
- * with `ok: false`. Only an HTTP response — including a 500 — comes back as a resolved promise. The
- * two are different conditions here and get different error types, because one means "try again
- * later, nothing is wrong" and the other means the server has an opinion.
+ * ↯ `fetch` **rejects** on a network error but resolves for any HTTP response, 500 included. Those
+ * are different conditions and get different error types: "retry later" versus "the server ruled".
  */
 
 /** No response at all: host down, DNS, connection refused, or the timeout below. */
@@ -50,10 +46,8 @@ export class ApiStatusError extends Error {
 }
 
 /**
- * ↯ Deliberately short. tech-04 §7.1 makes "the PC is off" a startup requirement rather than only a
- * networking one — a sync that hangs for thirty seconds against a dead host is thirty seconds of an
- * app that looks like it is doing something. Nothing is lost by giving up early: the queue is
- * durable and the next foreground retries.
+ * Deliberately short (tech-04 §7.1). Thirty seconds against a dead host is thirty seconds of an app
+ * that looks busy; nothing is lost by giving up, because the queue is durable.
  */
 export const DEFAULT_TIMEOUT_MS = 8_000;
 
@@ -132,8 +126,7 @@ async function request(options: ApiOptions, path: string, init?: RequestInit): P
   try {
     return await response.json();
   } catch {
-    // A 2xx whose body will not parse is a broken server, not an unreachable one — but it is also
-    // not something a retry fixes, so it is reported rather than swallowed as offline.
+    // A 2xx that will not parse is a broken server, not an offline one, and a retry will not fix it.
     throw new ApiStatusError(response.status, null, `${path} returned an unreadable body.`);
   }
 }
@@ -174,13 +167,11 @@ export function createApi(options: ApiOptions): TraverserApi {
 }
 
 /**
- * ↯ Registration is the one call made **without** a bearer token — it is where the token comes from
- * — so it is a free function rather than a method on the client. Keeping it off the interface means
- * no client instance in the app ever holds an empty credential.
+ * A free function, not a method: registration is the one call made without a token, and keeping it
+ * off the interface means no client instance ever holds an empty credential.
  *
- * ↯ It is also idempotent on the client-minted `player_id` (tech-02 §3): re-registering returns the
- * existing profile rather than 409, so a lost response does not strand the device. The token is
- * freshly minted on every call and returned exactly once — only its SHA-256 is stored server-side.
+ * Idempotent on the client-minted `player_id` (tech-02 §3) — re-registering returns the existing
+ * profile rather than 409. The token is returned exactly once; only its SHA-256 is stored.
  */
 export async function registerPlayer(
   options: Omit<ApiOptions, 'token'>,

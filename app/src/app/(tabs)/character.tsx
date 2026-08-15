@@ -20,10 +20,7 @@ import { colors, radius, space, tabular, type } from '@/ui/theme';
 /**
  * GDD 13 §3 — the Character tab, and M1's default landing screen.
  *
- * ↯ Avatar and Stats are **sub-views, not routes** (tech-04 §4.3). Both are rendered from one route
- * with a segmented control, so switching loses no state and re-runs no effect. A nested navigator
- * would also satisfy GDD 13's "no state loss", but a route change in React Native remounts and
- * re-runs effects far more visibly than a web route change with a warm DOM.
+ * Avatar and Stats are sub-views, not routes (tech-04 §4.3) — one route, both panes mounted.
  *
  * M1 scope: no streak badge and no Rest Day control — both are GDD 11, which is M4.
  */
@@ -40,9 +37,7 @@ export default function Character() {
   const slice = usePlayerStore();
   const banner = useAppStore((state) => state.banner);
 
-  // ↯ Read from SQLite rather than the store. tech-04 §5.2 keeps only the small hot slice hydrated;
-  // the allocation columns and the activity log are queried on demand, because a growing table
-  // cached in memory is how a store becomes the thing that has to be invalidated.
+  // From SQLite, not the store — tech-04 §5.2 hydrates only the hot slice.
   const reload = useCallback(() => {
     const db = getDatabase();
 
@@ -50,18 +45,15 @@ export default function Character() {
     setDays(readActivityDays(db, ACTIVITY_LOG_LIMIT));
   }, []);
 
-  // ↯ `lastServerOutcome` is a poor change signal on its own — two consecutive successful syncs both
-  // read `'synced'`, so nothing re-renders. Every path that changes the mirror calls `reload()`
-  // directly; this only covers coming back to the tab.
+  // `lastServerOutcome` is a poor change signal — two successful syncs both read `'synced'`, so
+  // nothing re-renders. Every mirror-touching path calls `reload()` directly; this covers refocus.
   useFocusEffect(reload);
 
   /**
-   * Pull to sync. `syncNow` already de-duplicates concurrent passes, so a pull landing on top of the
-   * automatic foreground sync joins it rather than starting a second read.
+   * Pull to sync. `syncNow` de-duplicates, so a pull landing on the automatic pass joins it.
    *
-   * ↯ A failed pass is not an error here. tech-02 §1.2 makes an unreachable server the normal case,
-   * so the spinner stops and the screen simply shows what is already durable — pulling must never
-   * produce an error state for the app working as designed.
+   * A failed pass is not an error (tech-02 §1.2) — the spinner stops and the screen shows what is
+   * already durable.
    */
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -92,13 +84,11 @@ export default function Character() {
     try {
       allocateStatPoints(getDatabase(), deltas, Date.now());
 
-      // SQLite first, store second, always. The allocation is already durable and queued for replay
-      // by the time either of these runs.
+      // SQLite first, store second, always.
       usePlayerStore.getState().hydrate(getDatabase());
       reload();
 
-      // Best-effort: if the server is reachable the points land now, and if it is not they replay on
-      // the next foreground. Either way the screen already shows them.
+      // Best-effort — they replay on the next foreground either way.
       void syncNow().catch(() => undefined);
     } finally {
       setAllocating(false);
@@ -139,7 +129,7 @@ export default function Character() {
         is what makes the switch free — and it is why the activity log keeps its scroll position.
       */}
       {/*
-        ↯ The Avatar pane has nothing to scroll, but a `RefreshControl` needs a scrollable host —
+        The Avatar pane has nothing to scroll, but a `RefreshControl` needs a scrollable host —
         `alwaysBounceVertical` is what makes a short screen still pull. This is the divergence from
         web: there is no page-level scroll to attach a gesture to, so "pull to refresh" is a property
         of a specific scroll view rather than of the screen.

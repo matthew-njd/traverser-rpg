@@ -22,7 +22,7 @@ interface AppStore {
   readonly health: HealthPassResult | null;
   readonly banner: BannerKind | null;
   /**
-   * ↯ Populated **only** from a sync response (tech-04 §8.4). Nothing projects into this queue, and
+   * Populated **only** from a sync response (tech-04 §8.4). Nothing projects into this queue, and
    * a Reveal Card is shown from it exactly once.
    */
   readonly pendingLevelUps: readonly LevelUp[];

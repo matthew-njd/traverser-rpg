@@ -14,10 +14,8 @@ import { colors, radius, space, type } from '@/ui/theme';
 /**
  * GDD 13 §7 — Settings, at M1's scope.
  *
- * Here: identity export (tech-06 §13.1), daily step goal, birth year, health permission status and
- * deep link. **Not** here: audio sliders (M5 owns the bus, and a slider that controls nothing is a
- * promise the app does not keep), notifications (M5), wearable connections, and sign-in (guest-only
- * is a sanctioned trim).
+ * Here: identity export (tech-06 §13.1), step goal, birth year, health status and deep link.
+ * Not here: audio sliders and notifications (M5), wearables, sign-in (guest-only is a sanctioned trim).
  */
 export default function Settings() {
   const slice = usePlayerStore();
@@ -100,19 +98,11 @@ export default function Settings() {
 }
 
 /**
- * tech-06 §13.1 — the manual export half of the restore path, and the fourth member of §10.5's
- * backup set.
+ * tech-06 §13.1 — the manual export half of the restore path, and the fourth member of §10.5's set.
  *
- * ↯ §10.1 is the reason this screen exists at all: `player_id` and the bearer token live only in app
- * storage (tech-04 §6.5), so a perfect Postgres dump restored onto new hardware is a database full
- * of history that **no client can claim**. A backup plan covering only Postgres restores data nobody
- * can reach.
- *
- * ↯ Its known weakness, stated in §13.1 and not solvable here: it only helps if it was used *before*
- * the loss. Hence the prominence, and hence the copy saying so plainly rather than burying it.
- *
- * `Share` is React Native's own module — no dependency, no rebuild — and the values are also
- * `selectable` so they can be copied by hand if no share target is convenient.
+ * `player_id` and the token live only in app storage (tech-04 §6.5), so a Postgres dump restored
+ * onto new hardware holds history **no client can claim**. Known weakness, stated in §13.1: it only
+ * helps if used *before* the loss — hence the prominence and the blunt copy.
  */
 function IdentityExport() {
   const identity = currentIdentity();
@@ -187,7 +177,7 @@ function HealthStatus({
       )}
 
       {/*
-        ↯ Deep-links to settings and never re-requests (tech-03 §3). Android suppresses repeat
+        Deep-links to settings and never re-requests (tech-03 §3). Android suppresses repeat
         prompts after a denial, so a button that called `requestPermission` again would look broken.
       */}
       <Button

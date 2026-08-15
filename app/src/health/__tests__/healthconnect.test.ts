@@ -36,10 +36,8 @@ jest.mock('react-native-health-connect', () => ({
 }));
 
 /**
- * The Health Connect adapter — four behaviours the spike proved and one the library's own docs do
- * not lead you to. All of them are testable against a mocked module because they are decisions about
- * *how the platform is called*, not about what it returns; the platform itself is proven on the
- * device at P9.
+ * The Health Connect adapter. Testable against a mock because these are decisions about *how* the
+ * platform is called, not what it returns — the platform itself was proven on the device at P9.
  */
 
 const mockRead = jest.mocked(readRecords);
@@ -59,7 +57,7 @@ beforeEach(() => {
 });
 
 describe('availability (tech-03 §2)', () => {
-  /** ↯ Three states, not two — "too old" is a real state with a different fix from "not there". */
+  /** Three states, not two — "too old" is a real state with a different fix from "not there". */
   it('maps the three SDK states', () => {
     expect(mapAvailability(3)).toBe('available');
     expect(mapAvailability(2)).toBe('update_required');
@@ -79,9 +77,8 @@ describe('availability (tech-03 §2)', () => {
 
 describe('granted permissions (tech-03 §3)', () => {
   /**
-   * ↯ Granting Steps silently also grants `StepsCadence`, a record type this app never requests. The
-   * returned array can therefore be *longer* than the one asked for, which makes both its length and
-   * the position of anything in it meaningless — the spike's probe 7.
+   * Granting Steps silently also grants `StepsCadence`, so the array can be longer than the one
+   * asked for and both length and position are meaningless.
    */
   it('matches by exact recordType, ignoring the silently-granted StepsCadence', () => {
     const granted = permissionsFrom([
@@ -106,7 +103,7 @@ describe('granted permissions (tech-03 §3)', () => {
     });
   });
 
-  /** ↯ `requestPermission`'s return value is never the authority; `getGrantedPermissions` is. */
+  /** `requestPermission`'s return value is never the authority; `getGrantedPermissions` is. */
   it('re-reads the granted set rather than trusting the request result', async () => {
     jest
       .mocked(requestPermission)
@@ -123,9 +120,8 @@ describe('granted permissions (tech-03 §3)', () => {
 
 describe('pagination (tech-04 §8.2)', () => {
   /**
-   * ↯ The spike found a 48-hour `HeartRate` read returning exactly 1,000 records with a `pageToken`
-   * present. A read that assumes one call returns the window truncates silently, in the player's
-   * disfavour, and only for players active enough to exceed the cap.
+   * Reads cap at 1,000 records with a `pageToken`. Assuming one call returns the window truncates
+   * silently, and only for players active enough to exceed it.
    */
   it('follows the pageToken to the end', async () => {
     mockRead
@@ -171,7 +167,7 @@ describe('pagination (tech-04 §8.2)', () => {
 
 describe('reading (tech-03 §4)', () => {
   /**
-   * ↯ The filter must be a **UTC instant string**. A local-naive one throws
+   * The filter must be a **UTC instant string**. A local-naive one throws
    * `Text '...' could not be parsed at index 19`; the library does the local conversion itself.
    */
   it('filters on UTC instants', async () => {
@@ -225,10 +221,7 @@ describe('reading (tech-03 §4)', () => {
     expect(snapshot.sessions[0]?.tier1Minutes).toBe(2);
   });
 
-  /**
-   * ↯ A read of an ungranted type **throws**, so a partial grant is handled by not asking. Both of
-   * tech-03 §3's one-sided rows are legal states, not errors.
-   */
+  /** Reading an ungranted type throws, so a partial grant is handled by not asking (tech-03 §3). */
   it('does not read a type that was not granted', async () => {
     await healthConnectProvider.read(WINDOW, AGE_30, edtDates, { steps: true, heartRate: false });
 
@@ -253,8 +246,7 @@ describe('reading (tech-03 §4)', () => {
       dailySteps: new Map(),
       sessions: [],
       consumedThrough: WINDOW.endMs,
-      // ↯ Reported, not inferred: an empty result from a source that was never read must not later
-      // be mistaken for a source that was read and found nothing.
+      // Reported, not inferred — "never read" and "read, found nothing" must stay distinguishable.
       readSources: { steps: false, heartRate: false },
     });
   });
@@ -272,9 +264,8 @@ describe('errors, not empty results (tech-03 §3, tech-04 §8.3)', () => {
   };
 
   /**
-   * ↯ This is the place the web instinct actively misleads: a failed `fetch` resolves and you check
-   * `res.ok`, whereas these reject. The spike disproved tech-03's original claim that a read without
-   * permission returns empty — it raises `SecurityException` for both record types.
+   * A failed `fetch` resolves and you check `res.ok`; these **reject**. A read without permission
+   * raises `SecurityException` rather than returning empty, for both record types.
    */
   it('maps a SecurityException to permission_denied', async () => {
     mockAggregate.mockRejectedValue(
