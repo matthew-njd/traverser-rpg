@@ -10,9 +10,11 @@
 #   ./backup.sh            # the scheduled path — at most one dump per day (§10.3)
 #   ./backup.sh --force    # ignore the once-a-day guard; for manual runs and the §10.6 drill
 #
-# Exit codes: 0 both copies written (or today's dump already existed), 1 the local dump failed,
-# 2 the local dump succeeded but the off-machine copy did not. 2 is not a warning — §10.1 is the
-# whole reason this script exists, and a local-only dump does not satisfy it.
+# Exit codes: 0 both copies written (or today's dump already existed on both sides), 1 the local
+# dump failed, 2 the local dump succeeded but the off-machine copy did not. 2 is not a warning —
+# §10.1 is the whole reason this script exists, and a local-only dump does not satisfy it. A run
+# that finds today's local dump but no off-machine copy retries just the copy, so an exit 2 heals
+# on the next trigger instead of waiting for tomorrow's dump.
 
 set -eu
 
@@ -134,14 +136,62 @@ prune_dir() {
   done
 }
 
+# The off-machine copy, which is the one that matters (§10.2). Sets REMOTE_OK.
+#
+# ↯ Checked for liveness, never assumed. Google Drive for desktop mounts its folder as a virtual
+# filesystem, so when it is not running the path does not resolve at all — but a signed-out or
+# half-mounted client can also accept a write that never leaves the machine. Probing with a real
+# file is the only check that distinguishes "synced" from "looks synced", and getting this wrong
+# produces the exact failure §10.1 describes: a backup set that appears complete and has no
+# off-machine copy in it.
+copy_off_machine() {
+  _name=$1
+  REMOTE_OK=0
+  _probe="$REMOTE_DIR/.traverser-write-probe"
+  if [ ! -d "$REMOTE_DIR" ]; then
+    log "FAILED: BACKUP_REMOTE_DIR does not exist ($REMOTE_DIR) — is Google Drive running?"
+  elif ! : > "$_probe" 2>/dev/null; then
+    log "FAILED: BACKUP_REMOTE_DIR is not writable ($REMOTE_DIR)"
+  else
+    rm -f "$_probe"
+    if cp "$LOCAL_DIR/$_name" "$REMOTE_DIR/.$_name.partial" 2>/dev/null &&
+       mv "$REMOTE_DIR/.$_name.partial" "$REMOTE_DIR/$_name" 2>/dev/null; then
+      REMOTE_OK=1
+      log "copied $_name off-machine"
+    else
+      rm -f "$REMOTE_DIR/.$_name.partial" 2>/dev/null || true
+      log "FAILED: could not copy $_name to $REMOTE_DIR"
+    fi
+  fi
+}
+
 TODAY=$(date +%Y%m%d)
 
 # §10.3: at most one dump per day. Load-bearing rather than an optimisation — the daily and
 # at-logon triggers both fire on a day that starts with a reboot, and without this guard a machine
 # power-cycled three times would spend three of its seven daily slots on one day.
+#
+# "Done for the day" means both copies, not the local one — a run whose off-machine copy failed
+# used to satisfy this guard, so exit 2 could never heal until the next day's dump (observed
+# 08-15→08-16: Drive down at dump time, up an hour later, and the retry run logged "nothing to
+# do"). The dump is still made at most once; only the copy is retried.
 if [ -z "$FORCE" ] && ls "$LOCAL_DIR"/traverser-"$TODAY"-*.dump >/dev/null 2>&1; then
-  log "dump for $TODAY already exists — nothing to do (--force overrides)"
-  exit 0
+  if ls "$REMOTE_DIR"/traverser-"$TODAY"-*.dump >/dev/null 2>&1; then
+    log "dump for $TODAY already exists — nothing to do (--force overrides)"
+    exit 0
+  fi
+  # Newest of today's local dumps: the fixed-width stamp makes lexical order chronological.
+  _retry=$(ls -1 "$LOCAL_DIR"/traverser-"$TODAY"-*.dump | sort | tail -n 1)
+  _retry=$(basename "$_retry")
+  log "dump for $TODAY exists but the off-machine copy is missing — retrying the copy"
+  copy_off_machine "$_retry"
+  if [ "$REMOTE_OK" -eq 1 ]; then
+    prune_dir "$REMOTE_DIR"
+    log "ok"
+    exit 0
+  fi
+  log "local dump kept, off-machine copy MISSING — exit 2"
+  exit 2
 fi
 
 # Wait for Postgres rather than assuming it. `pg_isready` is the same check the healthcheck in
@@ -187,31 +237,7 @@ mv "$PARTIAL" "$LOCAL_DIR/$NAME"
 trap - EXIT
 log "wrote $NAME ($(wc -c < "$LOCAL_DIR/$NAME" | tr -d ' ') bytes)"
 
-# ---- the off-machine copy, which is the one that matters (§10.2) ----------------------------
-#
-# ↯ Checked for liveness, never assumed. Google Drive for desktop mounts its folder as a virtual
-# filesystem, so when it is not running the path does not resolve at all — but a signed-out or
-# half-mounted client can also accept a write that never leaves the machine. Probing with a real
-# file is the only check that distinguishes "synced" from "looks synced", and getting this wrong
-# produces the exact failure §10.1 describes: a backup set that appears complete and has no
-# off-machine copy in it.
-REMOTE_OK=0
-PROBE="$REMOTE_DIR/.traverser-write-probe"
-if [ ! -d "$REMOTE_DIR" ]; then
-  log "FAILED: BACKUP_REMOTE_DIR does not exist ($REMOTE_DIR) — is Google Drive running?"
-elif ! : > "$PROBE" 2>/dev/null; then
-  log "FAILED: BACKUP_REMOTE_DIR is not writable ($REMOTE_DIR)"
-else
-  rm -f "$PROBE"
-  if cp "$LOCAL_DIR/$NAME" "$REMOTE_DIR/.$NAME.partial" 2>/dev/null &&
-     mv "$REMOTE_DIR/.$NAME.partial" "$REMOTE_DIR/$NAME" 2>/dev/null; then
-    REMOTE_OK=1
-    log "copied $NAME off-machine"
-  else
-    rm -f "$REMOTE_DIR/.$NAME.partial" 2>/dev/null || true
-    log "FAILED: could not copy $NAME to $REMOTE_DIR"
-  fi
-fi
+copy_off_machine "$NAME"
 
 prune_dir "$LOCAL_DIR"
 if [ "$REMOTE_OK" -eq 1 ]; then prune_dir "$REMOTE_DIR"; fi
