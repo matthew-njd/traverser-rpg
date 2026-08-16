@@ -1,3 +1,6 @@
+import { parseBundle, readContentVersion } from '../../content/bundle';
+import { EMBEDDED_BUNDLE } from '../../content/embedded.generated';
+import { seedEmbeddedContent } from '../../content/store';
 import { count, enqueue, peek } from '../../db/outbox';
 import type { SqliteDatabase } from '../../db/types';
 import { readWatermark } from '../../db/watermarks';
@@ -29,6 +32,7 @@ jest.mock('@sentry/react-native', () => ({ captureMessage: jest.fn() }));
  */
 
 const NOW = Date.parse('2026-08-03T16:00:00Z');
+const bundle = parseBundle(EMBEDDED_BUNDLE);
 const dates = fixedOffsetDates(-4 * 60);
 
 const walked = (steps: number): HealthSnapshot => ({
@@ -50,6 +54,11 @@ function fakeApi(
   return {
     sent,
     contentVersion: async () => 0,
+    // Never reached by default: 0 is not newer than the seeded bundle, so step 10b skips it. A
+    // test that wants the fetch raises `contentVersion` and overrides this.
+    contentBundle: async () => {
+      throw new Error('contentBundle() was called for a version that had not moved');
+    },
     sync: async (deltas) => {
       sent.push([...deltas]);
 
@@ -353,6 +362,55 @@ describe('the online pass', () => {
 
     expect(result.contentVersion).toBe(7);
     expect(result.contentStale).toBe(true);
+  });
+
+  /**
+   * Step 10b (tech-02 §3). The database these tests migrate holds no bundle, so anything above 0 is
+   * newer — which is also the state of a device whose boot seeding has not run.
+   */
+  it('fetches the bundle when the version moved, and adopts it', async () => {
+    const db = registeredDatabase();
+
+    await run(db, {
+      api: fakeApi({
+        contentVersion: async () => bundle.contentVersion,
+        contentBundle: async () => bundle,
+      }),
+    });
+
+    expect(readContentVersion(db)).toBe(bundle.contentVersion);
+  });
+
+  it('does not fetch the bundle when the version has not moved', async () => {
+    const db = registeredDatabase();
+
+    seedEmbeddedContent(db);
+
+    // fakeApi's contentBundle throws if it is called at all, so reaching 'synced' is the assertion.
+    const result = await run(db, {
+      api: fakeApi({ contentVersion: async () => bundle.contentVersion }),
+    });
+
+    expect(result.server).toBe('synced');
+  });
+
+  /** A bundle that will not download is a playable app on yesterday's content, not a failed sync. */
+  it('syncs anyway when the bundle fetch fails', async () => {
+    const db = registeredDatabase();
+
+    seedEmbeddedContent(db);
+
+    const result = await run(db, {
+      api: fakeApi({
+        contentVersion: async () => bundle.contentVersion + 1,
+        contentBundle: async () => {
+          throw new ApiUnreachableError('dropped mid-download');
+        },
+      }),
+    });
+
+    expect(result.server).toBe('synced');
+    expect(readContentVersion(db)).toBe(bundle.contentVersion);
   });
 
   it('still syncs when there is nothing to send, which is how a fresh install gets its numbers', async () => {

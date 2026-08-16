@@ -1,5 +1,7 @@
 import * as Sentry from '@sentry/react-native';
 
+import { readContentVersion } from '../content/bundle';
+import { adoptBundle } from '../content/store';
 import { acknowledge, peek, recordAttempt } from '../db/outbox';
 import { readWatermark } from '../db/watermarks';
 import type { SqliteDatabase } from '../db/types';
@@ -46,8 +48,12 @@ import { projectGains, projectState } from './projection';
  * Fires only on app open and foreground (T3 §1.5, T4 §7.2). Nothing polls or runs backgrounded.
  */
 
-/** M1 ships no content bundle (plan §3.2 defers it to M2), so the client holds none and says so. */
-export const CLIENT_CONTENT_VERSION = 0;
+/**
+ * What the client reports when it holds no bundle at all. Unreachable in practice — boot seeds the
+ * embedded copy (T4 §5.1) — but the sync payload needs a number, and 0 is older than any real seed,
+ * so a device in that state asks for content rather than claiming to be current.
+ */
+export const NO_CONTENT_VERSION = 0;
 
 /** tech-02 §5's queue cap. One batch: a partial upload is never partially reconciled. */
 export const MAX_BATCH = 5_000;
@@ -213,6 +219,7 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
   project(db, minted);
 
   const queuedNow = () => peek(db, MAX_BATCH).length;
+  const heldVersion = () => readContentVersion(db) ?? NO_CONTENT_VERSION;
 
   const stopped = (server: ServerOutcome, contentVersion: number | null = null): SyncPassResult => ({
     health,
@@ -220,7 +227,7 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
     queued: queuedNow(),
     server,
     contentVersion,
-    contentStale: contentVersion !== null && contentVersion !== CLIENT_CONTENT_VERSION,
+    contentStale: contentVersion !== null && contentVersion > heldVersion(),
     levelUps: [],
   });
 
@@ -235,6 +242,25 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
     // ---- Step 10 ----
     contentVersion = await api.contentVersion();
 
+    // ---- Step 10b. Fetch the bundle only when the server's number moved past ours (tech-02 §3).
+    //
+    // Adopting it before the sync below, so the payload reports the version the device now holds
+    // rather than the one it arrived with — and so a battle resolved later in this foreground is
+    // resolved against current content.
+    //
+    // Failure here does not fail the pass: the previous bundle is still stored and still playable,
+    // and the fetch retries on the next foreground. Only an unreadable *payload* is worth reporting,
+    // because that one will not fix itself.
+    if (contentVersion > heldVersion()) {
+      try {
+        adoptBundle(db, await api.contentBundle());
+      } catch (error) {
+        if (error instanceof WireFormatError) {
+          Sentry.captureException(error);
+        }
+      }
+    }
+
     // ---- Step 10a. Writes replay *before* the sync.
     //
     // Step 12 overwrites the mirror with the response's authoritative player block, so replaying
@@ -245,7 +271,7 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
     // ---- Step 11. The whole queue in one batch (tech-02 §5).
     const response = await api.sync(
       pending.map((entry) => JSON.parse(entry.payload) as MintedDelta),
-      CLIENT_CONTENT_VERSION,
+      heldVersion(),
     );
 
     // ---- Step 12 ----
@@ -258,7 +284,7 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
       queued: queuedNow(),
       server: 'synced',
       contentVersion: response.contentVersion,
-      contentStale: response.contentVersion !== CLIENT_CONTENT_VERSION,
+      contentStale: response.contentVersion > heldVersion(),
       levelUps: response.levelUps,
     };
   } catch (error) {

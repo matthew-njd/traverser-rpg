@@ -21,7 +21,8 @@ public class AuthenticationTests(TraverserApiFixture api)
     /// the open group by mistake is the failure this is guarding against, and it is invisible in a
     /// per-endpoint test that nobody remembered to add.
     /// </summary>
-    public static TheoryData<string> SecuredRoutes() => new() { "/api/v1/players/me", "/api/v1/content/version" };
+    public static TheoryData<string> SecuredRoutes() =>
+        new() { "/api/v1/players/me", "/api/v1/content/version", "/api/v1/content/bundle" };
 
     [Theory]
     [MemberData(nameof(SecuredRoutes))]

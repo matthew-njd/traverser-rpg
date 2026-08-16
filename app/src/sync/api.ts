@@ -1,3 +1,4 @@
+import { type ContentBundle, parseBundle } from '../content/bundle';
 import type { MintedDelta } from '../health/deltas';
 import {
   type AllocationPayload,
@@ -63,6 +64,8 @@ export interface ApiOptions {
 
 export interface TraverserApi {
   contentVersion(): Promise<number>;
+  /** The whole content set (tech-02 §3). Fetched only when the version poll above moved. */
+  contentBundle(): Promise<ContentBundle>;
   sync(deltas: readonly MintedDelta[], contentVersion: number): Promise<SyncResponse>;
   /** tech-02 §3's one-shot repair path, and what a restore uses to prove its credentials. */
   profile(): Promise<PlayerProfile>;
@@ -135,6 +138,12 @@ export function createApi(options: ApiOptions): TraverserApi {
   return {
     async contentVersion() {
       return parseContentVersion(await request(options, '/content/version'));
+    },
+
+    async contentBundle() {
+      // No `If-None-Match`: the client already decided the version moved before calling, so a 304
+      // here would be a response it has no cached body to pair with.
+      return parseBundle(await request(options, '/content/bundle'));
     },
 
     async sync(deltas, contentVersion) {

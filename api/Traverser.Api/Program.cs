@@ -41,6 +41,17 @@ builder.WebHost.UseSentry(options =>
 
 builder.Services.AddOpenApi();
 
+// tech-02 §3 asks for the content bundle as one gzip response. Registered globally rather than per
+// route because the middleware has no per-endpoint form — every other response on this surface is
+// small enough that compressing it changes nothing either way.
+//
+// ↯ EnableForHttps stays off, and that is correct here rather than a compromise: TLS terminates at
+// `tailscale serve` and the container only ever sees plain HTTP (tech-06 §1.2), so requests arrive
+// unencrypted from Kestrel's point of view and the flag never applies. The BREACH-class attacks it
+// guards against need an attacker who can both see the ciphertext and inject into the plaintext,
+// which is not reachable on a tailnet-only surface.
+builder.Services.AddResponseCompression();
+
 // tech-02 §2 — errors are RFC 9457 ProblemDetails. This registers the default writer so that
 // unhandled exceptions and framework-generated statuses (a 400 from malformed JSON, a 405) come
 // back in the same shape as the ones the endpoints produce deliberately. Without it the client
@@ -146,6 +157,9 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
 });
 
 app.UseStatusCodePages();
+
+// Before auth so it wraps the response body of every endpoint behind it.
+app.UseResponseCompression();
 
 app.UseAuthentication();
 app.UseAuthorization();

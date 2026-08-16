@@ -142,9 +142,182 @@ const V2_PROVISIONAL: readonly string[] = [
   'ALTER TABLE player ADD COLUMN provisional INTEGER NOT NULL DEFAULT 0',
 ];
 
+/**
+ * Version 3 — the content bundle (T4 §5.1), as tables mirroring tech-01 §3 one-for-one.
+ *
+ * Read-only after the write that lands them: the whole set is replaced in one transaction when the
+ * server's `content_version` moves, and nothing else ever writes here. That is why there are no
+ * `player_id` columns, no timestamps, and no indexes beyond the primary keys — every read is either
+ * by key or a full table scan of a few dozen rows.
+ *
+ * ↯ No foreign keys **between** content tables, unlike the server's schema. `PRAGMA foreign_keys`
+ * is ON (`open.ts`), so a delete-then-insert replacement would have to order 16 tables by
+ * dependency in both directions, and one wrong step fails the swap on a device with no recovery
+ * path but reinstalling. The bundle arrives whole and consistent or not at all; the references are
+ * already proven by the server's constraints and by the seed tests before it is ever served.
+ *
+ * Decimals are TEXT, matching the wire (tech-02 §2) and `player_settings`'s volumes — parsed at the
+ * point of use, never stored as SQLite REALs.
+ */
+const V3_CONTENT: readonly string[] = [
+  // One row, mirroring `content_version`. Its absence is what makes a bundle "not yet loaded".
+  `CREATE TABLE content_version (
+     one_row      INTEGER PRIMARY KEY CHECK (one_row = 1),
+     version      INTEGER NOT NULL,
+     generated_at TEXT    NOT NULL
+   )`,
+
+  `CREATE TABLE game_type (
+     id            TEXT PRIMARY KEY NOT NULL,
+     display_name  TEXT NOT NULL,
+     cycle_ordinal INTEGER NOT NULL
+   )`,
+
+  `CREATE TABLE type_effectiveness (
+     attacker_type_id TEXT NOT NULL,
+     defender_type_id TEXT NOT NULL,
+     multiplier       TEXT NOT NULL,
+     PRIMARY KEY (attacker_type_id, defender_type_id)
+   )`,
+
+  `CREATE TABLE zone (
+     id           TEXT PRIMARY KEY NOT NULL,
+     display_name TEXT NOT NULL,
+     ordinal      INTEGER NOT NULL,
+     is_released  INTEGER NOT NULL
+   )`,
+
+  `CREATE TABLE zone_gate (
+     id               TEXT PRIMARY KEY NOT NULL,
+     zone_id          TEXT NOT NULL,
+     enemy_id         TEXT NOT NULL,
+     gate_kind        TEXT NOT NULL,
+     league_threshold INTEGER NOT NULL,
+     unlocks_zone_id  TEXT,
+     is_hard_gate     INTEGER NOT NULL
+   )`,
+
+  // zone_id and type_id are null for enemy_waystone_wisp, which belongs to no zone and has no type.
+  `CREATE TABLE enemy (
+     id           TEXT PRIMARY KEY NOT NULL,
+     display_name TEXT NOT NULL,
+     zone_id      TEXT,
+     type_id      TEXT,
+     role         TEXT NOT NULL
+   )`,
+
+  `CREATE TABLE enemy_stat_scaling (
+     enemy_id TEXT NOT NULL,
+     stat     TEXT NOT NULL,
+     base     TEXT NOT NULL,
+     rate     TEXT NOT NULL,
+     PRIMARY KEY (enemy_id, stat)
+   )`,
+
+  // type_id is null for Physical moves, which never take a multiplier in either direction (T5 §3.3).
+  `CREATE TABLE enemy_move (
+     id           TEXT PRIMARY KEY NOT NULL,
+     enemy_id     TEXT NOT NULL,
+     display_name TEXT NOT NULL,
+     category     TEXT NOT NULL,
+     type_id      TEXT,
+     power        INTEGER NOT NULL,
+     ai_weight    INTEGER NOT NULL
+   )`,
+
+  `CREATE TABLE enemy_drop_pool (
+     enemy_id       TEXT NOT NULL,
+     encounter_kind TEXT NOT NULL,
+     item_def_id    TEXT NOT NULL,
+     weight         INTEGER NOT NULL,
+     PRIMARY KEY (enemy_id, encounter_kind, item_def_id)
+   )`,
+
+  `CREATE TABLE player_skill_def (
+     id           TEXT PRIMARY KEY NOT NULL,
+     display_name TEXT NOT NULL,
+     category     TEXT NOT NULL,
+     type_id      TEXT,
+     power        INTEGER NOT NULL,
+     uses         INTEGER,
+     unlock_level INTEGER NOT NULL
+   )`,
+
+  `CREATE TABLE gear_move (
+     id           TEXT PRIMARY KEY NOT NULL,
+     display_name TEXT NOT NULL,
+     type_id      TEXT NOT NULL,
+     power        INTEGER NOT NULL,
+     uses         INTEGER NOT NULL,
+     effect       TEXT
+   )`,
+
+  `CREATE TABLE gear_def (
+     id             TEXT PRIMARY KEY NOT NULL,
+     display_name   TEXT NOT NULL,
+     slot           TEXT NOT NULL,
+     tier           TEXT NOT NULL,
+     zone_id        TEXT,
+     grants_move_id TEXT,
+     flavor         TEXT
+   )`,
+
+  `CREATE TABLE gear_tier_bonus (
+     tier          TEXT PRIMARY KEY NOT NULL,
+     rate          TEXT NOT NULL,
+     flat          INTEGER NOT NULL,
+     trinket_split TEXT NOT NULL
+   )`,
+
+  `CREATE TABLE item_def (
+     id           TEXT PRIMARY KEY NOT NULL,
+     display_name TEXT NOT NULL,
+     category     TEXT NOT NULL,
+     rarity       TEXT NOT NULL,
+     type_id      TEXT,
+     heal_pct     INTEGER,
+     effect       TEXT,
+     max_stack    INTEGER NOT NULL,
+     battle_only  INTEGER NOT NULL,
+     flavor       TEXT NOT NULL
+   )`,
+
+  `CREATE TABLE drop_rate (
+     encounter_kind TEXT NOT NULL,
+     reward_kind    TEXT NOT NULL,
+     chance         TEXT NOT NULL,
+     qty_min        INTEGER NOT NULL,
+     qty_max        INTEGER NOT NULL,
+     tier           TEXT,
+     PRIMARY KEY (encounter_kind, reward_kind)
+   )`,
+
+  `CREATE TABLE level_milestone (
+     level       INTEGER NOT NULL,
+     reward_kind TEXT NOT NULL,
+     item_def_id TEXT,
+     gear_tier   TEXT,
+     PRIMARY KEY (level, reward_kind)
+   )`,
+
+  `CREATE TABLE streak_milestone (
+     day  INTEGER PRIMARY KEY NOT NULL,
+     slot TEXT NOT NULL,
+     tier TEXT NOT NULL
+   )`,
+
+  // xp_to_next is null at level 60 — the curve's terminus, not a missing row (GDD 1 §4).
+  `CREATE TABLE xp_curve (
+     level      INTEGER PRIMARY KEY NOT NULL,
+     xp_to_next INTEGER,
+     cumulative INTEGER NOT NULL
+   )`,
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
+  { version: 3, statements: [...V3_CONTENT] },
 ];
 
 /** The version a fully-migrated database reports. */

@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 
+import { CONTENT_TABLES, CONTENT_TABLE_NAMES } from '../../content/schema';
 import { LATEST_VERSION, MIGRATIONS, currentVersion, runMigrations } from '../migrations';
 import { FileDatabase, memoryDatabase } from './testDatabase';
 
@@ -11,7 +12,7 @@ describe('schema migrations', () => {
     expect(LATEST_VERSION).toBeGreaterThan(0);
   });
 
-  it('creates every table the M1 schema needs', () => {
+  it('creates every table the schema needs and nothing else', () => {
     const db = memoryDatabase();
 
     const tables = db
@@ -33,21 +34,32 @@ describe('schema migrations', () => {
         'outbox',
         'read_watermark',
         'step_watermark',
+        // tech-01 §3's content set (T4 §5.1), plus its version row.
+        'content_version',
+        ...CONTENT_TABLE_NAMES,
       ].sort(),
     );
   });
 
-  /** The bundle is M2 (plan §3.2) — an empty content table would look like one that failed to arrive. */
-  it('creates no content tables', () => {
+  /**
+   * The DDL and `CONTENT_TABLES` are two spellings of one schema — the spec drives the INSERT
+   * column list, so a column here that the DDL lacks fails at write time on a device, with the
+   * bundle half-stored. Checked column by column rather than by table name for that reason.
+   */
+  it('gives every content column in the spec a column in the table', () => {
     const db = memoryDatabase();
 
-    const tables = db
-      .getAllSync<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'")
-      .map((row) => row.name);
+    for (const table of CONTENT_TABLE_NAMES) {
+      const actual = db
+        .getAllSync<{ name: string }>(`PRAGMA table_info(${table})`)
+        .map((row) => row.name)
+        .sort();
 
-    expect(tables).not.toContain('enemy');
-    expect(tables).not.toContain('item_def');
-    expect(tables).not.toContain('xp_curve');
+      expect({ table, columns: actual }).toEqual({
+        table,
+        columns: Object.keys(CONTENT_TABLES[table].columns).sort(),
+      });
+    }
   });
 
   it('is idempotent — a second run applies nothing', () => {
@@ -66,6 +78,10 @@ describe('schema migrations', () => {
 
     // Rewind to a device that is still on version 1 by dropping what came after it.
     db.execSync('DROP TABLE player');
+    db.execSync('DROP TABLE content_version');
+    for (const table of CONTENT_TABLE_NAMES) {
+      db.execSync(`DROP TABLE ${table}`);
+    }
     for (const statement of MIGRATIONS[0]?.statements ?? []) {
       if (statement.includes('CREATE TABLE player ')) {
         db.execSync(statement);

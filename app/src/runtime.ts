@@ -1,3 +1,4 @@
+import { seedEmbeddedContent } from './content/store';
 import { getDatabase, openTraverserDatabase } from './db/open';
 import { type DeviceIdentity, loadIdentity } from './db/secureToken';
 import type { SqliteDatabase } from './db/types';
@@ -26,6 +27,10 @@ let identity: DeviceIdentity | null = null;
  */
 export async function bootRuntime(): Promise<SqliteDatabase> {
   const db = openTraverserDatabase();
+
+  // Before the stores hydrate and before any screen mounts: content is what a battle screen reads,
+  // and "playable having never fetched it" (T4 §5.1) means it must already be there on first paint.
+  seedEmbeddedContent(db);
 
   identity = await loadIdentity();
 
