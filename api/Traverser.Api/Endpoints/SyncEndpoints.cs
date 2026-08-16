@@ -256,7 +256,9 @@ public static class SyncEndpoints
 
             foreach (var delta in forDate)
             {
-                var xp = XpRates.ForSteps(delta.StepsDelta);
+                // `day.Steps` is the running cumulative and must stay un-incremented until after
+                // this line — it is what the step remainder is carried against.
+                var xp = XpRates.ForSteps(delta.StepsDelta, day.Steps);
 
                 if (delta.HrTier is int tier && delta.MinutesDelta > 0)
                 {

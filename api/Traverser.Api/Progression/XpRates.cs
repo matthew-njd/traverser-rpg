@@ -29,6 +29,20 @@ public static class XpRates
     public static int ForSteps(int steps) => steps / StepsPerXp;
 
     /// <summary>
+    /// ↯ Step XP is charged against the day's <em>post-merge cumulative</em> total, exactly like the
+    /// Tier 3 cap — never against the delta in isolation. Flooring each delta on its own discards its
+    /// sub-20 remainder permanently, so the same 10,000 steps pay less when synced across ten app
+    /// opens than across one, and the loss scales with how often the player opens the app.
+    /// </summary>
+    public static int ForSteps(int steps, int cumulativeStepsBefore)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(steps);
+        ArgumentOutOfRangeException.ThrowIfNegative(cumulativeStepsBefore);
+
+        return ForSteps(cumulativeStepsBefore + steps) - ForSteps(cumulativeStepsBefore);
+    }
+
+    /// <summary>
     /// XP for <paramref name="minutes"/> at <paramref name="tier"/>, given how many Tier 3 minutes
     /// the day had already accumulated <em>before</em> these.
     /// </summary>

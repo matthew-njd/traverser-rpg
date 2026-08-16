@@ -19,11 +19,39 @@ public class XpDerivationTests
     public void Step_xp_is_one_per_twenty_steps(int steps, int expected) =>
         Assert.Equal(expected, XpRates.ForSteps(steps));
 
-    /// <summary>A partial 20 earns nothing until it completes; the remainder is not lost, the day's
-    /// running total keeps it, because steps accumulate on <c>activity_day</c> and XP is derived per
-    /// delta from what that delta carried.</summary>
     [Fact]
     public void Step_xp_floors_rather_than_rounding() => Assert.Equal(1, XpRates.ForSteps(39));
+
+    /// <summary>
+    /// The remainder carries across deltas. A mutation that floors each delta on its own passes every
+    /// other test in this file and silently underpays every player who opens the app more than once a
+    /// day — the mirror of the Tier 3 cap bug below, failing against the player instead of for them.
+    /// </summary>
+    [Fact]
+    public void Step_xp_carries_the_remainder_across_deltas()
+    {
+        int[] deltas = [19, 19, 19];
+        var cumulative = 0;
+        var awarded = 0;
+
+        foreach (var delta in deltas)
+        {
+            awarded += XpRates.ForSteps(delta, cumulative);
+            cumulative += delta;
+        }
+
+        Assert.Equal(XpRates.ForSteps(57), awarded);
+        Assert.Equal(2, awarded);
+    }
+
+    /// <summary>Today's drill: 7 step deltas summing to 4,126 paid 204 per-delta, 206 cumulative.</summary>
+    [Theory]
+    [InlineData(0, 20, 1)]
+    [InlineData(19, 1, 1)]      // completes the 20 the previous delta could not
+    [InlineData(19, 19, 1)]
+    [InlineData(4_120, 6, 0)]   // 4,126 total — the 6 stay banked for the next delta
+    public void Step_xp_is_the_difference_of_two_day_totals(int before, int steps, int expected) =>
+        Assert.Equal(expected, XpRates.ForSteps(steps, before));
 
     [Theory]
     [InlineData(1, 30, 90)]     // Moderate, 3/min
