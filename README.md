@@ -516,6 +516,36 @@ sync loses nothing. Adding any of the three would be a regression (tech-06 §8.4
 
 ---
 
+## M1 is complete
+
+**All eight exit criteria verified on the Pixel, 2026-08-16** (`traverser-m1-plan.md` §5, §7).
+
+Real steps and heart-rate minutes sync on app open, become XP, and level the Traverser up. Four of
+the eight criteria could only be proven by hand on the device, and were:
+
+| Criterion | Proven by |
+|---|---|
+| Kill the app mid-sync, lose nothing | Force-stop holding an unsent delta and an unsent allocation; both arrived on the next foreground, neither twice. |
+| The API being off is invisible | Walked with `api` stopped — steps and XP appeared, no error surfaced, totals reconciled identically when it came back. |
+| Denied permission stays usable | All permissions revoked; banner shown, every tab usable, "Enable access" deep-links to settings rather than re-prompting. |
+| Peak heart-rate minutes pay 7 XP/min | 3 Tier 3 minutes moved the day 354 → 431 XP, reconciling exactly. |
+
+Two things worth knowing before reading a row of data and concluding something is broken:
+
+- **`hr_session` is empty server-side and that is correct.** Sessions are resolved on the device;
+  T2 §4 step 2 uploads them and it lands at M2. Tier 3 minutes reach the server through
+  `sync_delta`, never through a session row.
+- **Health Connect's heart-rate zones are not ours.** Its Peak zone starts at 168 for this profile;
+  ours starts at 159 (`ceil(HRmax × 0.85)`, GDD 1 §2.2). A workout can read "Peak · 0m" in Health
+  Connect and legitimately earn Peak minutes in Traverser.
+
+Deferred by explicit decision, not forgotten: the **Tier 2 design pass** (layout — underlined tab
+pair, hairline stat rows, activity step bars, the Spectral face) and the **design-language section**
+itself, both M2; the T2 §5 **backoff schedule and coalescing cap**, M5; and the **`⟨balance⟩` flag**
+on storm-type reachability (DECISIONS 2026-08-15), which is a GDD content call, not a code one.
+
+---
+
 ## M0 is complete
 
 Nothing outstanding. The first device build (§7.1) ran on 2026-08-01 and installed over USB to a
