@@ -194,6 +194,14 @@ function parseActivityDay(value: unknown, index: number): ActivityDay {
   };
 }
 
+/**
+ * `GET /players/me/activity`, which answers with a bare array rather than a wrapped object — the
+ * one read on this surface that does (tech-02 §3).
+ */
+export function parseActivityDays(value: unknown): readonly ActivityDay[] {
+  return array(value, 'activity_days').map(parseActivityDay);
+}
+
 export function parseSyncResponse(value: unknown): SyncResponse {
   const body = object(value, 'response');
   const streak = object(body.streak, 'streak');

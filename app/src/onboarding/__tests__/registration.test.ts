@@ -1,14 +1,25 @@
 import { memoryDatabase } from '../../db/__tests__/testDatabase';
-import { peek } from '../../db/outbox';
+import { enqueue, peek } from '../../db/outbox';
+import { raiseStepHighWater, readWatermark, stepHighWater } from '../../db/watermarks';
 import { ApiStatusError } from '../../sync/api';
-import { readBirthYear, readPlayer, readStreak } from '../../sync/mirror';
+import { readActivityDays, readBirthYear, readPlayer, readStreak } from '../../sync/mirror';
 import {
   PLAYER_ID,
+  registeredDatabase,
+  wireActivityDay,
   wirePlayer,
   wireProfile,
   wireRegistration,
 } from '../../sync/__tests__/fixtures';
-import { RestoreError, deviceTimezone, registerNewPlayer, restoreIdentity } from '../registration';
+import {
+  RestoreError,
+  deviceTimezone,
+  handOverTo,
+  isProfileReplaceable,
+  parseIdentityDocument,
+  registerNewPlayer,
+  restoreIdentity,
+} from '../registration';
 
 /**
  * GDD 10 screen 4's terminal step and tech-06 §13.1's restore branch beside it.
@@ -31,6 +42,25 @@ jest.mock('expo-secure-store', () => ({
 
 const NOW = Date.parse('2026-08-04T10:00:00Z');
 const OPTIONS = { baseUrl: 'http://host/api/v1' };
+
+/**
+ * A fetch that answers per path, for the flows that now make more than one call. A `null` body
+ * means "this endpoint fails" — the restore must survive a missing activity log.
+ */
+const routedFetch = (routes: Record<string, unknown>) =>
+  jest.fn(async (url: string) => {
+    const match = Object.keys(routes)
+      .sort((a, b) => b.length - a.length)
+      .find((path) => url.includes(path));
+
+    const body = match === undefined ? null : routes[match];
+
+    return Promise.resolve({
+      ok: body !== null,
+      status: body === null ? 500 : 200,
+      json: async () => Promise.resolve(body),
+    } as Response);
+  }) as unknown as typeof fetch;
 
 const jsonFetch = (body: unknown, status = 200) =>
   jest.fn(async () =>
@@ -257,8 +287,253 @@ describe('restoring an exported identity (tech-06 §13.1)', () => {
   });
 });
 
+/**
+ * The Settings hand-over (T6 §13.1, amended 2026-08-16). Distinct from the restore above in the one
+ * way that matters: the device is not empty, so this is a *replacement* and the local wipe is the
+ * substance of it.
+ */
+describe('handing a device over to a different identity', () => {
+  const OTHER = '018f0000-0000-7000-8000-0000000012ab';
+
+  /** A device mid-life: queued deltas, watermarks, and a day of history under the outgoing player. */
+  const usedDatabase = (overrides: Record<string, unknown> = {}) => {
+    const db = registeredDatabase({ player_id: OTHER, ...overrides });
+
+    enqueue(db, {
+      clientOpId: 'op-1',
+      kind: 'sync_delta',
+      payload: { steps_delta: 900 },
+      createdAt: '2026-08-04T09:00:00Z',
+    });
+    raiseStepHighWater(db, '2026-08-04', 4_200);
+    db.runSync(
+      `INSERT INTO activity_day (player_id, activity_date, steps, step_goal_snapshot)
+       VALUES (?, '2026-08-04', 4200, 7000)`,
+      [OTHER],
+    );
+
+    return db;
+  };
+
+  it('replaces the mirror, and clears the queue and the watermarks', async () => {
+    const db = usedDatabase();
+
+    await handOverTo(db, { ...OPTIONS, fetchImpl: jsonFetch(wireProfile()) }, {
+      playerId: PLAYER_ID,
+      token: 'tok',
+    });
+
+    expect(readPlayer(db)?.playerId).toBe(PLAYER_ID);
+    expect(mockStore.get('traverser.bearer_token')).toBe('tok');
+
+    // The outgoing player's history goes with the player row rather than being left dangling.
+    expect(db.getAllSync('SELECT 1 FROM activity_day')).toHaveLength(0);
+    expect(peek(db, 10)).toHaveLength(0);
+
+    // ↯ The point of the whole exercise: cleared watermarks are what make the next pass re-read the
+    // last 72h from Health Connect and re-mint it for the restored player, instead of treating
+    // today's steps as already reported and losing them.
+    expect(stepHighWater(db, '2026-08-04')).toBe(0);
+    expect(readWatermark(db)).toBeNull();
+  });
+
+  it('touches nothing when the token is rejected', async () => {
+    const db = usedDatabase();
+
+    await expect(
+      handOverTo(
+        db,
+        { ...OPTIONS, fetchImpl: jsonFetch({ code: 'invalid_bearer_token' }, 401) },
+        { playerId: PLAYER_ID, token: 'wrong' },
+      ),
+    ).rejects.toBeInstanceOf(ApiStatusError);
+
+    expect(readPlayer(db)?.playerId).toBe(OTHER);
+    expect(peek(db, 10)).toHaveLength(1);
+    expect(stepHighWater(db, '2026-08-04')).toBe(4_200);
+    expect(mockStore.get('traverser.bearer_token')).toBeUndefined();
+  });
+
+  /**
+   * The defect found on the device after the first successful hand-over: the profile came back and
+   * the activity log was empty. `GET /players/me` carries no days, and `activity_day` is otherwise
+   * only ever written by a sync response — so a device that did not live through those days has no
+   * way to learn about them. Pre-existing since M1: the onboarding restore had the same hole.
+   */
+  it('backfills the activity log, which the profile response does not carry', async () => {
+    const db = usedDatabase();
+    const history = [
+      wireActivityDay({ activity_date: '2026-08-14', steps: 9_100 }),
+      wireActivityDay({ activity_date: '2026-08-15', steps: 7_400 }),
+    ];
+
+    const fetchImpl = routedFetch({
+      '/players/me': wireProfile(),
+      '/players/me/activity': history,
+    });
+
+    await handOverTo(db, { ...OPTIONS, fetchImpl }, { playerId: PLAYER_ID, token: 'tok' });
+
+    expect(readActivityDays(db, 90).map((day) => day.activityDate)).toEqual([
+      '2026-08-15',
+      '2026-08-14',
+    ]);
+  });
+
+  /** A restore that reached the server is a success; the log is the least of what it delivered. */
+  it('restores anyway when the history cannot be fetched', async () => {
+    const db = usedDatabase();
+
+    const fetchImpl = routedFetch({
+      '/players/me': wireProfile(),
+      '/players/me/activity': null,
+    });
+
+    await handOverTo(db, { ...OPTIONS, fetchImpl }, { playerId: PLAYER_ID, token: 'tok' });
+
+    expect(readPlayer(db)?.playerId).toBe(PLAYER_ID);
+    expect(readActivityDays(db, 90)).toHaveLength(0);
+  });
+
+  /**
+   * The token pasted on its own, which is the form a player actually has to hand and the one the
+   * first version rejected while telling them it was accepted. The credential is the token; the
+   * server names the profile it belongs to.
+   */
+  it('accepts a token with no player id and takes the identity from the server', async () => {
+    const db = usedDatabase();
+
+    await handOverTo(db, { ...OPTIONS, fetchImpl: jsonFetch(wireProfile()) }, {
+      playerId: null,
+      token: 'tok',
+    });
+
+    expect(readPlayer(db)?.playerId).toBe(PLAYER_ID);
+    expect(mockStore.get('traverser.player_id')).toBe(PLAYER_ID);
+  });
+
+  it('refuses a token that belongs to a different profile, before wiping anything', async () => {
+    const db = usedDatabase();
+    const other = wireProfile({ player: wirePlayer({ player_id: OTHER }) });
+
+    await expect(
+      handOverTo(db, { ...OPTIONS, fetchImpl: jsonFetch(other) }, {
+        playerId: PLAYER_ID,
+        token: 'tok',
+      }),
+    ).rejects.toBeInstanceOf(RestoreError);
+
+    expect(db.getAllSync('SELECT 1 FROM activity_day')).toHaveLength(1);
+  });
+});
+
+/**
+ * The guard is the whole safety model for the Settings control, so it is asserted on the two things
+ * that have no undo (a spent point, a finished tutorial) rather than on activity, which is
+ * recoverable by the watermark clear.
+ */
+describe('whether a profile may be replaced', () => {
+  it('allows a fresh profile, steps and all', () => {
+    const db = registeredDatabase({ level: 1, lifetime_steps: 30_000 });
+
+    expect(isProfileReplaceable(db)).toBe(true);
+  });
+
+  /**
+   * The regression that made the control useless in practice: level is arithmetic on steps, not a
+   * decision, and a throwaway profile that syncs one ordinary walk is Level 2 within minutes. Found
+   * on the device — the card had already disappeared by the time it was looked for.
+   */
+  it('allows a profile that has levelled up, because levelling is not a choice', () => {
+    expect(isProfileReplaceable(registeredDatabase({ level: 2, xp_current: 69 }))).toBe(true);
+    expect(isProfileReplaceable(registeredDatabase({ level: 11 }))).toBe(true);
+  });
+
+  it('refuses a profile with a point spent', () => {
+    const db = registeredDatabase();
+
+    db.runSync('UPDATE player SET alloc_might = 1');
+
+    expect(isProfileReplaceable(db)).toBe(false);
+  });
+
+  it('refuses a profile that has finished the tutorial', () => {
+    const db = registeredDatabase();
+
+    db.runSync("UPDATE player SET tutorial_completed_at = '2026-08-04T10:00:00Z'");
+
+    expect(isProfileReplaceable(db)).toBe(false);
+  });
+
+  /** Onboarding owns the empty-device case and has its own screen; this control must not appear. */
+  it('refuses a device with no profile at all', () => {
+    expect(isProfileReplaceable(memoryDatabase())).toBe(false);
+  });
+});
+
 describe('deviceTimezone', () => {
   it('returns an IANA zone, or UTC where Intl is unavailable', () => {
     expect(deviceTimezone()).toEqual(expect.stringMatching(/^[A-Za-z_/+-]+$/));
+  });
+});
+
+/**
+ * What a player can paste into the restore field (T6 §13.1, amended 2026-08-16).
+ *
+ * This block exists because of a device failure, not a hypothesis: the first version accepted only
+ * the exported JSON, so pasting the bare token left the button disabled with no explanation and the
+ * restore silently did nothing. Every case below is a form the file or the token can actually take
+ * on the way through a phone's clipboard.
+ */
+describe('parsing a pasted identity', () => {
+  const TOKEN = 'HXTsFbBUUBoOI1KOnGYm5HHzXaR0iBBjRxUYT9tLZ9E';
+
+  it('takes the exported document whole', () => {
+    const document = JSON.stringify({
+      player_id: PLAYER_ID,
+      token: TOKEN,
+      exported_at: '2026-08-16T21:47:52.529Z',
+      note: 'Traverser identity. Restore with this on first launch after a reinstall.',
+    });
+
+    expect(parseIdentityDocument(document)).toEqual({ playerId: PLAYER_ID, token: TOKEN });
+  });
+
+  /** The failure that started this. The token is the credential; the id is only a cross-check. */
+  it('takes a bare token, with no player id', () => {
+    expect(parseIdentityDocument(TOKEN)).toEqual({ playerId: null, token: TOKEN });
+  });
+
+  /** A token pasted out of a wrapped field arrives with the wrapping in it. */
+  it('strips whitespace and line breaks out of a bare token', () => {
+    expect(parseIdentityDocument(`  ${TOKEN.slice(0, 20)}\n${TOKEN.slice(20)}  `)).toEqual({
+      playerId: null,
+      token: TOKEN,
+    });
+  });
+
+  it('takes a document that carries no player id', () => {
+    expect(parseIdentityDocument(JSON.stringify({ token: TOKEN }))).toEqual({
+      playerId: null,
+      token: TOKEN,
+    });
+  });
+
+  it('refuses an empty paste', () => {
+    expect(parseIdentityDocument('')).toBeNull();
+    expect(parseIdentityDocument('   \n  ')).toBeNull();
+  });
+
+  /**
+   * A truncated file is the dangerous one: it looks like a document, so it must not fall through to
+   * the bare-token branch and be sent as a credential made of JSON.
+   */
+  it('refuses a document that was cut short', () => {
+    expect(parseIdentityDocument(`{"player_id": "${PLAYER_ID}", "tok`)).toBeNull();
+  });
+
+  it('refuses a document with no token in it', () => {
+    expect(parseIdentityDocument(JSON.stringify({ player_id: PLAYER_ID }))).toBeNull();
+    expect(parseIdentityDocument(JSON.stringify({ player_id: PLAYER_ID, token: '' }))).toBeNull();
   });
 });

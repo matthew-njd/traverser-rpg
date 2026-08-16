@@ -9,12 +9,19 @@ import { fixedOffsetDates } from '../../health/localDate';
 import { READ_BOTH, pastFirstRead } from '../../health/__tests__/fixtures';
 import { HealthError, type HealthSnapshot, type HealthProvider } from '../../health/provider';
 import { ApiStatusError, ApiUnreachableError, type TraverserApi } from '../api';
-import { type AllocationPayload, type SyncResponse, parseProfile, parseSyncResponse } from '../dto';
-import { readPlayer } from '../mirror';
+import {
+  type AllocationPayload,
+  type SyncResponse,
+  parseActivityDays,
+  parseProfile,
+  parseSyncResponse,
+} from '../dto';
+import { readActivityDays, readPlayer } from '../mirror';
 import { type SyncPassResult, runForegroundSync } from '../pass';
 import {
   fakeProvider,
   registeredDatabase as freshDatabase,
+  wireActivityDay,
   wirePlayer,
   wireProfile,
   wireSyncResponse,
@@ -67,6 +74,7 @@ function fakeApi(
       });
     },
     profile: async () => parseProfile(wireProfile(), 'response'),
+    activity: async () => [],
     allocate: async () => undefined,
     updateSettings: async () => undefined,
     ...overrides,
@@ -392,6 +400,48 @@ describe('the online pass', () => {
     });
 
     expect(result.server).toBe('synced');
+  });
+
+  /**
+   * Step 12a. Found on the device after a restore: the profile came back and the activity log was
+   * empty, because `GET /players/me` carries no days and a sync response reports only the days it
+   * touched. A mirror with steps but no days did not live through them — it inherited them.
+   */
+  it('repairs a mirror that has steps but no history', async () => {
+    const db = registeredDatabase({ lifetime_steps: 86_883 });
+
+    const result = await run(db, {
+      provider: fakeProvider({ read: async () => walked(0) }),
+      api: fakeApi({
+        activity: async () => [
+          parseActivityDays([wireActivityDay({ activity_date: '2026-08-01', steps: 8_800 })])[0]!,
+        ],
+      }),
+    });
+
+    expect(result.server).toBe('synced');
+    expect(readActivityDays(db, 90).map((day) => day.activityDate)).toEqual(['2026-08-01']);
+  });
+
+  /** Bounded: a healthy mirror must not refetch a year of history on every foreground. */
+  it('does not refetch history once the log is populated', async () => {
+    const db = registeredDatabase({ lifetime_steps: 86_883 });
+    let calls = 0;
+
+    const api = fakeApi({
+      activity: async () => {
+        calls += 1;
+
+        return [
+          parseActivityDays([wireActivityDay({ activity_date: '2026-08-01', steps: 8_800 })])[0]!,
+        ];
+      },
+    });
+
+    await run(db, { provider: fakeProvider({ read: async () => walked(0) }), api });
+    await run(db, { provider: fakeProvider({ read: async () => walked(0) }), api });
+
+    expect(calls).toBe(1);
   });
 
   /** A bundle that will not download is a playable app on yesterday's content, not a failed sync. */

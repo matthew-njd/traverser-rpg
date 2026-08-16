@@ -245,6 +245,26 @@ export function applySyncResponse(db: SqliteDatabase, response: SyncResponse): v
   });
 }
 
+/**
+ * Backfills history the device did not live through — a restored identity, on a device whose mirror
+ * has no record of those days (tech-02 §3's repair path, extended to the activity log).
+ *
+ * ↯ `GET /players/me` does not carry activity days, so `writeProfile` cannot repair this. Without a
+ * backfill the log is empty until new days sync, and the player's own history is invisible on the
+ * device that just claimed it.
+ */
+export function writeActivityDays(
+  db: SqliteDatabase,
+  playerId: string,
+  days: readonly ActivityDay[],
+): void {
+  transact(db, () => {
+    for (const day of days) {
+      writeActivityDay(db, playerId, day);
+    }
+  });
+}
+
 function writeSettingsRow(db: SqliteDatabase, playerId: string, settings: PlayerSettings): void {
   db.runSync(
     `INSERT INTO player_settings (player_id, daily_reminder_time, music_volume, sfx_volume, birth_year)

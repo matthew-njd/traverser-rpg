@@ -413,6 +413,8 @@ Every external dependency, its free-tier limit, and this project's usage against
 
 Logged here rather than decided silently, per T4 §10.5's precedent.
 
+> **Amended 2026-08-16 (M2/P2).** Candidate 1 shipped at M1 with the import reachable **only from the onboarding splash**, on the reasoning that a device holds one player forever (T4 §6.5) so an import after registration would swap identity underneath a mirror full of another player's rows. Found on the device: a player who taps past "Restore from a backup" and registers instead has no way back except an uninstall — which is the exact loss this section exists to prevent, now caused by a mis-tap rather than by lost hardware. **The import is therefore also offered in Settings, guarded on the local profile carrying nothing irreversible** — still Level 1, no stat point spent, tutorial not completed. The guard is on progression rather than on activity, because steps are recoverable and a spent point is not: the hand-over clears the device watermarks, so the next pass's `[now−72h, now]` window (T3 §4.1) re-reads Health Connect and re-mints the last three days for the restored player. The outgoing profile is **not** deleted from the server — a mis-tap can strand a profile, never destroy one, and it stays claimable by its own exported identity. A system confirmation dialog names all three consequences before anything is touched.
+
 ---
 
 ## 14. ↯ Divergences from web/cloud deployment habits

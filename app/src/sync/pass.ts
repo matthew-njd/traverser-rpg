@@ -18,6 +18,7 @@ import {
   readWindowFor,
 } from '../health/provider';
 import { ApiStatusError, ApiUnreachableError, type TraverserApi } from './api';
+import { backfillActivity, needsHistoryRepair } from './history';
 import type { AllocationPayload, SettingsPayload } from './dto';
 import { type LevelUp, WireFormatError } from './dto';
 import { applySyncResponse, readBirthYear, readPlayer, writeProjection } from './mirror';
@@ -276,6 +277,16 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
 
     // ---- Step 12 ----
     applySyncResponse(db, response);
+
+    // ---- Step 12a. Repair a mirror that is missing its history.
+    //
+    // A sync response reports only the days it touched, so a device that has walked but holds no
+    // activity days at all did not build this mirror by living through them — it inherited it from
+    // a restore. Bounded by construction: false once the log is populated, and false for a device
+    // that has simply never synced.
+    if (needsHistoryRepair(db)) {
+      await backfillActivity(db, api, response.player.playerId);
+    }
 
     // ---- Step 13 ----
     return {

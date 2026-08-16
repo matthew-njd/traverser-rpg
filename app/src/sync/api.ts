@@ -1,11 +1,13 @@
 import { type ContentBundle, parseBundle } from '../content/bundle';
 import type { MintedDelta } from '../health/deltas';
 import {
+  type ActivityDay,
   type AllocationPayload,
   type PlayerProfile,
   type Registration,
   type SettingsPayload,
   type SyncResponse,
+  parseActivityDays,
   parseContentVersion,
   parseProfile,
   parseRegistration,
@@ -69,6 +71,14 @@ export interface TraverserApi {
   sync(deltas: readonly MintedDelta[], contentVersion: number): Promise<SyncResponse>;
   /** tech-02 §3's one-shot repair path, and what a restore uses to prove its credentials. */
   profile(): Promise<PlayerProfile>;
+  /**
+   * The activity log's history, for a closed date range of local calendar dates (tech-02 §3).
+   *
+   * ↯ `/players/me` does **not** carry this — it is the player block, settings, streak and zones,
+   * and nothing day-by-day. Activity history otherwise only ever arrives as the days a sync
+   * touched, so this is the only way a device that did not live through those days can show them.
+   */
+  activity(from: string, to: string): Promise<readonly ActivityDay[]>;
   allocate(payload: AllocationPayload): Promise<void>;
   updateSettings(payload: SettingsPayload): Promise<void>;
 }
@@ -157,6 +167,12 @@ export function createApi(options: ApiOptions): TraverserApi {
 
     async profile() {
       return parseProfile(await request(options, '/players/me'), 'response');
+    },
+
+    async activity(from, to) {
+      return parseActivityDays(
+        await request(options, `/players/me/activity?from=${from}&to=${to}`),
+      );
     },
 
     async allocate(payload) {

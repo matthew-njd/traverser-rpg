@@ -1,9 +1,17 @@
 import { useState } from 'react';
-import { Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 
 import { getDatabase } from '@/db/open';
+import { apiBaseUrl } from '@/env';
 import { healthConnectProvider } from '@/health/healthconnect';
-import { currentIdentity, syncNow } from '@/runtime';
+import {
+  RestoreError,
+  handOverTo,
+  isProfileReplaceable,
+  parseIdentityDocument,
+} from '@/onboarding/registration';
+import { currentIdentity, refreshIdentity, syncNow } from '@/runtime';
+import { ApiStatusError, ApiUnreachableError } from '@/sync/api';
 import { readBirthYear, readPlayer } from '@/sync/mirror';
 import { MIN_DAILY_STEP_GOAL, changeSettings } from '@/sync/writes';
 import { useAppStore } from '@/state/appStore';
@@ -52,6 +60,7 @@ export default function Settings() {
   return (
     <Screen scroll>
       <IdentityExport />
+      <IdentityImport />
 
       <Card>
         <Heading>Daily step goal</Heading>
@@ -153,6 +162,141 @@ function IdentityExport() {
   );
 }
 
+/**
+ * tech-06 §13.1's import half, amended in 2026-08-16: the restore branch used to exist only on the
+ * splash screen, so a player who tapped past it once could not reach it again without reinstalling.
+ *
+ * Offered **only while the local profile carries nothing irreversible** (`isProfileReplaceable`).
+ * That is the whole safety model — this control can strand a throwaway profile on the server, and
+ * must never be able to replace a real save. Steps do not disqualify it: the hand-over clears the
+ * watermarks and the next sync re-mints the last 72 hours for the restored player.
+ */
+function IdentityImport() {
+  const [open, setOpen] = useState(false);
+  const [pasted, setPasted] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Read on every render rather than held in state: allocating a point on the Character screen must
+  // close this door, and nothing here would otherwise know that happened.
+  if (currentIdentity() === null || !isProfileReplaceable(getDatabase())) {
+    return null;
+  }
+
+  const parsed = parseIdentityDocument(pasted);
+
+  const confirm = () => {
+    if (parsed === null) {
+      return;
+    }
+
+    // ↯ `Alert.alert`, not a custom modal. This is the one destructive action in the app, and the
+    // system dialog is the one surface a player already reads as "this is not an ordinary tap".
+    Alert.alert(
+      'Replace this profile?',
+      'The traverser on this device will be replaced by the one in the file you pasted, and this ' +
+        'device will stop being able to reach it. The profile you are leaving is not deleted from ' +
+        'the server — it stays claimable by its own exported identity.\n\n' +
+        'Steps from the last three days are re-read after the swap and are not lost.',
+      [
+        { text: 'Keep this profile', style: 'cancel' },
+        { text: 'Replace', style: 'destructive', onPress: () => void handOver() },
+      ],
+    );
+  };
+
+  const handOver = async () => {
+    if (parsed === null) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+
+    try {
+      await handOverTo(getDatabase(), { baseUrl: apiBaseUrl }, parsed);
+      await refreshIdentity();
+
+      // The restored profile's history arrives from the server, and the re-minted steps with it.
+      void syncNow().catch(() => undefined);
+
+      setOpen(false);
+      setPasted('');
+    } catch (caught) {
+      setError(messageForRestore(caught));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <Heading>Restore a different identity</Heading>
+      <Body dim>
+        This device is carrying a new traverser with no progress on it. If you meant to restore an
+        exported identity, you can still do it here.
+      </Body>
+
+      {open ? (
+        <>
+          <Field
+            label="Exported identity"
+            value={pasted}
+            onChangeText={(text) => {
+              setPasted(text);
+              setError(null);
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            multiline
+            placeholder="Paste the whole file, or just the token"
+            hint={
+              pasted.trim() === ''
+                ? 'The exported JSON, or the token on its own.'
+                : parsed === null
+                  ? 'That looks like an incomplete file — paste it whole, or paste just the token.'
+                  : parsed.playerId === null
+                    ? 'Token only — the server will say which profile it belongs to.'
+                    : `Identity for ${parsed.playerId.slice(0, 8)}…`
+            }
+          />
+
+          {error === null ? null : <Text style={styles.error}>{error}</Text>}
+
+          <Button label="Restore" busy={busy} disabled={parsed === null} onPress={confirm} />
+          <Button
+            label="Cancel"
+            variant="secondary"
+            disabled={busy}
+            onPress={() => {
+              setOpen(false);
+              setError(null);
+            }}
+          />
+        </>
+      ) : (
+        <Button label="Restore from a backup" variant="secondary" onPress={() => setOpen(true)} />
+      )}
+    </Card>
+  );
+}
+
+function messageForRestore(caught: unknown): string {
+  if (caught instanceof ApiUnreachableError) {
+    return 'The road is quiet — no answer from the server. A restore needs it reachable.';
+  }
+
+  if (caught instanceof RestoreError) {
+    return caught.message;
+  }
+
+  if (caught instanceof ApiStatusError && caught.status === 401) {
+    return 'That token was not accepted. Check the file was pasted whole.';
+  }
+
+  return 'That identity could not be restored.';
+}
+
 function HealthStatus({
   availability,
   steps,
@@ -206,6 +350,7 @@ const styles = StyleSheet.create({
     padding: space.sm,
     borderRadius: radius.sm,
   },
+  error: { ...type.body, color: colors.gold },
   rows: { gap: space.xs },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   rowLabel: { ...type.body, color: colors.textDim },
