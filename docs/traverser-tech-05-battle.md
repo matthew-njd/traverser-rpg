@@ -115,6 +115,14 @@ Three ×3.0 ceilings exist and all three are intentional (GDD 3 OQ, GDD 4's dama
 
 The formula is locked and is implemented exactly as specified; nothing here changes game behaviour. The consequence for this spec is narrow and specific: **§11.5 asserts a bounded-damage property, not a survival property**, because the survival property is not true. Flagged to Matthew as a playtest item (§12), not resolved here.
 
+> **Amended 2026-08-16 (M2/P3). ⚠ The ×3.0 ceiling above is an enumeration of *pairs*, and a reachable triple exceeds it.** Found while writing the §11.5 bound as a test: **Surge (×1.5) × super-effective (×2.0) × Rend (×1.5) is ×4.5** before crit, and with crit and the best roll **×7.425** of the floored base — not ×4.95. At Cerberus L15 (base 16, Warlord's Advance) the triple is **72** damage against the pair ceiling's 48.
+>
+> It is reachable in ordinary play, not a contrivance: Rend is applied by a Trinket move and **persists until the enemy next takes a hit**, so a turn spent arming a Surge charm does not clear it, and the following attack lands all three multipliers at once. Nothing about the effect model forbids it — "non-stacking" in §6 means each flag is single-instance, not that two different effects cannot co-occur, and Surge, Rend and the chart are three different effects.
+>
+> **The engine is unchanged.** §3.2's seven multipliers are locked and all of them apply; the pipeline was already computing this correctly. What was wrong is this section's ceiling arithmetic and the property derived from it. `effects.test.ts` now pins the triple at 72 as a passing test and scopes the ×4.95 assertion to the pairs enumerated above, so the real ceiling is recorded rather than assumed and a later "fix" that caps the pipeline at ×3.0 fails loudly.
+>
+> **Flagged for the GDD balance pass** alongside fixtures §10.9's one-shot finding, which it compounds: at ×7.425 the one-shot range widens further than §10.9 measured. Same three content-only levers apply — Surge's ×1.5, the per-battle charm supply, or Rend's ×1.5 — and none needs an engine change. `DECISIONS.md` 2026-08-16.
+
 ---
 
 ## 4. Randomness

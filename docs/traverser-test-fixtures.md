@@ -231,6 +231,8 @@ Warlord's Advance P65 → base **16** (War → Underworld = 2.0). Sage's Verdict
 
 **Bounded-damage property (replaces a "no one-shot" assertion — see §10.9):** for any hit, `1 ≤ damage ≤ floor(base × 3.0 × 1.5 × 1.10)`. Nothing exceeds ×4.95 of the floored base.
 
+> **⚠ Correction 2026-08-16 (M2/P3) — the bound above holds only for the pairs in this table, not "for any hit".** The six concrete rows are unchanged and all verified correct against the engine. What does not hold is the general property: **Surge × super-effective × Rend is ×4.5**, and ×7.425 with crit and the best roll. At the same Cerberus L15 stage the triple deals **72** (base 16 × 4.5) against the pair ceiling's 48. It is reachable in play because Rend persists on the enemy until it next takes a hit, so the turn spent arming the charm does not clear it. No value in this section was edited to accommodate this — the engine agrees with every row as written; only the derived one-line property was wrong. T5 §3.4 amended, `DECISIONS.md` 2026-08-16, and flagged for the GDD balance pass with §10.9.
+
 ### 10.5 Charm non-consumption on a mismatched move
 
 | Case | Expected |

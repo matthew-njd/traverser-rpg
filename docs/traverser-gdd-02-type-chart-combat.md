@@ -121,7 +121,7 @@ Damage = floor( ( (Power × AttackStat) / (DefenseStat × 8) ) × TypeMultiplier
 **Physical Basic Attack** — Level 10 Traverser, Might 25, Power 40, vs. enemy Resolve 20:
 `floor((40 × 25) / (20 × 8)) = 6` → **6 damage** (×1.0 type, no crit, avg roll)
 
-**Divine Skill, super-effective hit** — "Thunderer's Wrath" (Storm), Power 65, Favor 30, vs. a Sea-aligned enemy (Aegis 18, ×2.0 vs Storm):
+**Divine Skill, super-effective hit** — "Thunderer's Wrath" (Storm), Power 65, Favor 30, vs. a War-aligned enemy (Aegis 18, ×2.0 vs Storm):
 `floor((65 × 30) / (18 × 8)) = 13` → `13 × 2.0 = 26` **base**, ranging roughly **23–29** with random variance, up to **~39** on a crit — a heavy, meaningful hit, but not an automatic KO even against a modest Vigor pool.
 
 **Balance check (why ÷8, not ÷2):** an earlier pass of this formula used a ÷2 divisor, which produced a Basic Attack dealing exactly 20 damage against a base Level 1 Vigor pool of 20 — a guaranteed one-hit KO before the player had allocated a single stat point, and the ratio barely improved by Level 10 even with stats invested. That undercut both the "2–5 turn battles" pacing goal and the point of the type chart, since a fight decided on the first hit leaves no room for weakness/resistance play to matter. The ÷8 divisor above was chosen to put a Level 1 mirror-match at roughly 4 hits to KO, which should be revisited once Section 3 assigns real move Power values.
