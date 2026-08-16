@@ -122,6 +122,9 @@ export function Card({ children, style }: { children: ReactNode; style?: ViewSty
 /**
  * Sub-views are state, not routes (tech-04 §4.3): both panes stay mounted, so switching loses
  * nothing. Deliberately not persisted — GDD 13 §5.1 names what a fresh launch shows.
+ *
+ * Underlined tabs rather than a filled pill group (GDD 13 §11): the row width no longer has to be
+ * divided between the options, so a third sub-view can be added without redrawing the control.
  */
 export function SegmentedControl<T extends string>({
   options,
@@ -209,18 +212,23 @@ const styles = StyleSheet.create({
 
   segments: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: space.xs,
-    gap: space.xs,
+    gap: space.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   segment: {
-    flex: 1,
     alignItems: 'center',
-    paddingVertical: space.sm,
-    borderRadius: radius.sm,
+    justifyContent: 'center',
+    paddingHorizontal: space.xs,
+    minHeight: MIN_TOUCH_TARGET,
+    // ↯ Sits on top of the row's hairline rather than below it. Android draws sibling borders on
+    // their own pixel rows, so without the negative offset the underline is a second line under the
+    // divider instead of replacing it.
+    marginBottom: -StyleSheet.hairlineWidth,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
-  segmentSelected: { backgroundColor: colors.surfaceRaised },
+  segmentSelected: { borderBottomColor: colors.accent },
   segmentLabel: { ...type.body, color: colors.textDim },
   segmentLabelSelected: { color: colors.text, fontWeight: '600' },
 });

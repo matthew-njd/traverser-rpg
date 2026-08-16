@@ -68,6 +68,31 @@ const config: ExpoConfig = {
         },
       },
     ],
+    [
+      // GDD 13 §11's face, embedded at build time (M2 plan §3.2) — no `useFonts`, so no
+      // loaded-state guard and no fallback flash on cold start. ↯ Rebuild boundary (tech-04 §3.2):
+      // adding a weight here is a prebuild + rebuild, not a reload.
+      //
+      // ↯ `android.fonts` (the XML family), not the flat `fonts` array. A flat entry registers each
+      // file under its own family name, so `fontWeight` on `fontFamily: 'Spectral'` would silently
+      // do nothing and every weight would need its own family string. Grouped, Android resolves the
+      // weight itself and the `type` tokens keep working unchanged.
+      'expo-font',
+      {
+        android: {
+          fonts: [
+            {
+              fontFamily: 'Spectral',
+              fontDefinitions: [
+                { path: './assets/fonts/Spectral-Regular.ttf', weight: 400 },
+                { path: './assets/fonts/Spectral-SemiBold.ttf', weight: 600 },
+                { path: './assets/fonts/Spectral-Bold.ttf', weight: 700 },
+              ],
+            },
+          ],
+        },
+      },
+    ],
     // Adds the Android 13-and-below rationale intent filter to MainActivity (tech-03 §2).
     'react-native-health-connect',
     // ...and this adds the Android 14+ half, which the library's plugin does not. Both are

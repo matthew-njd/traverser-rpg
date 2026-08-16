@@ -583,7 +583,7 @@ Everything Health-Connect-specific is confined to `health/healthconnect.ts`, sat
 | Over-the-air updates (`expo-updates`) | Sideloaded builds; no distribution channel to update through. Costs nothing to add later. |
 | Account recovery after uninstall | §6.5. Arrives with real auth. |
 | Multi-device | T2 §1.5, GDD 11 §11. The single-device assumption is baked into the watermarks and the mirror. |
-| Tablet / landscape layouts | GDD 13 §11 scopes this out. Portrait phone only; the app locks orientation. |
+| Tablet / landscape layouts | GDD 13 §12 scopes this out. Portrait phone only; the app locks orientation. |
 | Analytics beyond Sentry | Trim. No event pipeline, no `POST /events`. |
-| Respec UI | GDD 13 §11 leaves the mechanic unspecified; allocation is permanent on confirm. |
+| Respec UI | GDD 13 §12 leaves the mechanic unspecified; allocation is permanent on confirm. |
 | Asset atlasing / sprite sheets | Individual PNGs per manifest key until real art proves a load or memory problem. The registry indirection means atlasing later changes only `registry.generated.ts`. |

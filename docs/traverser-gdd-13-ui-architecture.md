@@ -254,7 +254,68 @@ Every flag pointed at this section (Sections 3, 4, 5, 6, 7, 8, 9, 10, 11, 12) is
 
 ---
 
-## 11. Open Questions
+## 11. Design Language — "Dusk on the Old Roads"
+
+> Added 2026-08-16 at M2/P1, per `traverser-m2-plan.md` §3.1, discharging the obligation `DECISIONS.md` 2026-08-06 deferred. §10's art-phase hand-off covers **assets** — tier colours, sprites, iconography. This section covers the app's own **skin**, which had no owner: background, surface, typography, control styling, radius. Ratified from the design pass read against the repo on 2026-08-14. What was §11 (Open Questions) is now §12.
+
+### 11.1 Palette
+
+One fixed dark palette. The app describes a single visual world (the old roads at dusk), not a light and a dark variant of it — `userInterfaceStyle: 'automatic'` governs system chrome only, and the app's surfaces do not follow it.
+
+| Token | Hex | Use |
+|---|---|---|
+| `background` | `#100E0C` | The screen behind everything |
+| `surface` | `#191510` | Cards, inputs, list rows |
+| `surfaceRaised` | `#241E17` | Controls on a surface — steppers, bar tracks |
+| `border` | `#372F27` | Card edges and hairline rules |
+| `text` | `#EDE4D3` | Primary text |
+| `textDim` | `#9C907A` | Secondary text, notes, placeholders |
+| `textMuted` | `#9C907A60` | Disabled and non-interactive text |
+| `accent` | `#C08A3E` | Bronze — the road, progress, the primary action |
+| `accentText` | `#12100E` | Text on `accent` |
+| `gold` | `#E0B457` | XP fill, level-up, a goal met |
+| `notice` / `noticeBorder` | `#2A2620` / `#4A3F2E` | Banners, which are informational and never alarming |
+
+Three colours are **scoped** — each has exactly one sanctioned use, and none is added to `theme.ts` before its first consumer exists:
+
+| Token | Hex | Sanctioned use, and nothing else |
+|---|---|---|
+| `verdigris` | `#5B8577` | Mythic tier; a threshold met |
+| `oxblood` | `#9A4436` | **Enemy health only** |
+| `marble` | `#E9E0CE` | Art plates |
+
+No screen hardcodes a colour outside this table.
+
+### 11.2 Typography
+
+**Spectral** (SIL OFL, bundled locally, $0) is the single face, at three embedded weights — 400, 600, 700. Embedded at build time via the `expo-font` config plugin, not loaded at runtime: a runtime load needs a loaded-state guard on every screen and shows a fallback flash on cold start.
+
+| Role | Size | Weight |
+|---|---|---|
+| `display` | 30 | 700 |
+| `title` | 22 | 700 |
+| `heading` | 17 | 600 |
+| `body` | 15 | 400 |
+| `small` | 13 | 400 |
+| `mono` | 12 | system monospace — diagnostic text; Spectral has no mono cut |
+
+**Tabular numerals on every figure that changes while the player is looking at it.** Proportional digits have different widths, so a step count ticking 7,999 → 8,000 reflows the text around it and the row jitters.
+
+### 11.3 Shape and control styling
+
+- **Radius 2–8px.** A 10px corner reads as a consumer app; a carved edge reads as stone. `pill` is exempt — it is a shape (a progress track), not a corner treatment.
+- **44dp minimum tap target**, which is an accessibility floor rather than a look: a future restyle may change every value in this section and must not shrink it.
+- **Sub-view switching is an underlined tab pair**, not a filled segmented group — the width no longer has to be divided between the options, so a third sub-view can be added without redrawing the control.
+- **Tabular data is hairline rows, not stacked cards.** Six stats read as one ruled table; a card per stat makes six competing plates out of one list.
+- **A row carrying a proportion carries a bar**, drawn against the value in force when the row was earned (an activity row uses its own `step_goal_snapshot`, never today's goal).
+
+### 11.4 Illustration
+
+**Every illustration is an inked silhouette on a cream (`marble`) plate.** This is the load-bearing art rule: a generated sprite only has to be a *good shape* to look intentional, which is the right hedge for a project with no artist, and it makes tech-04 §9.3's placeholder swap cheaper rather than harder. It applies to enemy art, the avatar, and Reveal Card subjects alike.
+
+---
+
+## 12. Open Questions
 
 - **Stat allocation respec:** §3.2 assumes stat point allocation is permanent once confirmed, since no locked section (including Section 1, which introduced the +3/level system) specifies a respec mechanic. If a respec system is wanted later (e.g., as a gold/currency sink once Section 8's flagged gear-salvage economy is designed), this section's stat panel would need an "unlock for respec" state added — not designed now since it would be speculative.
 - **Combat log depth:** §6.1 specifies a 2–3 line scrolling feed with no stated history limit or full-log view. If playtesting shows players want to review a full battle's log after the fact (e.g., to understand a loss), a "View full log" expansion could be added to the post-battle Reveal Card — flagged as a possible polish item, not core to MVP.

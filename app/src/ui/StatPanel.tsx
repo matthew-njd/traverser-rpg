@@ -79,8 +79,8 @@ export function StatPanel({
         )}
       </View>
 
-      {STATS.map((stat) => (
-        <View key={stat.key} style={styles.row}>
+      {STATS.map((stat, index) => (
+        <View key={stat.key} style={[styles.row, index > 0 && styles.ruled]}>
           <View style={styles.labels}>
             <Text style={styles.label}>{stat.label}</Text>
             <Text style={styles.note}>{stat.note}</Text>
@@ -159,6 +159,8 @@ const styles = StyleSheet.create({
   none: { ...type.small, color: colors.textDim },
 
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: MIN_TOUCH_TARGET },
+  // GDD 13 §11 — six stats read as one ruled table, not six stacked plates.
+  ruled: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   labels: { flex: 1 },
   label: { ...type.body, color: colors.text },
   note: { ...type.small, color: colors.textDim },

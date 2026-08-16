@@ -66,6 +66,20 @@ function Row({ day }: { day: ActivityDay }) {
         {day.goalMet ? ` · goal met` : ''}
       </Text>
 
+      {/*
+        Progress against that day's own goal (`step_goal_snapshot`), never today's — the goal can be
+        edited, and a past row must keep reading as it did when it was earned.
+      */}
+      <View style={styles.track}>
+        <View
+          style={[
+            styles.fillBar,
+            { width: `${Math.min(100, (day.steps / Math.max(1, day.stepGoalSnapshot)) * 100)}%` },
+            day.goalMet && styles.fillMet,
+          ]}
+        />
+      </View>
+
       {minutes.length > 0 ? <Text style={styles.detail}>{minutes.join(' · ')}</Text> : null}
     </View>
   );
@@ -87,4 +101,7 @@ const styles = StyleSheet.create({
   date: { ...type.heading, color: colors.text },
   xp: { ...type.body, ...tabular, color: colors.gold },
   detail: { ...type.small, ...tabular, color: colors.textDim },
+  track: { height: 3, borderRadius: radius.pill, backgroundColor: colors.surfaceRaised },
+  fillBar: { height: 3, borderRadius: radius.pill, backgroundColor: colors.accent },
+  fillMet: { backgroundColor: colors.gold },
 });

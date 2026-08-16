@@ -72,11 +72,18 @@ export const tabular: Pick<TextStyle, 'fontVariant'> = { fontVariant: ['tabular-
  */
 export const MIN_TOUCH_TARGET = 44;
 
+/**
+ * GDD 13 §11's scale, on Spectral. Only the three weights the config plugin embeds are used —
+ * ↯ Android has no synthetic bolding for a custom family, so `fontWeight: '500'` here would fall
+ * back to the nearest embedded weight rather than render at 500.
+ *
+ * `mono` stays on the system face: it is debug/diagnostic text, and Spectral has no mono cut.
+ */
 export const type = {
-  display: { fontSize: 30, fontWeight: '700' },
-  title: { fontSize: 22, fontWeight: '700' },
-  heading: { fontSize: 17, fontWeight: '600' },
-  body: { fontSize: 15, fontWeight: '400' },
-  small: { fontSize: 13, fontWeight: '400' },
+  display: { fontFamily: 'Spectral', fontSize: 30, fontWeight: '700' },
+  title: { fontFamily: 'Spectral', fontSize: 22, fontWeight: '700' },
+  heading: { fontFamily: 'Spectral', fontSize: 17, fontWeight: '600' },
+  body: { fontFamily: 'Spectral', fontSize: 15, fontWeight: '400' },
+  small: { fontFamily: 'Spectral', fontSize: 13, fontWeight: '400' },
   mono: { fontSize: 12, fontFamily: 'monospace' },
 } as const;
