@@ -314,10 +314,27 @@ const V3_CONTENT: readonly string[] = [
    )`,
 ];
 
+/**
+ * Version 4 — `ordinal` on the two content tables whose row order is load-bearing (T5 §5, amended
+ * 2026-08-17). Both weighted scans — enemy move selection and the drop pool — run in the GDD's own
+ * table order, which the primary key does not encode: Cerberus's key order puts Death Breath first,
+ * and the cumulative boundaries T5 §11.6 pins only hold for the GDD's order.
+ *
+ * Defaulted to 0 rather than backfilled. A device on the old bundle has every row at ordinal 0 until
+ * its next sync, which sorts them by the SQLite scan order — but `content_version` moved with this
+ * change, so that device fetches the new bundle on its next foreground and replaces the whole set
+ * before a battle can read it.
+ */
+const V4_CONTENT_ORDINALS: readonly string[] = [
+  'ALTER TABLE enemy_move ADD COLUMN ordinal INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE enemy_drop_pool ADD COLUMN ordinal INTEGER NOT NULL DEFAULT 0',
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
   { version: 3, statements: [...V3_CONTENT] },
+  { version: 4, statements: [...V4_CONTENT_ORDINALS] },
 ];
 
 /** The version a fully-migrated database reports. */

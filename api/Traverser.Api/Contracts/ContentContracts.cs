@@ -79,13 +79,15 @@ public sealed record EnemyMoveResponse(
     MoveCategory Category,
     string? TypeId,
     int Power,
-    int AiWeight);
+    int AiWeight,
+    int Ordinal);
 
 public sealed record EnemyDropPoolResponse(
     string EnemyId,
     DropEncounterKind EncounterKind,
     string ItemDefId,
-    int Weight);
+    int Weight,
+    int Ordinal);
 
 public sealed record PlayerSkillDefResponse(
     string Id,

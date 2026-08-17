@@ -61,7 +61,7 @@ internal static partial class ContentSeed
         // 28 rows. AI weights sum to 100 per enemy — asserted by a seed test, since a per-group CHECK
         // isn't expressible. Physical moves carry no type; the type on a Divine move is what the enemy
         // *is*, and is never used as a multiplier against the player (that rule lives in T5).
-        modelBuilder.Entity<EnemyMove>().HasData(
+        modelBuilder.Entity<EnemyMove>().HasData(Ordered(
             Divine(Ids.EMove.GustStrike, "Gust Strike", Ids.Enemy.Harpy, Ids.Type.Storm, 40, 70),
             Physical(Ids.EMove.Buffet, "Buffet", Ids.Enemy.Harpy, 25, 30),
 
@@ -71,8 +71,12 @@ internal static partial class ContentSeed
             Physical(Ids.EMove.BoulderHurl, "Boulder Hurl", Ids.Enemy.Cyclops, 40, 60),
             Divine(Ids.EMove.WarShout, "War Shout", Ids.Enemy.Cyclops, Ids.Type.War, 55, 40),
 
-            Divine(Ids.EMove.DeathBreath, "Death Breath", Ids.Enemy.Cerberus, Ids.Type.Underworld, 60, 45),
+            // ↯ Listed in GDD 5's own table order — Three-Fanged first — and that order is now
+            // load-bearing: `Ordinal` is assigned from position below, and T5 §11.6's cumulative
+            // boundaries (0.35, 0.80) only hold for this sequence. Reordered 2026-08-17; every other
+            // enemy already matched its GDD table.
             Physical(Ids.EMove.ThreeFangedStrike, "Three-Fanged Strike", Ids.Enemy.Cerberus, 50, 35),
+            Divine(Ids.EMove.DeathBreath, "Death Breath", Ids.Enemy.Cerberus, Ids.Type.Underworld, 60, 45),
             Physical(Ids.EMove.SavageBiteCerberus, "Savage Bite", Ids.Enemy.Cerberus, 40, 20),
 
             Physical(Ids.EMove.GraveSwing, "Grave Swing", Ids.Enemy.Draugr, 50, 60),
@@ -114,9 +118,32 @@ internal static partial class ContentSeed
                 TypeId = null,
                 Power = 30,
                 AiWeight = 100,
-            });
+            }));
 
         SeedDropPools(modelBuilder);
+    }
+
+    /// <summary>
+    /// Stamps <c>ordinal</c> from each move's position within its own enemy's block above.
+    /// <para>
+    /// ↯ Assigned from the seed's declaration order rather than typed per row, because the
+    /// declaration order **is** the GDD's table order and stating the number twice invites them to
+    /// drift. A `SeedIntegrityTests` case asserts the two agree for every enemy.
+    /// </para>
+    /// </summary>
+    private static EnemyMove[] Ordered(params EnemyMove[] moves)
+    {
+        var seen = new Dictionary<string, int>();
+
+        foreach (var move in moves)
+        {
+            var next = seen.TryGetValue(move.EnemyId, out var index) ? index : 0;
+
+            move.Ordinal = next;
+            seen[move.EnemyId] = next + 1;
+        }
+
+        return moves;
     }
 
     /// <summary>
@@ -220,12 +247,18 @@ internal static partial class ContentSeed
     private static EnemyStatScaling Stat(string enemyId, StatKind stat, (decimal Base, decimal Rate) p) =>
         new() { EnemyId = enemyId, Stat = stat, Base = p.Base, Rate = p.Rate };
 
+    /// <summary>
+    /// One enemy's pool for one encounter kind, in the GDD's listed order. <c>ordinal</c> comes from
+    /// the argument position for the same reason moves' does — fixtures §10.8's pool draw resolves
+    /// by it, and the primary key sorts the two Harpy entries the other way round.
+    /// </summary>
     private static EnemyDropPool[] Pool(string enemyId, DropEncounterKind kind, params string[] itemIds) =>
-        [.. itemIds.Select(itemId => new EnemyDropPool
+        [.. itemIds.Select((itemId, ordinal) => new EnemyDropPool
         {
             EnemyId = enemyId,
             EncounterKind = kind,
             ItemDefId = itemId,
             Weight = 1,
+            Ordinal = ordinal,
         })];
 }

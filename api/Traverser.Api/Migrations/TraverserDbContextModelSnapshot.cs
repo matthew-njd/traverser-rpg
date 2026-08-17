@@ -270,8 +270,8 @@ namespace Traverser.Api.Migrations
                         new
                         {
                             Id = 1,
-                            GeneratedAt = new DateTime(2026, 7, 31, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Version = 1
+                            GeneratedAt = new DateTime(2026, 8, 17, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Version = 2
                         });
                 });
 
@@ -639,6 +639,10 @@ namespace Traverser.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("item_def_id");
 
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
                     b.Property<int>("Weight")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -662,6 +666,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_harpy",
                             EncounterKind = "wild",
                             ItemDefId = "item_travelers_salve",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -669,6 +674,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_harpy",
                             EncounterKind = "wild",
                             ItemDefId = "item_stormveil",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -676,6 +682,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_satyr",
                             EncounterKind = "wild",
                             ItemDefId = "item_travelers_salve",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -683,6 +690,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_satyr",
                             EncounterKind = "wild",
                             ItemDefId = "item_shadowblur",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -690,6 +698,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_satyr",
                             EncounterKind = "wild",
                             ItemDefId = "item_battlebrand",
+                            Ordinal = 2,
                             Weight = 1
                         },
                         new
@@ -697,6 +706,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cyclops",
                             EncounterKind = "mini_boss",
                             ItemDefId = "item_stormveil",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -704,6 +714,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cyclops",
                             EncounterKind = "mini_boss",
                             ItemDefId = "item_battlebrand",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -711,6 +722,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cyclops",
                             EncounterKind = "mini_boss",
                             ItemDefId = "item_warhex",
+                            Ordinal = 2,
                             Weight = 1
                         },
                         new
@@ -718,6 +730,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cyclops",
                             EncounterKind = "mini_boss",
                             ItemDefId = "item_ironhide_tincture",
+                            Ordinal = 3,
                             Weight = 1
                         },
                         new
@@ -725,6 +738,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cerberus",
                             EncounterKind = "zone_boss_first",
                             ItemDefId = "item_fleet_omen",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -732,6 +746,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cerberus",
                             EncounterKind = "zone_boss_first",
                             ItemDefId = "item_gravemark",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -739,6 +754,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cerberus",
                             EncounterKind = "zone_boss_first",
                             ItemDefId = "item_pale_ash",
+                            Ordinal = 2,
                             Weight = 1
                         },
                         new
@@ -746,6 +762,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cerberus",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_pale_ash",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -753,6 +770,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cerberus",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_gravemark",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -760,6 +778,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cerberus",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_travelers_salve",
+                            Ordinal = 2,
                             Weight = 1
                         },
                         new
@@ -767,6 +786,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cerberus",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_warhex",
+                            Ordinal = 3,
                             Weight = 1
                         },
                         new
@@ -774,6 +794,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cerberus",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_shadowblur",
+                            Ordinal = 4,
                             Weight = 1
                         },
                         new
@@ -781,6 +802,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_draugr",
                             EncounterKind = "wild",
                             ItemDefId = "item_travelers_salve",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -788,6 +810,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_draugr",
                             EncounterKind = "wild",
                             ItemDefId = "item_pale_ash",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -795,6 +818,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_valkyrie",
                             EncounterKind = "wild",
                             ItemDefId = "item_travelers_salve",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -802,6 +826,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_valkyrie",
                             EncounterKind = "wild",
                             ItemDefId = "item_stormveil",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -809,6 +834,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_fenrir",
                             EncounterKind = "mini_boss",
                             ItemDefId = "item_stormveil",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -816,6 +842,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_fenrir",
                             EncounterKind = "mini_boss",
                             ItemDefId = "item_battlebrand",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -823,6 +850,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_fenrir",
                             EncounterKind = "mini_boss",
                             ItemDefId = "item_ironhide_tincture",
+                            Ordinal = 2,
                             Weight = 1
                         },
                         new
@@ -830,6 +858,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_fenrir",
                             EncounterKind = "mini_boss",
                             ItemDefId = "item_warhex",
+                            Ordinal = 3,
                             Weight = 1
                         },
                         new
@@ -837,6 +866,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_jormungandr",
                             EncounterKind = "zone_boss_first",
                             ItemDefId = "item_ambrosia_shard",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -844,6 +874,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_jormungandr",
                             EncounterKind = "zone_boss_first",
                             ItemDefId = "item_shadowbind",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -851,6 +882,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_jormungandr",
                             EncounterKind = "zone_boss_first",
                             ItemDefId = "item_brinestone",
+                            Ordinal = 2,
                             Weight = 1
                         },
                         new
@@ -858,6 +890,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_jormungandr",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_brinestone",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -865,6 +898,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_jormungandr",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_shadowbind",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -872,6 +906,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_jormungandr",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_undertow",
+                            Ordinal = 2,
                             Weight = 1
                         },
                         new
@@ -879,6 +914,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_jormungandr",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_travelers_salve",
+                            Ordinal = 3,
                             Weight = 1
                         },
                         new
@@ -886,6 +922,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_strix",
                             EncounterKind = "wild",
                             ItemDefId = "item_travelers_salve",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -893,6 +930,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_strix",
                             EncounterKind = "wild",
                             ItemDefId = "item_shadowblur",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -900,6 +938,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_strix",
                             EncounterKind = "wild",
                             ItemDefId = "item_battlebrand",
+                            Ordinal = 2,
                             Weight = 1
                         },
                         new
@@ -907,6 +946,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_lemures",
                             EncounterKind = "wild",
                             ItemDefId = "item_travelers_salve",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -914,6 +954,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_lemures",
                             EncounterKind = "wild",
                             ItemDefId = "item_pale_ash",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -921,6 +962,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_griffin",
                             EncounterKind = "mini_boss",
                             ItemDefId = "item_clearsight",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -928,6 +970,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_griffin",
                             EncounterKind = "mini_boss",
                             ItemDefId = "item_undertow",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -935,6 +978,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_griffin",
                             EncounterKind = "mini_boss",
                             ItemDefId = "item_ironhide_tincture",
+                            Ordinal = 2,
                             Weight = 1
                         },
                         new
@@ -942,6 +986,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cacus",
                             EncounterKind = "zone_boss_first",
                             ItemDefId = "item_ambrosia_shard",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -949,6 +994,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cacus",
                             EncounterKind = "zone_boss_first",
                             ItemDefId = "item_thundercrack",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -956,6 +1002,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cacus",
                             EncounterKind = "zone_boss_first",
                             ItemDefId = "item_stormveil",
+                            Ordinal = 2,
                             Weight = 1
                         },
                         new
@@ -963,6 +1010,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cacus",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_stormveil",
+                            Ordinal = 0,
                             Weight = 1
                         },
                         new
@@ -970,6 +1018,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cacus",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_thundercrack",
+                            Ordinal = 1,
                             Weight = 1
                         },
                         new
@@ -977,6 +1026,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cacus",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_travelers_salve",
+                            Ordinal = 2,
                             Weight = 1
                         },
                         new
@@ -984,6 +1034,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cacus",
                             EncounterKind = "zone_boss_repeat",
                             ItemDefId = "item_blindveil",
+                            Ordinal = 3,
                             Weight = 1
                         });
                 });
@@ -1012,6 +1063,10 @@ namespace Traverser.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("enemy_id");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
 
                     b.Property<int>("Power")
                         .HasColumnType("integer")
@@ -1045,6 +1100,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "Gust Strike",
                             EnemyId = "enemy_harpy",
+                            Ordinal = 0,
                             Power = 40,
                             TypeId = "storm"
                         },
@@ -1055,6 +1111,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Buffet",
                             EnemyId = "enemy_harpy",
+                            Ordinal = 1,
                             Power = 25
                         },
                         new
@@ -1064,6 +1121,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "Shadow Lunge",
                             EnemyId = "enemy_satyr",
+                            Ordinal = 0,
                             Power = 45,
                             TypeId = "trickery"
                         },
@@ -1074,6 +1132,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Quick Jab",
                             EnemyId = "enemy_satyr",
+                            Ordinal = 1,
                             Power = 30
                         },
                         new
@@ -1083,6 +1142,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Boulder Hurl",
                             EnemyId = "enemy_cyclops",
+                            Ordinal = 0,
                             Power = 40
                         },
                         new
@@ -1092,18 +1152,9 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "War Shout",
                             EnemyId = "enemy_cyclops",
+                            Ordinal = 1,
                             Power = 55,
                             TypeId = "war"
-                        },
-                        new
-                        {
-                            Id = "emove_death_breath",
-                            AiWeight = 45,
-                            Category = "divine",
-                            DisplayName = "Death Breath",
-                            EnemyId = "enemy_cerberus",
-                            Power = 60,
-                            TypeId = "underworld"
                         },
                         new
                         {
@@ -1112,7 +1163,19 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Three-Fanged Strike",
                             EnemyId = "enemy_cerberus",
+                            Ordinal = 0,
                             Power = 50
+                        },
+                        new
+                        {
+                            Id = "emove_death_breath",
+                            AiWeight = 45,
+                            Category = "divine",
+                            DisplayName = "Death Breath",
+                            EnemyId = "enemy_cerberus",
+                            Ordinal = 1,
+                            Power = 60,
+                            TypeId = "underworld"
                         },
                         new
                         {
@@ -1121,6 +1184,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Savage Bite",
                             EnemyId = "enemy_cerberus",
+                            Ordinal = 2,
                             Power = 40
                         },
                         new
@@ -1130,6 +1194,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Grave Swing",
                             EnemyId = "enemy_draugr",
+                            Ordinal = 0,
                             Power = 50
                         },
                         new
@@ -1139,6 +1204,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "Soul Drain",
                             EnemyId = "enemy_draugr",
+                            Ordinal = 1,
                             Power = 40,
                             TypeId = "underworld"
                         },
@@ -1149,6 +1215,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "Storm Lance",
                             EnemyId = "enemy_valkyrie",
+                            Ordinal = 0,
                             Power = 50,
                             TypeId = "storm"
                         },
@@ -1159,6 +1226,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Shield Bash",
                             EnemyId = "enemy_valkyrie",
+                            Ordinal = 1,
                             Power = 20
                         },
                         new
@@ -1168,6 +1236,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Savage Bite",
                             EnemyId = "enemy_fenrir",
+                            Ordinal = 0,
                             Power = 40
                         },
                         new
@@ -1177,6 +1246,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "War Howl",
                             EnemyId = "enemy_fenrir",
+                            Ordinal = 1,
                             Power = 50,
                             TypeId = "war"
                         },
@@ -1187,6 +1257,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Crushing Coil",
                             EnemyId = "enemy_jormungandr",
+                            Ordinal = 0,
                             Power = 55
                         },
                         new
@@ -1196,6 +1267,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "Venom Tide",
                             EnemyId = "enemy_jormungandr",
+                            Ordinal = 1,
                             Power = 65,
                             TypeId = "sea"
                         },
@@ -1206,6 +1278,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "World Tremor",
                             EnemyId = "enemy_jormungandr",
+                            Ordinal = 2,
                             Power = 40
                         },
                         new
@@ -1215,6 +1288,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "Nightcut",
                             EnemyId = "enemy_strix",
+                            Ordinal = 0,
                             Power = 45,
                             TypeId = "trickery"
                         },
@@ -1225,6 +1299,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Talon Rake",
                             EnemyId = "enemy_strix",
+                            Ordinal = 1,
                             Power = 30
                         },
                         new
@@ -1234,6 +1309,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Restless Grasp",
                             EnemyId = "enemy_lemures",
+                            Ordinal = 0,
                             Power = 50
                         },
                         new
@@ -1243,6 +1319,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "Grave Knell",
                             EnemyId = "enemy_lemures",
+                            Ordinal = 1,
                             Power = 40,
                             TypeId = "underworld"
                         },
@@ -1253,6 +1330,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Wing Buffet",
                             EnemyId = "enemy_griffin",
+                            Ordinal = 0,
                             Power = 50
                         },
                         new
@@ -1262,6 +1340,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "Vigilant Gaze",
                             EnemyId = "enemy_griffin",
+                            Ordinal = 1,
                             Power = 55,
                             TypeId = "wisdom"
                         },
@@ -1272,6 +1351,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "Thunderous Roar",
                             EnemyId = "enemy_cacus",
+                            Ordinal = 0,
                             Power = 70,
                             TypeId = "storm"
                         },
@@ -1282,6 +1362,7 @@ namespace Traverser.Api.Migrations
                             Category = "physical",
                             DisplayName = "Cinder Grip",
                             EnemyId = "enemy_cacus",
+                            Ordinal = 1,
                             Power = 60
                         },
                         new
@@ -1291,6 +1372,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "Ashen Gale",
                             EnemyId = "enemy_cacus",
+                            Ordinal = 2,
                             Power = 45,
                             TypeId = "storm"
                         },
@@ -1301,6 +1383,7 @@ namespace Traverser.Api.Migrations
                             Category = "divine",
                             DisplayName = "Chilling Gust",
                             EnemyId = "enemy_waystone_wisp",
+                            Ordinal = 0,
                             Power = 30
                         });
                 });

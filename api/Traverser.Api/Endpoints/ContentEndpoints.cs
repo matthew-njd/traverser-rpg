@@ -116,14 +116,14 @@ public static class ContentEndpoints
                 .ToList(),
 
             EnemyMoves: await db.EnemyMoves.AsNoTracking()
-                .OrderBy(m => m.Id)
+                .OrderBy(m => m.EnemyId).ThenBy(m => m.Ordinal)
                 .Select(m => new EnemyMoveResponse(
-                    m.Id, m.EnemyId, m.DisplayName, m.Category, m.TypeId, m.Power, m.AiWeight))
+                    m.Id, m.EnemyId, m.DisplayName, m.Category, m.TypeId, m.Power, m.AiWeight, m.Ordinal))
                 .ToListAsync(ct),
 
             EnemyDropPool: await db.EnemyDropPools.AsNoTracking()
-                .OrderBy(d => d.EnemyId).ThenBy(d => d.EncounterKind).ThenBy(d => d.ItemDefId)
-                .Select(d => new EnemyDropPoolResponse(d.EnemyId, d.EncounterKind, d.ItemDefId, d.Weight))
+                .OrderBy(d => d.EnemyId).ThenBy(d => d.EncounterKind).ThenBy(d => d.Ordinal)
+                .Select(d => new EnemyDropPoolResponse(d.EnemyId, d.EncounterKind, d.ItemDefId, d.Weight, d.Ordinal))
                 .ToListAsync(ct),
 
             PlayerSkillDefs: await db.PlayerSkillDefs.AsNoTracking()

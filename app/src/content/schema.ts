@@ -72,6 +72,7 @@ export const CONTENT_TABLES = {
       type_id: 'text?',
       power: 'int',
       ai_weight: 'int',
+      ordinal: 'int',
     },
   },
   enemy_drop_pool: {
@@ -81,6 +82,7 @@ export const CONTENT_TABLES = {
       encounter_kind: 'text',
       item_def_id: 'text',
       weight: 'int',
+      ordinal: 'int',
     },
   },
   player_skill_def: {

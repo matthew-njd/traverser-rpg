@@ -176,9 +176,12 @@ export function battleContentFrom(rows: (table: ContentTable) => readonly Conten
 
   const movesByEnemy = new Map<string, EnemyMove[]>();
 
-  // Sorted by primary key: the AI's scan order must be content-derived and stable, never object-key
-  // iteration order (T5 §5), or every scripted AI test is flaky one run in ten.
-  for (const row of [...rows('enemy_move')].sort(byId('id'))) {
+  // ↯ Sorted by `ordinal`, **not** by the primary key (T5 §5, amended 2026-08-17). The order must be
+  // content-derived and stable — never object-key iteration order, or every scripted AI test is
+  // flaky about one run in ten — but the key is the wrong content: it puts Cerberus's Death Breath
+  // first, and the cumulative boundaries T5 §11.6 pins (0.35, 0.80) only hold for the GDD's own
+  // table order, which is what `ordinal` records.
+  for (const row of [...rows('enemy_move')].sort(byOrdinal)) {
     const enemyId = text(row, 'enemy_id', 'enemy_move');
     const list = movesByEnemy.get(enemyId) ?? [];
 
@@ -257,6 +260,11 @@ export function battleContentFrom(rows: (table: ContentTable) => readonly Conten
 function byId(column: string) {
   return (left: ContentRow, right: ContentRow): number =>
     String(left[column]).localeCompare(String(right[column]));
+}
+
+/** Ties broken by id, so the order is total even if a future seed leaves two rows at the same ordinal. */
+function byOrdinal(left: ContentRow, right: ContentRow): number {
+  return Number(left.ordinal ?? 0) - Number(right.ordinal ?? 0) || byId('id')(left, right);
 }
 
 /** The database-backed door. Everything below this line is pure. */

@@ -250,6 +250,72 @@ public class ContentSeedTests(ContentModelFixture model)
         Assert.All(byEnemy, kv => Assert.True(kv.Value == 100, $"{kv.Key} AI weights sum to {kv.Value}, not 100."));
     }
 
+    /// <summary>
+    /// <c>ordinal</c> is a dense 0..n-1 sequence within every enemy, for both ordered tables.
+    /// <para>
+    /// ↯ The order is load-bearing, not cosmetic (T5 §5, amended 2026-08-17): the AI's weighted scan
+    /// and the drop-pool draw both run in it, and the cumulative boundaries the engine's tests pin —
+    /// Cerberus at 0.35/0.80, the Harpy pool's index 1 — hold only for the GDD's own table order. A
+    /// gap or a duplicate here silently moves a boundary, which no other test would notice.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Ordinals_are_dense_and_zero_based_within_every_enemy()
+    {
+        var moves = model.Rows<EnemyMove>()
+            .GroupBy(r => ContentModelFixture.Get<string>(r, nameof(EnemyMove.EnemyId)))
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(r => ContentModelFixture.Get<int>(r, nameof(EnemyMove.Ordinal))).Order().ToList());
+
+        Assert.All(moves, kv =>
+            Assert.True(
+                kv.Value.SequenceEqual(Enumerable.Range(0, kv.Value.Count)),
+                $"{kv.Key} move ordinals are [{string.Join(", ", kv.Value)}]"));
+
+        var pools = model.Rows<EnemyDropPool>()
+            .GroupBy(r => (
+                Enemy: ContentModelFixture.Get<string>(r, nameof(EnemyDropPool.EnemyId)),
+                Kind: ContentModelFixture.Get<DropEncounterKind>(r, nameof(EnemyDropPool.EncounterKind))))
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(r => ContentModelFixture.Get<int>(r, nameof(EnemyDropPool.Ordinal))).Order().ToList());
+
+        Assert.All(pools, kv =>
+            Assert.True(
+                kv.Value.SequenceEqual(Enumerable.Range(0, kv.Value.Count)),
+                $"{kv.Key} pool ordinals are [{string.Join(", ", kv.Value)}]"));
+    }
+
+    /// <summary>
+    /// The two orderings the engine's fixtures depend on, pinned by name. Reordering the seed's
+    /// declarations is what these catch — the ordinals would still be dense, and every other test
+    /// would still pass.
+    /// </summary>
+    [Fact]
+    public void The_orders_the_battle_fixtures_depend_on_are_the_GDD_table_orders()
+    {
+        var cerberus = model.Rows<EnemyMove>()
+            .Where(r => ContentModelFixture.Get<string>(r, nameof(EnemyMove.EnemyId)) == "enemy_cerberus")
+            .OrderBy(r => ContentModelFixture.Get<int>(r, nameof(EnemyMove.Ordinal)))
+            .Select(r => ContentModelFixture.Get<string>(r, nameof(EnemyMove.Id)))
+            .ToList();
+
+        // GDD 5's table: Three-Fanged 35, Death Breath 45, Savage Bite 20 → boundaries 0.35 / 0.80.
+        Assert.Equal(
+            ["emove_three_fanged_strike", "emove_death_breath", "emove_savage_bite_cerberus"],
+            cerberus);
+
+        var harpyPool = model.Rows<EnemyDropPool>()
+            .Where(r => ContentModelFixture.Get<string>(r, nameof(EnemyDropPool.EnemyId)) == "enemy_harpy")
+            .OrderBy(r => ContentModelFixture.Get<int>(r, nameof(EnemyDropPool.Ordinal)))
+            .Select(r => ContentModelFixture.Get<string>(r, nameof(EnemyDropPool.ItemDefId)))
+            .ToList();
+
+        // GDD 5 §3.1's listing, which fixtures §10.8's `0.60 × 2 → index 1 → Stormveil` reads.
+        Assert.Equal(["item_travelers_salve", "item_stormveil"], harpyPool);
+    }
+
     // — helpers —
 
     private Dictionary<GearTier, (decimal Rate, int Flat, decimal Split)> TierBonuses() =>

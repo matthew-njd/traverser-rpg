@@ -22,6 +22,16 @@ public class EnemyMove
 
     public int AiWeight { get; set; }
 
+    /// <summary>
+    /// Position within this enemy's movepool, in the order the GDD's own move table lists them.
+    /// <para>
+    /// The AI's weighted scan runs in this order (T5 §5, amended 2026-08-17). It is a column rather
+    /// than the primary key because the two orders differ: Cerberus's key order puts Death Breath
+    /// first, and the cumulative boundaries T5 §11.6 pins (0.35, 0.80) only hold for the GDD's order.
+    /// </para>
+    /// </summary>
+    public int Ordinal { get; set; }
+
     public Enemy Enemy { get; set; } = null!;
 
     public GameType? Type { get; set; }
