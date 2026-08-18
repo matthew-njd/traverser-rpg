@@ -55,6 +55,9 @@ describe('outbound', () => {
     expect(toWireSyncRequest([DELTA], 0)).toEqual({
       deltas: [toWireDelta(DELTA)],
       content_version: 0,
+      // Always present, empty when nothing was fought — the server treats a missing key the same
+      // way, but a stable shape keeps the payload diffable against the spec.
+      battles: [],
     });
   });
 });

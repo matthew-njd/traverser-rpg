@@ -66,6 +66,7 @@ describe('requests', () => {
     expect((init.headers as Record<string, string>)['content-type']).toBe('application/json');
     expect(JSON.parse(init.body as string)).toEqual({
       content_version: 0,
+      battles: [],
       deltas: [
         {
           client_delta_id: 'd1',

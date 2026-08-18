@@ -85,10 +85,29 @@ public static class SyncEndpoints
         var levelUps = new List<LevelUpResponse>();
         var touchedDates = newDeltas.Select(d => d.ActivityDate).Distinct().Order().ToList();
 
-        if (newDeltas.Count > 0)
+        // ---- Step 2. Ingest battles, their drops, and the bestiary ------------------------------
+        var newBattles = await IngestBattlesAsync(db, player, request.Battles ?? [], ct);
+
+        // Battle XP joins step 4's derivation. Grouped by the client's own local date, because
+        // `activity_day` is keyed by it and the server never derives one from an instant (§2).
+        var battleXpByDate = newBattles
+            .GroupBy(b => b.ActivityDate)
+            .ToDictionary(g => g.Key, g => g.Sum(BattleXp));
+
+        foreach (var date in battleXpByDate.Keys)
+        {
+            if (!touchedDates.Contains(date))
+            {
+                touchedDates.Add(date);
+            }
+        }
+
+        touchedDates.Sort();
+
+        if (newDeltas.Count > 0 || newBattles.Count > 0)
         {
             // ---- Steps 3 & 4. Roll up, and derive XP against the post-merge cumulative ----------
-            var xpByDelta = await MergeAndDeriveXpAsync(db, player, newDeltas, touchedDates, ct);
+            var (xpByDelta, days) = await MergeAndDeriveXpAsync(db, player, newDeltas, touchedDates, ct);
 
             // The per-delta XP is written back onto the ledger rows themselves so a day's total can
             // always be traced to the contributions that produced it (tech-01's sync_delta).
@@ -101,8 +120,18 @@ public static class SyncEndpoints
                 stored.XpDelta = xpByDelta[stored.ClientDeltaId];
             }
 
+            // Battle XP lands on the day's row alongside step and HR XP, so the activity log stays
+            // the one place a day's total can be reconciled against what produced it.
+            // Battle XP lands on the day rows step 3 already created or loaded — never re-queried,
+            // because a row added there is not yet in the database and a second lookup would miss it
+            // and add a duplicate for the same (player_id, activity_date).
+            foreach (var (date, awarded) in battleXpByDate)
+            {
+                days[date].XpAwarded += awarded;
+            }
+
             // ---- Step 5. Apply XP and walk the curve --------------------------------------------
-            var xpGained = xpByDelta.Values.Sum();
+            var xpGained = xpByDelta.Values.Sum() + battleXpByDate.Values.Sum();
             var curve = await db.XpCurve.AsNoTracking().ToDictionaryAsync(x => x.Level, x => x.XpToNext, ct);
             var walk = LevelCurve.Apply(player.Level, player.XpCurrent, xpGained, curve);
 
@@ -207,10 +236,183 @@ public static class SyncEndpoints
     }
 
     /// <summary>
+    /// T2 §4 step 2 — battles, their client-rolled drops, and the bestiary.
+    /// <para>
+    /// ↯ <c>ON CONFLICT (player_id, client_battle_id) DO NOTHING RETURNING</c>, and then
+    /// <b>everything downstream reads the returned set and never the request</b> — the same shape as
+    /// step 1 and for the same reason. A replayed battle returns no row, so its <c>drops</c> array is
+    /// never read, no duplicate <c>player_item</c> is written, and the bestiary does not move.
+    /// §4.1 names the alternative and why it is wrong: deriving this from an "already granted?"
+    /// lookup is how a boss's Divine drop gets granted twice.
+    /// </para>
+    /// </summary>
+    private static async Task<List<BattleRequest>> IngestBattlesAsync(
+        TraverserDbContext db,
+        Player player,
+        IReadOnlyList<BattleRequest> battles,
+        CancellationToken ct)
+    {
+        if (battles.Count == 0)
+        {
+            return [];
+        }
+
+        // Same intra-batch rule as deltas: first occurrence wins, the rest are simply not inserted.
+        var seen = new HashSet<Guid>();
+        var unique = battles.Where(b => seen.Add(b.ClientBattleId)).ToList();
+
+        var ids = unique.Select(_ => Guid.CreateVersion7()).ToArray();
+        var clientBattleIds = unique.Select(b => b.ClientBattleId).ToArray();
+        var grantIds = unique.Select(b => b.GrantId).ToArray();
+        var enemyIds = unique.Select(b => b.EnemyId).ToArray();
+        var kinds = unique.Select(b => SnakeCase(b.EncounterKind)).ToArray();
+        var levels = unique.Select(b => b.EnemyLevel).ToArray();
+        var outcomes = unique.Select(b => SnakeCase(b.Outcome)).ToArray();
+        var startedAt = unique.Select(b => b.StartedAt.ToUniversalTime()).ToArray();
+        var endedAt = unique.Select(b => b.EndedAt.ToUniversalTime()).ToArray();
+
+        // Battle XP is derived here and stored on the row, but it is applied to the player by step 5
+        // along with everything else — this column is the audit trail, not a second source of truth.
+        var xp = unique.Select(b => BattleXp(b)).ToArray();
+
+        var returned = await db.Database
+            .SqlQueryRaw<Guid>(
+                """
+                INSERT INTO battle
+                    (id, player_id, client_battle_id, grant_id, enemy_id, encounter_kind,
+                     enemy_level, outcome, xp_awarded, started_at, ended_at)
+                SELECT u.id, {0}, u.client_battle_id, u.grant_id, u.enemy_id, u.encounter_kind,
+                       u.enemy_level, u.outcome, u.xp_awarded, u.started_at, u.ended_at
+                FROM unnest({1}::uuid[], {2}::uuid[], {3}::uuid[], {4}::text[], {5}::text[],
+                            {6}::int[], {7}::text[], {8}::int[], {9}::timestamptz[], {10}::timestamptz[])
+                     AS u(id, client_battle_id, grant_id, enemy_id, encounter_kind,
+                          enemy_level, outcome, xp_awarded, started_at, ended_at)
+                ON CONFLICT (player_id, client_battle_id) DO NOTHING
+                RETURNING client_battle_id AS "Value"
+                """,
+                player.Id, ids, clientBattleIds, grantIds, enemyIds, kinds,
+                levels, outcomes, xp, startedAt, endedAt)
+            .ToListAsync(ct);
+
+        var accepted = returned.ToHashSet();
+        var inserted = unique.Where(b => accepted.Contains(b.ClientBattleId)).ToList();
+
+        if (inserted.Count == 0)
+        {
+            return [];
+        }
+
+        await ApplyBattleEffectsAsync(db, player, inserted, ct);
+
+        return inserted;
+    }
+
+    /// <summary>
+    /// The bestiary, the drops, the Vigor result and the consumed items — <b>only for newly-inserted
+    /// battles</b>, which is what the caller passes and the only thing it ever passes.
+    /// </summary>
+    private static async Task ApplyBattleEffectsAsync(
+        TraverserDbContext db,
+        Player player,
+        IReadOnlyList<BattleRequest> inserted,
+        CancellationToken ct)
+    {
+        var enemyIds = inserted.Select(b => b.EnemyId).Distinct().ToList();
+
+        var bestiary = await db.PlayerBestiary
+            .Where(b => b.PlayerId == player.Id && enemyIds.Contains(b.EnemyId))
+            .ToDictionaryAsync(b => b.EnemyId, ct);
+
+        foreach (var battle in inserted)
+        {
+            if (!bestiary.TryGetValue(battle.EnemyId, out var row))
+            {
+                row = new PlayerBestiary
+                {
+                    PlayerId = player.Id,
+                    EnemyId = battle.EnemyId,
+                    FirstSeenAt = battle.StartedAt.ToUniversalTime(),
+                    EncounterCount = 0,
+                    DefeatCount = 0,
+                };
+
+                db.PlayerBestiary.Add(row);
+                bestiary[battle.EnemyId] = row;
+            }
+
+            row.EncounterCount += 1;
+
+            if (battle.Outcome == BattleOutcome.Win)
+            {
+                row.DefeatCount += 1;
+            }
+
+            foreach (var drop in battle.Drops ?? [])
+            {
+                if (drop.Kind == "item")
+                {
+                    db.PlayerItems.Add(new PlayerItem
+                    {
+                        PlayerId = player.Id,
+                        ItemDefId = drop.DefId,
+                        AcquiredAt = battle.EndedAt.ToUniversalTime(),
+                        Source = SourceFor(battle.EncounterKind),
+                    });
+
+                    continue;
+                }
+
+                db.PlayerGear.Add(new PlayerGear
+                {
+                    PlayerId = player.Id,
+                    GearDefId = drop.DefId,
+                    // Stored as sent: frozen at drop time by design (T2 §4.1, tech-01 §4).
+                    LevelAtDrop = drop.LevelAtDrop ?? battle.EnemyLevel,
+                    BonusPrimary = drop.BonusPrimary ?? 0,
+                    BonusSecondary = drop.BonusSecondary,
+                    AcquiredAt = battle.EndedAt.ToUniversalTime(),
+                    Source = drop.Kind,
+                });
+            }
+        }
+
+        // The Vigor result of the **last battle to end**, not of whichever arrived last in the array:
+        // a client that syncs two fights in one payload must not have the earlier one's leftover
+        // Vigor win by ordering accident.
+        var latest = inserted.OrderByDescending(b => b.EndedAt).First();
+
+        player.VigorCurrent = latest.VigorAfter;
+        player.VigorAnchorAt = latest.EndedAt.ToUniversalTime();
+
+        var consumed = inserted.SelectMany(b => b.ItemsConsumed ?? []).Distinct().ToList();
+
+        if (consumed.Count > 0)
+        {
+            // Idempotent by primary key: a row already gone deletes nothing and is not an error.
+            await db.PlayerItems
+                .Where(i => i.PlayerId == player.Id && consumed.Contains(i.Id))
+                .ExecuteDeleteAsync(ct);
+        }
+    }
+
+    /// <summary>GDD 1 §2.3 — wins only, at the level the battle was fought at. Losses award 0.</summary>
+    private static int BattleXp(BattleRequest battle) =>
+        battle.Outcome == BattleOutcome.Win ? 15 + (battle.EnemyLevel * 2) : 0;
+
+    /// <summary>Which <c>item_source</c> a drop is attributed to, from the encounter it fell out of.</summary>
+    private static ItemSource SourceFor(BattleEncounterKind kind) => kind switch
+    {
+        BattleEncounterKind.MiniBoss => ItemSource.MinibossDrop,
+        BattleEncounterKind.ZoneBoss => ItemSource.BossDrop,
+        BattleEncounterKind.Tutorial => ItemSource.Tutorial,
+        _ => ItemSource.WildDrop,
+    };
+
+    /// <summary>
     /// T2 §4 steps 3 and 4, together because step 4's Tier 3 cap needs step 3's <em>pre-merge</em>
     /// totals and its own running total within the batch.
     /// </summary>
-    private static async Task<Dictionary<Guid, int>> MergeAndDeriveXpAsync(
+    private static async Task<(Dictionary<Guid, int> XpByDelta, Dictionary<DateOnly, ActivityDay> Days)> MergeAndDeriveXpAsync(
         TraverserDbContext db,
         Player player,
         IReadOnlyList<SyncDeltaRequest> newDeltas,
@@ -292,7 +494,7 @@ public static class SyncEndpoints
             day.GoalMet = day.Steps >= day.StepGoalSnapshot;
         }
 
-        return xpByDelta;
+        return (xpByDelta, existing);
     }
 
     private static IResult? Validate(IReadOnlyList<SyncDeltaRequest> deltas)
@@ -345,5 +547,24 @@ public static class SyncEndpoints
         SyncDeltaSource.Battle => "battle",
         SyncDeltaSource.Manual => "manual",
         _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown sync_delta source."),
+    };
+
+    /// <summary>Same reason as above: the raw INSERT bypasses EF's value converter.</summary>
+    private static string SnakeCase(BattleEncounterKind kind) => kind switch
+    {
+        BattleEncounterKind.Wild => "wild",
+        BattleEncounterKind.MiniBoss => "mini_boss",
+        BattleEncounterKind.ZoneBoss => "zone_boss",
+        BattleEncounterKind.Tutorial => "tutorial",
+        BattleEncounterKind.Explore => "explore",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown battle encounter kind."),
+    };
+
+    private static string SnakeCase(BattleOutcome outcome) => outcome switch
+    {
+        BattleOutcome.Win => "win",
+        BattleOutcome.Loss => "loss",
+        BattleOutcome.Flee => "flee",
+        _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, "Unknown battle outcome."),
     };
 }

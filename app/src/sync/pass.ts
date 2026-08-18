@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 
+import { type SettledBattle, toWireBattle } from '../battle/settle';
 import { readContentVersion } from '../content/bundle';
 import { adoptBundle } from '../content/store';
 import { acknowledge, peek, recordAttempt } from '../db/outbox';
@@ -239,6 +240,10 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
   let contentVersion: number | null = null;
   const pending = peek(db, MAX_BATCH, 'sync_delta');
 
+  // Settled battles ride the same transaction as the deltas (T2 §7). They are acknowledged by their
+  // own `client_battle_id`, which is also the outbox key, so a replay drops them the same way.
+  const pendingBattles = peek(db, MAX_BATCH, 'battle');
+
   try {
     // ---- Step 10 ----
     contentVersion = await api.contentVersion();
@@ -273,10 +278,16 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
     const response = await api.sync(
       pending.map((entry) => JSON.parse(entry.payload) as MintedDelta),
       heldVersion(),
+      pendingBattles.map((entry) => toWireBattle(JSON.parse(entry.payload) as SettledBattle)),
     );
 
     // ---- Step 12 ----
     applySyncResponse(db, response);
+
+    // A battle the server took is done with locally. Acknowledged unconditionally on a 2xx rather
+    // than from a returned list: step 2 answers a replayed battle exactly as it answers a new one,
+    // and the id is already the idempotency key on both sides.
+    acknowledge(db, pendingBattles.map((entry) => entry.clientOpId));
 
     // ---- Step 12a. Repair a mirror that is missing its history.
     //
@@ -299,10 +310,10 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
       levelUps: response.levelUps,
     };
   } catch (error) {
-    recordAttempt(
-      db,
-      pending.map((entry) => entry.clientOpId),
-    );
+    recordAttempt(db, [
+      ...pending.map((entry) => entry.clientOpId),
+      ...pendingBattles.map((entry) => entry.clientOpId),
+    ]);
 
     if (error instanceof ApiUnreachableError) {
       return stopped('unreachable', contentVersion);

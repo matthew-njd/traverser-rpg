@@ -82,8 +82,12 @@ export function toWireDelta(delta: MintedDelta): Json {
   };
 }
 
-export function toWireSyncRequest(deltas: readonly MintedDelta[], contentVersion: number): Json {
-  return { deltas: deltas.map(toWireDelta), content_version: contentVersion };
+export function toWireSyncRequest(
+  deltas: readonly MintedDelta[],
+  contentVersion: number,
+  battles: readonly Json[] = [],
+): Json {
+  return { deltas: deltas.map(toWireDelta), content_version: contentVersion, battles };
 }
 
 // ---- Inbound ----------------------------------------------------------------------------------

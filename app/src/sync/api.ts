@@ -68,7 +68,11 @@ export interface TraverserApi {
   contentVersion(): Promise<number>;
   /** The whole content set (tech-02 §3). Fetched only when the version poll above moved. */
   contentBundle(): Promise<ContentBundle>;
-  sync(deltas: readonly MintedDelta[], contentVersion: number): Promise<SyncResponse>;
+  sync(
+    deltas: readonly MintedDelta[],
+    contentVersion: number,
+    battles?: readonly Record<string, unknown>[],
+  ): Promise<SyncResponse>;
   /** tech-02 §3's one-shot repair path, and what a restore uses to prove its credentials. */
   profile(): Promise<PlayerProfile>;
   /**
@@ -156,11 +160,11 @@ export function createApi(options: ApiOptions): TraverserApi {
       return parseBundle(await request(options, '/content/bundle'));
     },
 
-    async sync(deltas, contentVersion) {
+    async sync(deltas, contentVersion, battles = []) {
       return parseSyncResponse(
         await request(options, '/sync', {
           method: 'POST',
-          body: JSON.stringify(toWireSyncRequest(deltas, contentVersion)),
+          body: JSON.stringify(toWireSyncRequest(deltas, contentVersion, battles)),
         }),
       );
     },

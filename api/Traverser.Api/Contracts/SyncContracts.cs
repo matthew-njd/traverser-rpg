@@ -14,7 +14,59 @@ namespace Traverser.Api.Contracts;
 /// </param>
 public sealed record SyncRequest(
     IReadOnlyList<SyncDeltaRequest> Deltas,
-    int ContentVersion);
+    int ContentVersion,
+    /// <summary>
+    /// Completed battles with their client-rolled drops (T2 §4.1). Optional so an M1-era client, and
+    /// every sync that fought nothing, keeps sending exactly what it sent before.
+    /// </summary>
+    IReadOnlyList<BattleRequest>? Battles = null);
+
+/// <param name="ClientBattleId">
+/// ↯ Minted at battle start and never re-derived (T2 §5, T5 §8). **This is the entire idempotency
+/// mechanism for a battle** — a resumed fight keeps the id it began with, so a payload that arrives
+/// twice inserts once and its drops are granted once.
+/// </param>
+/// <param name="EnemyLevel">
+/// Recorded as sent. It equals the player's level at encounter time and is history, not a live
+/// value — an old battle's row keeps the level it was fought at (tech-01 §4).
+/// </param>
+/// <param name="ItemsConsumed">`player_item` ids spent during the fight. Deleted, idempotent by key.</param>
+public sealed record BattleRequest(
+    Guid ClientBattleId,
+    Guid? GrantId,
+    /// <summary>
+    /// The local calendar date the battle's XP belongs to, supplied by the client like every other
+    /// date on this surface (§2) — the server never derives one from an instant, because it does not
+    /// own the player's midnight. Not in T2 §4.1's original payload sketch; added 2026-08-17 because
+    /// step 4 credits battle XP to `activity_day.xp_awarded` and had no date to credit it to.
+    /// </summary>
+    DateOnly ActivityDate,
+    string EnemyId,
+    BattleEncounterKind EncounterKind,
+    int EnemyLevel,
+    BattleOutcome Outcome,
+    DateTime StartedAt,
+    DateTime EndedAt,
+    int VigorAfter,
+    IReadOnlyList<Guid> ItemsConsumed,
+    IReadOnlyList<BattleDropRequest> Drops);
+
+/// <param name="LevelAtDrop">
+/// Gear and trinket only. Stored alongside the frozen bonus purely so it *can* be re-derived for
+/// verification — never to re-derive it in practice (T2 §4.1, tech-01 §4).
+/// </param>
+/// <param name="BonusPrimary">
+/// ↯ The **frozen** rolled bonus, supplied by the client. This is the only place in the API where
+/// the client sends a value the server could otherwise derive, and it is deliberate: the bonus is
+/// frozen at drop time by design, so re-deriving it server-side would be the bug rather than the
+/// check. Null for items, which carry no bonus.
+/// </param>
+public sealed record BattleDropRequest(
+    string Kind,
+    string DefId,
+    int? LevelAtDrop = null,
+    int? BonusPrimary = null,
+    int? BonusSecondary = null);
 
 /// <param name="ClientDeltaId">
 /// ↯ A UUIDv7 minted on-device when the delta was created and never regenerated on retry (T2 §5).
