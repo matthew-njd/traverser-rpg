@@ -1,5 +1,5 @@
 import { peek } from '../../db/outbox';
-import { registeredDatabase } from '../../sync/__tests__/fixtures';
+import { PLAYER_ID, registeredDatabase } from '../../sync/__tests__/fixtures';
 import { readPlayer } from '../../sync/mirror';
 import { seededRng } from '../rng';
 import { battlePayload, settleBattle, toWireBattle } from '../settle';
@@ -98,7 +98,7 @@ describe('settling', () => {
     const db = registeredDatabase({ vigor_current: 36 });
     const payload = { ...battlePayload(wonBattle().state, META), vigorAfter: 13 };
 
-    settleBattle(db, payload, Date.parse('2026-08-17T14:03:00Z'));
+    settleBattle(db, payload, PLAYER_ID, Date.parse('2026-08-17T14:03:00Z'));
 
     const queued = peek(db, 10, 'battle');
 
@@ -117,8 +117,8 @@ describe('settling', () => {
     const db = registeredDatabase();
     const payload = battlePayload(wonBattle().state, META);
 
-    settleBattle(db, payload, Date.now());
-    settleBattle(db, payload, Date.now());
+    settleBattle(db, payload, PLAYER_ID, Date.now());
+    settleBattle(db, payload, PLAYER_ID, Date.now());
 
     expect(peek(db, 10, 'battle')).toHaveLength(1);
   });

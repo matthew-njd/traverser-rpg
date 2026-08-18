@@ -145,9 +145,11 @@ This is a passive unlock notification plus an in-battle tooltip only; no separat
 
 When Thunderer's Wrath unlocks — the player's first typed move — a one-time interstitial screen appears before the next battle:
 
-> *"Some attacks carry the power of a god's domain. Thunderer's Wrath is Storm-typed — it hits some enemies much harder, others much weaker. Watch for the 'Super Effective' and 'Not very effective' callouts in battle."*
+> *"Some attacks carry the power of a god's domain. Thunderer's Wrath is Storm-typed — it hits some enemies much harder, others much weaker. Watch for the 'Super Effective' and 'Resisted…' callouts in battle."*
 
 This is the player's first exposure to type-effectiveness language, priming them for Satyr's payoff moment shortly after (Section 5's combat arc — the type chart "clicking" at the first Storm/War-advantaged fight).
+
+> **Erratum, 2026-08-18 (M2/P6).** This line read *"Not very effective"* and named a callout that does not exist: Section 13 §6.2 is the section that resolves the type-indicator flag and it specifies **"Resisted…"**. The tooltip is the one place the player is told what wording to watch for, so the two disagreeing meant teaching a phrase the battle screen would never show. Copy only — no behaviour, no formula, no fixture.
 
 Both moments are one-time and dismissible, and never repeat once seen. The secondary-effect tooltip (Weaken/Fortify/Swift/Rend, triggered by first Divine gear) remains Section 12's responsibility, per Section 3's own routing of that specific moment — not duplicated here.
 

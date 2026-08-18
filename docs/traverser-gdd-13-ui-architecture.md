@@ -276,15 +276,20 @@ One fixed dark palette. The app describes a single visual world (the old roads a
 | `gold` | `#E0B457` | XP fill, level-up, a goal met |
 | `notice` / `noticeBorder` | `#2A2620` / `#4A3F2E` | Banners, which are informational and never alarming |
 
-Three colours are **scoped** — each has exactly one sanctioned use, and none is added to `theme.ts` before its first consumer exists:
+Four colours are **scoped** — each has exactly one sanctioned use, and none is added to `theme.ts` before its first consumer exists:
 
 | Token | Hex | Sanctioned use, and nothing else |
 |---|---|---|
 | `verdigris` | `#5B8577` | Mythic tier; a threshold met |
 | `oxblood` | `#9A4436` | **Enemy health only** |
+| `madder` | `#BF6A55` | **The resisted signal only** — §6.2's chevron and its post-hit callout |
 | `marble` | `#E9E0CE` | Art plates |
 
 No screen hardcodes a colour outside this table.
+
+> **Amended 2026-08-18 (M2/P6).** `madder` is new. §6.2 specifies the resisted chevron as red and `oxblood` was the palette's only one, so the two rules collided at the first screen that needed both. Rather than widen `oxblood` — the scope note is the whole reason it still means "the enemy is in trouble" — the resisted signal gets its own pigment: lighter and less saturated, so it reads as a *hint* on a dark surface where `oxblood` reads as a bar. The pair is deliberately close enough to be the same family and far enough not to be mistaken for the same signal. Its scope is the **signal**, not one control: §6.2's two surfaces describe one fact, and colouring them differently would make the player learn the same rule twice.
+
+**Nothing chromatic is legible on `marble`.** Measured against `#E9E0CE`: `gold` 1.5:1, `accent` 2.3:1, `textDim` 2.4:1, `madder` 3.0:1, `verdigris` 3.2:1 — only `oxblood` (4.9:1) and the three dark surface tones clear 4.5:1. **Text over an art plate is therefore either near-black ink or it sits on its own dark chip.** This is a property of the plate rather than a preference, and it applies to every future overlay on one.
 
 ### 11.2 Typography
 

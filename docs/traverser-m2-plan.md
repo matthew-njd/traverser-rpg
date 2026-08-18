@@ -47,6 +47,7 @@ The one thing that genuinely cannot move earlier is the device drill set, for th
 | T2 §4 step 10 (deterministic rewards) | M3/M4 | Milestone and daily grants |
 | T2 §4 step 11 (overactivity) | M4 | GDD 11 §8 |
 | Gear beyond the starter Weapon | M3 | GDD 8's loot tables need drop sources, which need encounters |
+| **Granting battle drops into the local satchel** | **M3, and it needs one API field** | Added 2026-08-18 (P6). `player_item.id` is a server-minted uuid (T1 §4) and §4.1's drop objects carry only `def_id`, so a client-minted row would be named by an id the server never had — and every later `items_consumed` naming it is a no-op delete, drifting the server's inventory up by one per spend. **The fix is the client minting `player_item_id` and sending it with the drop**, exactly as `activity_date` was added at P5. Not taken at P6 because it is an API change inside a UI packet. Until then the Reveal Card shows the roll and the satchel holds only granted items. See DECISIONS 2026-08-18 |
 | Trinkets and gear-granted moves | M3 | GDD 10 §9's own constraint: not until the first Heroic Trinket |
 | Battle animation choreography, sprites | M3+ | T5 §13. The engine resolves a turn synchronously; pacing is the UI's problem |
 | Audio (battle music, hit stingers) | M5 | No audio bus until M5 |
@@ -138,8 +139,9 @@ Pure TypeScript, no React, no Expo (T5 §1.1).
 - Screen 6: the tutorial battle, GDD 10 §6.4's script, deterministic per §6.1 — no crits, no variance, no type chart.
 - Screen 7: the loadout reveal, on `marble` plates.
 - Inserted into the `(onboarding)` stack M1 P8 built for this insertion.
+- **Carried from P6 (DECISIONS 2026-08-18): resume an unresolved snapshot on cold start (T5 §8).** P6 writes the snapshot after every turn, reads it back, and clears it on hand-over, but boot does not offer to re-enter a fight in progress and the next battle overwrites the row. It was left because resume needs a real entry flow and P7 builds the first one — so if P7 ships without it, it has to move to P8 explicitly rather than quietly.
 
-**Tests:** the scripted five turns produce GDD 10 §6.3's verified damage values exactly, executed through the engine (§3.4). A fresh install reaches the hub with the gear equipped, the Salves in the satchel, and the battle recorded.
+**Tests:** the scripted five turns produce GDD 10 §6.3's verified damage values exactly, executed through the engine (§3.4). A fresh install reaches the hub with the gear equipped, the Salves in the satchel, and the battle recorded. A battle interrupted mid-fight and reopened resumes at the same round, and one whose content moved underneath it is abandoned with the grant unspent (§8.1).
 
 ### P8 — Device build, drills
 

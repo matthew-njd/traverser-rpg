@@ -25,10 +25,13 @@ describe('schema migrations', () => {
         // The M1 subset of the tech-01 §4 mirror.
         'activity_day',
         'player',
+        'player_bestiary',
+        'player_item',
         'player_settings',
         'player_zone_progress',
         'streak_state',
-        // tech-04 §6.2's five device-only tables.
+        // tech-04 §6.2's device-only tables.
+        'battle_snapshot',
         'hr_minute_watermark',
         'hr_session_ledger',
         'outbox',
@@ -77,6 +80,9 @@ describe('schema migrations', () => {
     const db = memoryDatabase();
 
     // Rewind to a device that is still on version 1 by dropping what came after it.
+    db.execSync('DROP TABLE player_bestiary');
+    db.execSync('DROP TABLE player_item');
+    db.execSync('DROP TABLE battle_snapshot');
     db.execSync('DROP TABLE player');
     db.execSync('DROP TABLE content_version');
     for (const table of CONTENT_TABLE_NAMES) {

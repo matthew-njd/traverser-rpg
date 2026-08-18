@@ -258,6 +258,11 @@ export async function handOverTo(
     db.runSync('DELETE FROM hr_session_ledger');
     db.runSync('DELETE FROM read_watermark');
 
+    // Device-only, so it does not cascade with the player row the way `player_item` and
+    // `player_bestiary` do — an in-progress fight belongs to the traverser leaving, not the one
+    // arriving, and resuming it against the new profile would write a battle nobody fought.
+    db.runSync('DELETE FROM battle_snapshot');
+
     writeProfile(db, profile);
   });
 

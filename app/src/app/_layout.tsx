@@ -68,6 +68,8 @@ function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(onboarding)" />
         <Stack.Screen name="(tabs)" />
+        {/* Outside `(tabs)` deliberately — a battle owns the screen (T5 §9, GDD 13 §6.1). */}
+        <Stack.Screen name="battle" options={{ gestureEnabled: false }} />
         <Stack.Screen
           name="settings"
           options={{

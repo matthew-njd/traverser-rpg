@@ -1,6 +1,8 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 
+import { readContentRows } from '@/content/bundle';
 import { getDatabase } from '@/db/open';
 import { apiBaseUrl } from '@/env';
 import { healthConnectProvider } from '@/health/healthconnect';
@@ -102,7 +104,52 @@ export default function Settings() {
         steps={health?.permissions.steps ?? false}
         heartRate={health?.permissions.heartRate ?? false}
       />
+
+      <DebugEncounters />
     </Screen>
+  );
+}
+
+/**
+ * M2 plan §3.3 — non-tutorial battles are **started from a debug control, not earned**.
+ *
+ * Encounter grants are T2 §4 step 8 and land at M3 with the Road. Without this the engine would only
+ * ever run the scripted tutorial, which bypasses crits, variance *and* the type chart (GDD 10 §6.1)
+ * and so exercises almost none of what M2 built.
+ *
+ * ↯ **This is the one thing M2 ships intending to remove.** `__DEV__` is compile-time in a release
+ * bundle, so the whole card is dropped by the minifier rather than merely hidden — but it is deleted
+ * outright at M3, when real encounters replace it.
+ */
+function DebugEncounters() {
+  const router = useRouter();
+  const level = usePlayerStore((state) => state.level);
+
+  if (!__DEV__) {
+    return null;
+  }
+
+  const enemies = readContentRows(getDatabase(), 'enemy').filter(
+    (row) => row.zone_id === 'olympion',
+  );
+
+  return (
+    <Card>
+      <Heading>Debug encounters</Heading>
+      <Body dim>
+        Fights any Olympion enemy at your level ({level}). Not earned, and gone at M3 when the Road
+        grants encounters.
+      </Body>
+
+      {enemies.map((row) => (
+        <Button
+          key={String(row.id)}
+          variant="secondary"
+          label={String(row.display_name)}
+          onPress={() => router.push({ pathname: '/battle', params: { enemyId: String(row.id) } })}
+        />
+      ))}
+    </Card>
   );
 }
 

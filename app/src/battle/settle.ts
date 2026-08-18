@@ -2,6 +2,7 @@ import { enqueue } from '../db/outbox';
 import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
 import type { Drops } from './loot';
+import { clearSnapshot, recordBattle } from './mirror';
 import type { BattleOutcome, BattleState } from './state';
 
 /**
@@ -84,12 +85,24 @@ export function toWireBattle(battle: SettledBattle): Record<string, unknown> {
 }
 
 /**
- * Queues the battle and applies its local effects.
+ * Queues the battle and applies its local effects — the client half of T2 §4 step 2, in the order
+ * the server applies its own.
  *
  * The Vigor written here is the same number the payload carries, so the mirror and the server agree
  * before the sync happens rather than after it — the battle screen has already shown it.
+ *
+ * ↯ **Drops are not granted locally.** They ride the payload and the server mints their
+ * `player_item.id` (T1 §4), so granting a second row here under a client-minted id would make
+ * `items_consumed` name rows the server never had, and its inventory would drift up by one per
+ * spend. The Reveal Card shows what was rolled from the `loot_rolled` event; the satchel gains it
+ * when inventory reconciliation lands with gear at M3.
  */
-export function settleBattle(db: SqliteDatabase, battle: SettledBattle, now: number): void {
+export function settleBattle(
+  db: SqliteDatabase,
+  battle: SettledBattle,
+  playerId: string,
+  now: number,
+): void {
   transact(db, () => {
     enqueue(db, {
       clientOpId: battle.clientBattleId,
@@ -99,5 +112,13 @@ export function settleBattle(db: SqliteDatabase, battle: SettledBattle, now: num
     });
 
     db.runSync('UPDATE player SET vigor_current = ?', [battle.vigorAfter]);
+
+    // `items_consumed` still travels to the server, which deletes its own rows (T2 §4 step 2). The
+    // local rows went at the moment they were spent, so the fight can be resumed after a crash
+    // without offering the same item twice (T4 §5.3).
+    recordBattle(db, { playerId, enemyId: battle.enemyId, won: battle.outcome === 'win' });
+
+    // Last, and in the same transaction: no window in which a battle is both settled and resumable.
+    clearSnapshot(db);
   });
 }

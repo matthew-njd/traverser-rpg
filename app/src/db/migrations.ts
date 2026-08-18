@@ -330,11 +330,50 @@ const V4_CONTENT_ORDINALS: readonly string[] = [
   'ALTER TABLE enemy_drop_pool ADD COLUMN ordinal INTEGER NOT NULL DEFAULT 0',
 ];
 
+/**
+ * Version 5 — what a battle reads and writes: the durable snapshot slot (T4 §5.3), the satchel, and
+ * the bestiary counters.
+ *
+ * ↯ **The sync response carries none of these three back** (T2 §4's response block). They are not
+ * cached server state — they are the local half of a ledger the server keeps in step from the same
+ * battle payload, and the `client_battle_id` idempotency key is what makes both halves move exactly
+ * once. Nothing here is reconciled on sync, so nothing here may be written by anything other than a
+ * settled battle or a grant that also enters the outbox.
+ */
+const V5_BATTLE: readonly string[] = [
+  // Device-only, so no `player_id`: at most one row, replaced after every resolved turn and deleted
+  // in the transaction that queues the battle (T5 §8).
+  `CREATE TABLE battle_snapshot (
+     one_row          INTEGER PRIMARY KEY CHECK (one_row = 1),
+     client_battle_id TEXT NOT NULL,
+     snapshot         TEXT NOT NULL,
+     updated_at       TEXT NOT NULL
+   )`,
+
+  // One row per held item, not a stack count — `items_consumed` in the battle payload names
+  // individual `player_item_id`s (T5 §10.3), which a quantity column could not supply.
+  `CREATE TABLE player_item (
+     id          TEXT NOT NULL PRIMARY KEY,
+     player_id   TEXT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+     item_def_id TEXT NOT NULL,
+     acquired_at TEXT NOT NULL
+   )`,
+
+  `CREATE TABLE player_bestiary (
+     player_id       TEXT    NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+     enemy_id        TEXT    NOT NULL,
+     encounter_count INTEGER NOT NULL DEFAULT 0,
+     defeat_count    INTEGER NOT NULL DEFAULT 0,
+     PRIMARY KEY (player_id, enemy_id)
+   )`,
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
   { version: 3, statements: [...V3_CONTENT] },
   { version: 4, statements: [...V4_CONTENT_ORDINALS] },
+  { version: 5, statements: [...V5_BATTLE] },
 ];
 
 /** The version a fully-migrated database reports. */

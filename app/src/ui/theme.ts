@@ -26,6 +26,26 @@ export const colors = {
   /** Used for the XP bar's fill and level-up moments. */
   gold: '#E0B457',
 
+  /**
+   * GDD 13 §11 — **enemy health only**, and the scope is the point. It is the one alarming colour
+   * in the palette, so a second consumer costs it the meaning it is carrying.
+   */
+  oxblood: '#9A4436',
+
+  /**
+   * GDD 13 §11 — **the resisted type chevron only** (§6.2). Lighter and less saturated than
+   * `oxblood` so it reads as a hint on a dark surface rather than as a bar; same family, different
+   * signal. Not for errors, not for damage, not for the post-hit callout.
+   */
+  madder: '#BF6A55',
+
+  /**
+   * GDD 13 §11's art plate. **Every illustration is an inked silhouette on a cream plate** — the
+   * load-bearing art rule, because a generated sprite only has to be a good *shape* to look
+   * intentional, and it is what makes tech-04 §9.3's placeholder swap cosmetic.
+   */
+  marble: '#E9E0CE',
+
   /** Banners are informational, never alarming (GDD 10 §3.2 is explicit about tone). */
   notice: '#2A2620',
   noticeBorder: '#4A3F2E',
