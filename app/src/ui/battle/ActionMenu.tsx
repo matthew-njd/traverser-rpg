@@ -37,9 +37,11 @@ export function ActionMenu({
   attack,
   skills,
   items,
+  attackEnabled = true,
   skillsEnabled,
   itemsEnabled,
   fleeable,
+  attackLockedNote,
   skillLockedNote,
   fleeLockedNote,
   disabled = false,
@@ -51,9 +53,12 @@ export function ActionMenu({
   attack: SkillOption;
   skills: readonly SkillOption[];
   items: readonly ItemOption[];
+  /** False only while a script withholds it (GDD 10 §6.4). Ordinary battles never set this. */
+  attackEnabled?: boolean;
   skillsEnabled: boolean;
   itemsEnabled: boolean;
   fleeable: boolean;
+  attackLockedNote?: string;
   skillLockedNote: string;
   fleeLockedNote: string;
   /** True while a turn is resolving — the whole menu, not each button (GDD 4 §3). */
@@ -125,8 +130,15 @@ export function ActionMenu({
       <View style={styles.actions}>
         <Action
           label="Attack"
+          dimmed={!attackEnabled}
           disabled={disabled}
           onPress={() => {
+            if (!attackEnabled) {
+              locked(attackLockedNote ?? 'Not this round.');
+
+              return;
+            }
+
             setOpen(null);
             setNote(null);
             onAttack(attack.moveId);

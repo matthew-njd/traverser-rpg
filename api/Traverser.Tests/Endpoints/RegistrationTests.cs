@@ -248,4 +248,103 @@ public class RegistrationTests(TraverserApiFixture api)
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    // ---- GDD 10 §5.2, the starting loadout ------------------------------------------------------
+
+    private async Task<T> ReadAsync<T>(Func<TraverserDbContext, T> read)
+    {
+        await using var scope = api.NewScope();
+
+        return read(scope.ServiceProvider.GetRequiredService<TraverserDbContext>());
+    }
+
+    /// <summary>
+    /// The Traveler's Blade, auto-equipped, at the Mortal tier's Level 1 bonus:
+    /// <c>round(0.05 × 1) + 1 = 1</c> Might. That +1 is what makes GDD 10 §6.3's tutorial arithmetic
+    /// read from Might 11 rather than 10.
+    /// </summary>
+    [Fact]
+    public async Task Registering_grants_the_equipped_starter_weapon()
+    {
+        var playerId = Guid.NewGuid();
+
+        await RegisterAsync(api.CreateClient(), playerId);
+
+        var gear = await ReadAsync(db => db.PlayerGear.Single(g => g.PlayerId == playerId));
+
+        Assert.Equal("gear_weapon_mortal", gear.GearDefId);
+        Assert.Equal(GearSlot.Weapon, gear.EquippedSlot);
+        Assert.Equal(1, gear.BonusPrimary);
+        Assert.Equal(1, gear.LevelAtDrop);
+    }
+
+    /// <summary>Three, and available *during* the tutorial battle rather than after it (§5.2).</summary>
+    [Fact]
+    public async Task Registering_grants_three_salves()
+    {
+        var playerId = Guid.NewGuid();
+
+        await RegisterAsync(api.CreateClient(), playerId);
+
+        var items = await ReadAsync(db => db.PlayerItems.Where(i => i.PlayerId == playerId).ToList());
+
+        Assert.Equal(3, items.Count);
+        Assert.All(items, i => Assert.Equal("item_travelers_salve", i.ItemDefId));
+        Assert.All(items, i => Assert.Equal(ItemSource.Tutorial, i.Source));
+
+        // One row per physical item (GDD 4 §5.1), so three distinct ids the client can spend
+        // individually — not one row with a quantity.
+        Assert.Equal(3, items.Select(i => i.Id).Distinct().Count());
+    }
+
+    /// <summary>
+    /// ↯ The grant sits inside the create branch, so the idempotent replay tech-02 §3 requires
+    /// cannot hand out a second Blade. A device that lost the first response re-registers as a
+    /// matter of course, so this is the ordinary path rather than an edge case.
+    /// </summary>
+    [Fact]
+    public async Task Re_registering_does_not_grant_the_loadout_twice()
+    {
+        var playerId = Guid.NewGuid();
+
+        await RegisterAsync(api.CreateClient(), playerId);
+        await RegisterAsync(api.CreateClient(), playerId);
+
+        var gear = await ReadAsync(db => db.PlayerGear.Count(g => g.PlayerId == playerId));
+        var items = await ReadAsync(db => db.PlayerItems.Count(i => i.PlayerId == playerId));
+
+        Assert.Equal(1, gear);
+        Assert.Equal(3, items);
+    }
+
+    /// <summary>
+    /// The client mirrors these rows verbatim, so the ids have to be *on the wire* — a client that
+    /// had to mint its own would name items the server never had, and `items_consumed` would delete
+    /// nothing for the rest of that profile's life.
+    /// </summary>
+    [Fact]
+    public async Task The_registration_response_carries_the_loadout_with_its_server_ids()
+    {
+        var playerId = Guid.NewGuid();
+        var response = await RegisterAsync(api.CreateClient(), playerId);
+
+        var profile = (await response.Content.ReadFromJsonAsync<JsonElement>(TraverserApiFixture.Json))
+            .GetProperty("profile");
+
+        var gear = profile.GetProperty("gear");
+        var items = profile.GetProperty("items");
+
+        Assert.Equal(1, gear.GetArrayLength());
+        Assert.Equal("weapon", gear[0].GetProperty("equipped_slot").GetString());
+        Assert.Equal(1, gear[0].GetProperty("bonus_primary").GetInt32());
+
+        Assert.Equal(3, items.GetArrayLength());
+
+        var stored = await ReadAsync(db =>
+            db.PlayerItems.Where(i => i.PlayerId == playerId).Select(i => i.Id).ToList());
+
+        var sent = items.EnumerateArray().Select(i => i.GetProperty("id").GetGuid()).ToList();
+
+        Assert.Equal(stored.OrderBy(id => id), sent.OrderBy(id => id));
+    }
 }

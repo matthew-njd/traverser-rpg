@@ -139,7 +139,7 @@ Pure TypeScript, no React, no Expo (T5 §1.1).
 - Screen 6: the tutorial battle, GDD 10 §6.4's script, deterministic per §6.1 — no crits, no variance, no type chart.
 - Screen 7: the loadout reveal, on `marble` plates.
 - Inserted into the `(onboarding)` stack M1 P8 built for this insertion.
-- **Carried from P6 (DECISIONS 2026-08-18): resume an unresolved snapshot on cold start (T5 §8).** P6 writes the snapshot after every turn, reads it back, and clears it on hand-over, but boot does not offer to re-enter a fight in progress and the next battle overwrites the row. It was left because resume needs a real entry flow and P7 builds the first one — so if P7 ships without it, it has to move to P8 explicitly rather than quietly.
+- **Carried from P6, and delivered here: resume an unresolved snapshot on cold start (T5 §8).** ✅ `bootRuntime` resumes before `markBooted`; a battle in progress outranks every other boot destination; §8.1’s three hazards each asserted.
 
 **Tests:** the scripted five turns produce GDD 10 §6.3's verified damage values exactly, executed through the engine (§3.4). A fresh install reaches the hub with the gear equipped, the Salves in the satchel, and the battle recorded. A battle interrupted mid-fight and reopened resumes at the same round, and one whose content moved underneath it is abandoned with the grant unspent (§8.1).
 

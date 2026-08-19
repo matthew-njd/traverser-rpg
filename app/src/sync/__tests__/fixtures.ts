@@ -42,6 +42,23 @@ export function wireSettings(overrides: Record<string, unknown> = {}): Record<st
 }
 
 /** `GET /players/me`, and the body of a registration. */
+/** GDD 10 §5.2's starter loadout, as the registration response returns it. */
+export const WIRE_BLADE = {
+  id: '018f3a9c-0000-7000-8000-00000000a001',
+  gear_def_id: 'gear_weapon_mortal',
+  equipped_slot: 'weapon',
+  level_at_drop: 1,
+  bonus_primary: 1,
+  bonus_secondary: null,
+  acquired_at: '2026-07-01T12:00:00Z',
+};
+
+export const wireSalve = (n: number) => ({
+  id: `018f3a9c-0000-7000-8000-00000000b00${n}`,
+  item_def_id: 'item_travelers_salve',
+  acquired_at: '2026-07-01T12:00:00Z',
+});
+
 export function wireProfile(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     player: wirePlayer(),
@@ -49,6 +66,8 @@ export function wireProfile(overrides: Record<string, unknown> = {}): Record<str
     streak: { current: 8, longest: 22, last_credited_date: '2026-08-02' },
     settings: wireSettings(),
     unlocked_zone_ids: ['olympion'],
+    gear: [WIRE_BLADE],
+    items: [wireSalve(1), wireSalve(2), wireSalve(3)],
     ...overrides,
   };
 }

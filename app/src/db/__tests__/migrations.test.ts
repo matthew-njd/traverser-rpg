@@ -26,6 +26,7 @@ describe('schema migrations', () => {
         'activity_day',
         'player',
         'player_bestiary',
+        'player_gear',
         'player_item',
         'player_settings',
         'player_zone_progress',
@@ -81,6 +82,7 @@ describe('schema migrations', () => {
 
     // Rewind to a device that is still on version 1 by dropping what came after it.
     db.execSync('DROP TABLE player_bestiary');
+    db.execSync('DROP TABLE player_gear');
     db.execSync('DROP TABLE player_item');
     db.execSync('DROP TABLE battle_snapshot');
     db.execSync('DROP TABLE player');

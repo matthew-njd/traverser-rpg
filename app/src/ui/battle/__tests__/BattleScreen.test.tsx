@@ -7,7 +7,12 @@ import { skill } from '../../../battle/__tests__/fixtures';
 import { contextFor } from '../../../battle/__tests__/harness';
 import type { BattleEvent, BattleState } from '../../../battle/state';
 import { NO_EFFECTS, rulesFor, TUTORIAL_RULES } from '../../../battle/types';
-import { BattleScreen } from '../BattleScreen';
+import {
+  FLEE_LOCKED_NOTE,
+  ITEM_ONLY_NOTE,
+  SKILL_LOCKED_NOTE,
+} from '../../../onboarding/tutorial';
+import { type BattleScript, BattleScreen } from '../BattleScreen';
 import { RESISTED, SUPER_EFFECTIVE } from '../log';
 
 /**
@@ -101,6 +106,7 @@ async function show(
     state?: Partial<BattleState>;
     events?: readonly BattleEvent[];
     items?: readonly typeof SALVE[];
+    script?: BattleScript;
     chevronsUnlocked?: boolean;
     handlers?: Partial<Record<'onBegin' | 'onMove' | 'onItem' | 'onFlee' | 'onDone', jest.Mock>>;
   } = {},
@@ -123,6 +129,7 @@ async function show(
       events={overrides.events ?? []}
       items={overrides.items ?? [SALVE]}
       chevronsUnlocked={overrides.chevronsUnlocked ?? true}
+      script={overrides.script ?? null}
       {...handlers}
     />,
   );
@@ -323,20 +330,61 @@ describe('the action menu', () => {
    * tapped. Removing it would move the other three, which §6.1 ties to menu-scanning time.
    */
   it('keeps Skill and Flee in place in the tutorial and explains why they are locked', async () => {
-    const handlers = await show({ state: { rules: TUTORIAL_RULES } });
+    const handlers = await show({
+      state: { rules: TUTORIAL_RULES },
+      script: {
+        beat: null,
+        skillLockedNote: SKILL_LOCKED_NOTE,
+        fleeLockedNote: FLEE_LOCKED_NOTE,
+      },
+    });
 
     expect(screen.getByText('Skill')).toBeTruthy();
     expect(screen.getByText('Flee')).toBeTruthy();
 
     await fireEvent.press(screen.getByText('Skill'));
 
-    expect(screen.getByText('Skills unlock at Level 4.')).toBeTruthy();
+    expect(screen.getByText(SKILL_LOCKED_NOTE)).toBeTruthy();
     expect(handlers.onMove).not.toHaveBeenCalled();
 
     await fireEvent.press(screen.getByText('Flee'));
 
-    expect(screen.getByText("You can't flee this fight — it's perfectly safe.")).toBeTruthy();
+    expect(screen.getByText(FLEE_LOCKED_NOTE)).toBeTruthy();
     expect(handlers.onFlee).not.toHaveBeenCalled();
+  });
+
+  /**
+   * GDD 10 §6.4's round 3, where the script withholds Attack so the Item action is actually seen —
+   * the Wisp sits at 3 Vigor against a 6-damage hit, so attacking would end the fight a round early.
+   */
+  it('withholds Attack when the script says so, and says why', async () => {
+    const handlers = await show({
+      script: {
+        beat: { note: null, prompt: 'Use a Salve.', attackEnabled: false },
+        attackLockedNote: ITEM_ONLY_NOTE,
+      },
+    });
+
+    await fireEvent.press(screen.getByText('Attack'));
+
+    expect(handlers.onMove).not.toHaveBeenCalled();
+    expect(screen.getByText(ITEM_ONLY_NOTE)).toBeTruthy();
+  });
+
+  it('shows the scripted note and prompt while a beat is active', async () => {
+    await show({
+      script: { beat: { note: 'That is your Vigor.', prompt: 'Attack again.', attackEnabled: true } },
+    });
+
+    expect(screen.getByText('That is your Vigor.')).toBeTruthy();
+    expect(screen.getByText('Attack again.')).toBeTruthy();
+  });
+
+  /** Every ordinary battle passes no script at all, and must show no guided copy. */
+  it('shows no guided copy without a script', async () => {
+    await show();
+
+    expect(screen.queryByText(/Attack again/)).toBeNull();
   });
 
   it('flees a wild encounter', async () => {

@@ -32,7 +32,33 @@ public sealed record PlayerProfileResponse(
     long Leagues,
     StreakResponse Streak,
     PlayerSettingsResponse Settings,
-    IReadOnlyList<string> UnlockedZoneIds);
+    IReadOnlyList<string> UnlockedZoneIds,
+    IReadOnlyList<PlayerGearResponse> Gear,
+    IReadOnlyList<PlayerItemResponse> Items);
+
+/// <summary>
+/// An owned gear instance. <c>Id</c> is the server's, and that is the point of carrying it: the
+/// client mirrors these rows verbatim so both tiers name the same physical object.
+/// </summary>
+/// <param name="EquippedSlot">Null when owned but not worn. At most one row per slot (tech-01 §4).</param>
+/// <param name="BonusPrimary">
+/// **Frozen at drop time (GDD 8 §3.2)** — sent as stored and never recomputed by either tier.
+/// <c>LevelAtDrop</c> travels alongside purely so it *can* be re-derived for verification.
+/// </param>
+public sealed record PlayerGearResponse(
+    Guid Id,
+    string GearDefId,
+    string? EquippedSlot,
+    int LevelAtDrop,
+    int BonusPrimary,
+    int? BonusSecondary,
+    DateTime AcquiredAt);
+
+/// <summary>
+/// One row per *physical* item, not a stack (GDD 4 §5.1). <c>Id</c> is what a battle payload's
+/// <c>items_consumed</c> names, so the client cannot invent one — it mirrors what is sent here.
+/// </summary>
+public sealed record PlayerItemResponse(Guid Id, string ItemDefId, DateTime AcquiredAt);
 
 /// <param name="XpToNext">
 /// From the seeded <c>xp_curve</c>, never recomputed (tech-01) — <c>round(100 × L^1.05)</c> is

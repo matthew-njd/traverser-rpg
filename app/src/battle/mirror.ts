@@ -1,4 +1,5 @@
 import type { SqliteDatabase } from '../db/types';
+import type { EquippedBonus } from '../progression/stats';
 import { type BattleSnapshot, parseSnapshot, serialiseSnapshot } from './snapshot';
 
 /**
@@ -54,6 +55,18 @@ export function grantItem(
      VALUES (?, ?, ?, ?)`,
     [item.playerItemId, item.playerId, item.itemDefId, item.acquiredAt],
   );
+}
+
+/**
+ * The equipped pieces, for the stat derivation (GDD 8 §2).
+ *
+ * Only equipped rows: owning a weapon and wearing it are different things, and the unique index on
+ * `(player_id, equipped_slot)` is what makes at most one per slot true in the schema.
+ */
+export function readEquippedGear(db: SqliteDatabase): EquippedBonus[] {
+  return db.getAllSync<{ equipped_slot: string | null; bonus_primary: number }>(
+    'SELECT equipped_slot, bonus_primary FROM player_gear WHERE equipped_slot IS NOT NULL',
+  ).map((row) => ({ equippedSlot: row.equipped_slot, bonusPrimary: row.bonus_primary }));
 }
 
 export function readBestiary(db: SqliteDatabase, enemyId: string): BestiaryEntry {

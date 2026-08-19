@@ -299,7 +299,53 @@ export function writeProfile(db: SqliteDatabase, profile: PlayerProfile): void {
         [profile.player.playerId, zoneId, profile.player.createdAt],
       );
     }
+
+    writeInventory(db, profile);
   });
+}
+
+/**
+ * Replaces the satchel and the gear rack from the authoritative document.
+ *
+ * ↯ **Replace, not merge** — the mirror mirrors (§the top of this file). The lists arrive whole, so
+ * a row the server no longer has is a row this device must lose: a Salve spent on another install,
+ * or gear discarded. Merging would resurrect it, and the resurrected id would then be sent in
+ * `items_consumed` for a row that no longer exists anywhere.
+ *
+ * The equipped-slot index is unique, so the delete has to precede the inserts within the same
+ * transaction — re-inserting the same weapon before clearing the old row trips it.
+ */
+function writeInventory(db: SqliteDatabase, profile: PlayerProfile): void {
+  const playerId = profile.player.playerId;
+
+  db.runSync('DELETE FROM player_gear WHERE player_id = ?', [playerId]);
+  db.runSync('DELETE FROM player_item WHERE player_id = ?', [playerId]);
+
+  for (const gear of profile.gear) {
+    db.runSync(
+      `INSERT INTO player_gear (
+         id, player_id, gear_def_id, equipped_slot, level_at_drop,
+         bonus_primary, bonus_secondary, acquired_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        gear.id,
+        playerId,
+        gear.gearDefId,
+        gear.equippedSlot,
+        gear.levelAtDrop,
+        gear.bonusPrimary,
+        gear.bonusSecondary,
+        gear.acquiredAt,
+      ],
+    );
+  }
+
+  for (const item of profile.items) {
+    db.runSync(
+      'INSERT INTO player_item (id, player_id, item_def_id, acquired_at) VALUES (?, ?, ?, ?)',
+      [item.id, playerId, item.itemDefId, item.acquiredAt],
+    );
+  }
 }
 
 /**

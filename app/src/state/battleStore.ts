@@ -1,13 +1,22 @@
 import { create } from 'zustand';
 
+import { readContentVersion } from '../content/bundle';
 import { type Labels, loadLabels } from '../content/labels';
+import { readPlayer } from '../sync/mirror';
 import type { SqliteDatabase } from '../db/types';
 import { transact } from '../db/transaction';
-import { clearSnapshot, spendItems, writeSnapshot } from '../battle/mirror';
+import { clearSnapshot, readBestiary, readSnapshot, spendItems, writeSnapshot } from '../battle/mirror';
 import { type Rng, systemRng } from '../battle/rng';
-import { type Encounter, availableMoves, battleItems, startEncounter } from '../battle/session';
+import {
+  type Encounter,
+  availableMoves,
+  battleItems,
+  buildContext,
+  dropKindFor,
+  startEncounter,
+} from '../battle/session';
 import { battlePayload, settleBattle } from '../battle/settle';
-import type { BattleSnapshot } from '../battle/snapshot';
+import { type BattleSnapshot, type ResumeFailure, resumeSnapshot } from '../battle/snapshot';
 import {
   type BattleAction,
   type BattleContext,
@@ -46,7 +55,11 @@ interface BattleStore {
   /** Writes the finished battle to the outbox and clears the fight. Idempotent. */
   settle(db: SqliteDatabase, activityDate: string, now?: number): void;
   abandon(db: SqliteDatabase): void;
+  /** Null when there was nothing to resume; a {@link ResumeFailure} when it had to be abandoned. */
+  resume(db: SqliteDatabase): ResumeOutcome;
 }
+
+export type ResumeOutcome = 'resumed' | ResumeFailure | null;
 
 export interface BeginInput {
   readonly enemyId: string;
@@ -175,6 +188,76 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
   abandon(db) {
     clearSnapshot(db);
     set({ ...IDLE });
+  },
+
+  /**
+   * Re-enters a fight the process died in the middle of (T5 §8).
+   *
+   * ↯ Two of §8.1's three hazards **abandon** the battle, and that is the kinder outcome rather than
+   * the harsher one: a sync between backgrounding and resuming can change a move's Power underneath
+   * a fight in progress, and resuming a battle whose numbers moved is worse than losing it. The
+   * player keeps the encounter either way, because grants are held client-side until spent.
+   *
+   * The third hazard needs no code — the player was mid-`await_player`, which holds no partial
+   * input, so re-entering redraws the screen.
+   */
+  resume(db) {
+    const snapshot = readSnapshot(db);
+
+    if (snapshot === null) {
+      return null;
+    }
+
+    const held = readContentVersion(db) ?? 0;
+    const result = resumeSnapshot(snapshot, { contentVersion: held });
+
+    if (!result.ok) {
+      clearSnapshot(db);
+      set({ ...IDLE });
+
+      return result.reason;
+    }
+
+    const player = readPlayer(db);
+
+    // A snapshot without a player is a hand-over that took the profile with it. Nothing to resume
+    // into, and the fight belonged to whoever left.
+    if (player === null) {
+      clearSnapshot(db);
+      set({ ...IDLE });
+
+      return 'schema_moved';
+    }
+
+    const labels = loadLabels(db);
+    const context = buildContext(
+      db,
+      snapshot.state.enemyId,
+      dropKindFor(snapshot.state.encounterKind, snapshot.state.firstKill ? 0 : 1),
+    );
+
+    // ↯ The system RNG, not whatever the interrupted run used. A seed is only ever set to reproduce
+    // a recorded battle, and a resumed production fight has no reproducibility to preserve — the
+    // draws already taken are baked into the state.
+    currentRng = systemRng;
+
+    set({
+      snapshot,
+      context,
+      labels,
+      // The event log does not survive the process — it is L3 session state (T4 §5.2) and the
+      // combat log is a record of this session, not of the battle.
+      events: [],
+      items: itemOptionsFor(db, context, labels),
+      moves: (({ attack, skills }) => [attack, ...skills])(
+        availableMoves(context.content, player.level),
+      ),
+      playerId: player.playerId,
+      chevronsUnlocked: readBestiary(db, snapshot.state.enemyId).encounterCount > 0,
+      resolving: false,
+    });
+
+    return 'resumed';
   },
 }));
 

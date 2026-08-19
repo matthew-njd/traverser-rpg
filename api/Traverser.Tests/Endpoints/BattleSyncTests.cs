@@ -14,6 +14,11 @@ namespace Traverser.Tests.Endpoints;
 /// breaks here — and for battles "unchanged" has to mean no duplicate drop and no second bestiary
 /// increment, not merely no second XP award.
 /// </para>
+/// <para>
+/// ↯ Every inventory assertion filters out <c>Tutorial</c>-sourced rows. Registration grants GDD 10
+/// §5.2's Blade and three Salves, so "the player holds one item" stopped being the same claim as
+/// "this battle granted one item" — and only the second is what these tests are about.
+/// </para>
 /// </summary>
 [Collection(TraverserApiCollection.Name)]
 public class BattleSyncTests(TraverserApiFixture api)
@@ -86,7 +91,7 @@ public class BattleSyncTests(TraverserApiFixture api)
         await SyncAsync(client, [Battle(Guid.CreateVersion7(), drops: [ItemDrop("item_stormveil")])]);
 
         var battles = await ReadAsync(db => db.Battles.Where(b => b.PlayerId == playerId).ToList());
-        var items = await ReadAsync(db => db.PlayerItems.Where(i => i.PlayerId == playerId).ToList());
+        var items = await ReadAsync(db => db.PlayerItems.Where(i => i.PlayerId == playerId && i.Source != ItemSource.Tutorial).ToList());
         var bestiary = await ReadAsync(db => db.PlayerBestiary.Where(b => b.PlayerId == playerId).ToList());
 
         Assert.Single(battles);
@@ -129,8 +134,8 @@ public class BattleSyncTests(TraverserApiFixture api)
             second.GetProperty("player").GetRawText());
 
         Assert.Single(await ReadAsync(db => db.Battles.Where(b => b.PlayerId == playerId).ToList()));
-        Assert.Single(await ReadAsync(db => db.PlayerItems.Where(i => i.PlayerId == playerId).ToList()));
-        Assert.Single(await ReadAsync(db => db.PlayerGear.Where(g => g.PlayerId == playerId).ToList()));
+        Assert.Single(await ReadAsync(db => db.PlayerItems.Where(i => i.PlayerId == playerId && i.Source != ItemSource.Tutorial).ToList()));
+        Assert.Single(await ReadAsync(db => db.PlayerGear.Where(g => g.PlayerId == playerId && g.Source != "tutorial").ToList()));
 
         var bestiary = await ReadAsync(db => db.PlayerBestiary.Single(b => b.PlayerId == playerId));
 
@@ -152,7 +157,7 @@ public class BattleSyncTests(TraverserApiFixture api)
         ]);
 
         Assert.Single(await ReadAsync(db => db.Battles.Where(b => b.PlayerId == playerId).ToList()));
-        Assert.Single(await ReadAsync(db => db.PlayerItems.Where(i => i.PlayerId == playerId).ToList()));
+        Assert.Single(await ReadAsync(db => db.PlayerItems.Where(i => i.PlayerId == playerId && i.Source != ItemSource.Tutorial).ToList()));
     }
 
     [Fact]
@@ -169,7 +174,7 @@ public class BattleSyncTests(TraverserApiFixture api)
         ]);
 
         var items = await ReadAsync(db =>
-            db.PlayerItems.Where(i => i.PlayerId == playerId).Select(i => i.ItemDefId).ToList());
+            db.PlayerItems.Where(i => i.PlayerId == playerId && i.Source != ItemSource.Tutorial).Select(i => i.ItemDefId).ToList());
 
         Assert.Equal(2, items.Count);
         Assert.Contains("item_stormveil", items);
@@ -304,7 +309,7 @@ public class BattleSyncTests(TraverserApiFixture api)
         ]);
 
         var salves = await ReadAsync(db =>
-            db.PlayerItems.Where(i => i.PlayerId == playerId).Select(i => i.Id).ToList());
+            db.PlayerItems.Where(i => i.PlayerId == playerId && i.Source != ItemSource.Tutorial).Select(i => i.Id).ToList());
 
         Assert.Equal(2, salves.Count);
 
@@ -314,10 +319,67 @@ public class BattleSyncTests(TraverserApiFixture api)
         await SyncAsync(client, spending);
 
         var remaining = await ReadAsync(db =>
-            db.PlayerItems.Where(i => i.PlayerId == playerId).Select(i => i.Id).ToList());
+            db.PlayerItems.Where(i => i.PlayerId == playerId && i.Source != ItemSource.Tutorial).Select(i => i.Id).ToList());
 
         Assert.Single(remaining);
         Assert.Equal(salves[1], remaining[0]);
+    }
+
+    // ---- The tutorial (GDD 10 §6) ---------------------------------------------------------------
+
+    /// <summary>
+    /// The battle row <em>is</em> the proof the tutorial happened, so there is no separate endpoint
+    /// to call and nothing that can get out of step with it.
+    /// </summary>
+    [Fact]
+    public async Task A_won_tutorial_battle_marks_the_tutorial_complete()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        Assert.Null(await ReadAsync(db => db.Players.Single(p => p.Id == playerId).TutorialCompletedAt));
+
+        await SyncAsync(client, [
+            Battle(Guid.CreateVersion7(), encounterKind: "tutorial", enemyId: "enemy_waystone_wisp", level: 1),
+        ]);
+
+        Assert.NotNull(await ReadAsync(db => db.Players.Single(p => p.Id == playerId).TutorialCompletedAt));
+    }
+
+    /// <summary>
+    /// ↯ Set once. A replayed payload returns no rows at all, so the instant cannot move — which
+    /// matters because it is the flag a restored device reads to know it has already been through
+    /// onboarding, and a moving timestamp would be a fact about syncing rather than about playing.
+    /// </summary>
+    [Fact]
+    public async Task Replaying_the_tutorial_battle_does_not_move_the_completion_instant()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        object[] payload = [
+            Battle(Guid.CreateVersion7(), encounterKind: "tutorial", enemyId: "enemy_waystone_wisp", level: 1),
+        ];
+
+        await SyncAsync(client, payload);
+
+        var first = await ReadAsync(db => db.Players.Single(p => p.Id == playerId).TutorialCompletedAt);
+
+        await SyncAsync(client, payload);
+
+        Assert.Equal(first, await ReadAsync(db => db.Players.Single(p => p.Id == playerId).TutorialCompletedAt));
+    }
+
+    /// <summary>An ordinary wild fight is not the tutorial, however early it happens.</summary>
+    [Fact]
+    public async Task A_wild_battle_leaves_the_tutorial_flag_alone()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        await SyncAsync(client, [Battle(Guid.CreateVersion7())]);
+
+        Assert.Null(await ReadAsync(db => db.Players.Single(p => p.Id == playerId).TutorialCompletedAt));
     }
 
     // ---- Shape ----------------------------------------------------------------------------------

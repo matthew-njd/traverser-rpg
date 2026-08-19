@@ -368,12 +368,43 @@ const V5_BATTLE: readonly string[] = [
    )`,
 ];
 
+/**
+ * Version 6 — owned gear (tech-01 §4), which arrives with GDD 10 §5.2's starter Blade.
+ *
+ * ↯ Unlike v5's three tables, `player_gear` and `player_item` **are** reconciled: the profile
+ * response carries both lists whole, so a repair replaces them rather than merging. That is why the
+ * ids here are the server's — the row is the same physical object on both tiers, and
+ * `items_consumed` names it by that id.
+ *
+ * `bonus_primary` is stored, never recomputed (GDD 8 §3.2). Recomputing it from the tier and level
+ * would be wrong by design the moment a rebalance changes the rate.
+ */
+const V6_GEAR: readonly string[] = [
+  `CREATE TABLE player_gear (
+     id             TEXT    NOT NULL PRIMARY KEY,
+     player_id      TEXT    NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+     gear_def_id    TEXT    NOT NULL,
+     equipped_slot  TEXT,
+     level_at_drop  INTEGER NOT NULL,
+     bonus_primary  INTEGER NOT NULL,
+     bonus_secondary INTEGER,
+     acquired_at    TEXT    NOT NULL
+   )`,
+
+  // One equipped piece per slot, in the schema rather than in a function (tech-01 §4). A partial
+  // index, so the many unequipped rows do not collide with each other on a NULL slot.
+  `CREATE UNIQUE INDEX ux_player_gear_slot
+     ON player_gear (player_id, equipped_slot)
+     WHERE equipped_slot IS NOT NULL`,
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
   { version: 3, statements: [...V3_CONTENT] },
   { version: 4, statements: [...V4_CONTENT_ORDINALS] },
   { version: 5, statements: [...V5_BATTLE] },
+  { version: 6, statements: [...V6_GEAR] },
 ];
 
 /** The version a fully-migrated database reports. */

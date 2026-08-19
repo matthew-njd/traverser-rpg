@@ -71,8 +71,9 @@ export default function NameYourTraverser() {
       // is also the pass that baselines HR, readable only now that the year is in the mirror.
       void syncNow().catch(() => undefined);
 
-      // `replace`, not `push` — onboarding must not survive a back press.
-      router.replace('/character');
+      // `replace`, not `push` — onboarding must not survive a back press. Screens 5–7 follow
+      // (GDD 10 §5.2, §6, §6.5); the hub is reached from Screen 7, not from here.
+      router.replace('/05-loadout');
     } catch (caught) {
       setError(
         caught instanceof ApiUnreachableError

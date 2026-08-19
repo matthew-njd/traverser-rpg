@@ -1,11 +1,11 @@
 {
-  "server_time": "2026-08-06T00:46:56.1338448Z",
-  "content_version": 1,
+  "server_time": "2026-08-19T02:15:21.8478588Z",
+  "content_version": 2,
   "player": {
-    "player_id": "73816d1b-c140-435d-bdeb-f862abba4979",
+    "player_id": "e501e46e-b739-46c7-bfa8-e77cba42e2ba",
     "traverser_name": "WireProbe",
     "timezone": "America/New_York",
-    "created_at": "2026-08-06T00:36:54.036189Z",
+    "created_at": "2026-08-19T02:15:21.725183Z",
     "level": 4,
     "xp_current": 85,
     "xp_to_next": 429,
@@ -43,7 +43,7 @@
     }
   ],
   "accepted_delta_ids": [
-    "23fbf7c1-8a64-4cfc-9f78-579c553d7b9d"
+    "df1b7cd6-9acb-4627-bf67-d5b289b186c2"
   ],
   "duplicate_delta_ids": []
 }

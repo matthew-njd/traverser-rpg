@@ -19,6 +19,21 @@ import { skillOptions } from './options';
  * anything lives in `src/battle/`, and the store between them is T5 §9's thin adapter. That split is
  * what lets this file be tested by rendering a hand-built state rather than by fighting a battle.
  */
+export interface BattleScript {
+  /** The beat for the round the player is about to act in, or null once the fight is over. */
+  readonly beat: { note: string | null; prompt: string; attackEnabled: boolean } | null;
+  readonly attackLockedNote?: string;
+  readonly skillLockedNote?: string;
+  readonly fleeLockedNote?: string;
+}
+
+/**
+ * Outside the tutorial these two are the honest general cases: Skills unlock with levels (GDD 2 §5)
+ * and the six bosses are the only unfleeable fights (GDD 2 §9).
+ */
+const DEFAULT_SKILL_LOCKED = 'No Skills unlocked yet — they arrive as you level.';
+const DEFAULT_FLEE_LOCKED = 'There is no leaving this one.';
+
 export function BattleScreen({
   state,
   context,
@@ -27,6 +42,7 @@ export function BattleScreen({
   events,
   items,
   chevronsUnlocked,
+  script = null,
   resolving = false,
   onBegin,
   onMove,
@@ -45,6 +61,11 @@ export function BattleScreen({
   events: readonly BattleEvent[];
   items: readonly ItemOption[];
   chevronsUnlocked: boolean;
+  /**
+   * GDD 10 §6.4's guided copy, and the actions it withholds. Null for every ordinary battle — the
+   * tutorial is a *configured instance* of this screen, not a second one (M2 plan §3.4).
+   */
+  script?: BattleScript | null;
   resolving?: boolean;
   onBegin: () => void;
   onMove: (moveId: string) => void;
@@ -74,6 +95,7 @@ export function BattleScreen({
 
   const callout = latestCallout(events);
   const over = state.outcome !== null;
+  const beat = script?.beat ?? null;
 
   return (
     <Screen style={styles.screen}>
@@ -114,6 +136,16 @@ export function BattleScreen({
 
       <CombatLog lines={lines} />
 
+      {/* The guided band. Note first, then what to do — the order the player earned them in. */}
+      {beat === null ? null : (
+        <View style={styles.guide}>
+          {beat.note === null ? null : <Text style={styles.guideNote}>{beat.note}</Text>}
+          <Text accessibilityRole="alert" style={styles.guidePrompt}>
+            {beat.prompt}
+          </Text>
+        </View>
+      )}
+
       {state.phase === 'enemy_intro' ? (
         <Button label="Begin" onPress={onBegin} />
       ) : over ? (
@@ -126,11 +158,13 @@ export function BattleScreen({
           attack={attack}
           skills={skills}
           items={items}
+          attackEnabled={beat === null ? true : beat.attackEnabled}
           skillsEnabled={state.rules.skillsEnabled}
           itemsEnabled={state.rules.itemsEnabled}
           fleeable={state.rules.fleeable}
-          skillLockedNote="Skills unlock at Level 4."
-          fleeLockedNote="You can't flee this fight — it's perfectly safe."
+          attackLockedNote={script?.attackLockedNote}
+          skillLockedNote={script?.skillLockedNote ?? DEFAULT_SKILL_LOCKED}
+          fleeLockedNote={script?.fleeLockedNote ?? DEFAULT_FLEE_LOCKED}
           disabled={resolving}
           onAttack={onMove}
           onSkill={onMove}
@@ -205,6 +239,10 @@ const styles = StyleSheet.create({
 
   player: { gap: space.xs },
   roundLabel: { ...type.small, ...tabular, color: colors.textDim },
+
+  guide: { gap: space.xs, paddingHorizontal: space.xs },
+  guideNote: { ...type.small, color: colors.textDim },
+  guidePrompt: { ...type.body, color: colors.gold },
 
   outcome: { gap: space.sm },
   outcomeLabel: { ...type.heading, color: colors.text, textAlign: 'center' },

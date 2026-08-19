@@ -9,6 +9,7 @@ import { apiBaseUrl } from './env';
 import { type TraverserApi, createApi } from './sync/api';
 import { type SyncPassResult, runForegroundSync } from './sync/pass';
 import { useAppStore } from './state/appStore';
+import { useBattleStore } from './state/battleStore';
 import { usePlayerStore } from './state/playerStore';
 
 /**
@@ -35,6 +36,11 @@ export async function bootRuntime(): Promise<SqliteDatabase> {
   identity = await loadIdentity();
 
   usePlayerStore.getState().hydrate(db);
+
+  // T5 §8 — a cold start with an unresolved snapshot re-enters the fight. Before `markBooted`, so
+  // the boot router's first render already knows and cannot flash the hub on the way to the battle.
+  useBattleStore.getState().resume(db);
+
   useAppStore.getState().markBooted(identity !== null);
 
   return db;

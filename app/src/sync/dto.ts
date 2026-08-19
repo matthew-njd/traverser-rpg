@@ -269,6 +269,31 @@ export interface PlayerProfile {
   readonly streak: Streak;
   readonly settings: PlayerSettings;
   readonly unlockedZoneIds: readonly string[];
+  readonly gear: readonly OwnedGear[];
+  readonly items: readonly OwnedItem[];
+}
+
+/**
+ * ↯ `id` is the **server's**, and mirroring it verbatim is the whole point of these two lists. A
+ * client-minted id would name a row the server never had, so every `items_consumed` naming it would
+ * delete nothing and the server's inventory would drift up by one per spend (T5 §10.3).
+ */
+export interface OwnedGear {
+  readonly id: string;
+  readonly gearDefId: string;
+  /** Null when owned but not worn. At most one per slot (T1 §4). */
+  readonly equippedSlot: string | null;
+  readonly levelAtDrop: number;
+  /** Frozen at drop time (GDD 8 §3.2) — stored as sent, never recomputed on this side either. */
+  readonly bonusPrimary: number;
+  readonly bonusSecondary: number | null;
+  readonly acquiredAt: string;
+}
+
+export interface OwnedItem {
+  readonly id: string;
+  readonly itemDefId: string;
+  readonly acquiredAt: string;
 }
 
 export interface Registration {
@@ -302,6 +327,28 @@ export function parseProfile(value: unknown, at = 'profile'): PlayerProfile {
     unlockedZoneIds: array(body.unlocked_zone_ids, `${at}.unlocked_zone_ids`).map((id, index) =>
       text(id, `${at}.unlocked_zone_ids[${index}]`),
     ),
+    gear: array(body.gear, `${at}.gear`).map((row, index) => {
+      const gear = object(row, `${at}.gear[${index}]`);
+
+      return {
+        id: text(gear.id, `${at}.gear[${index}].id`),
+        gearDefId: text(gear.gear_def_id, `${at}.gear[${index}].gear_def_id`),
+        equippedSlot: nullableText(gear.equipped_slot, `${at}.gear[${index}].equipped_slot`),
+        levelAtDrop: int(gear.level_at_drop, `${at}.gear[${index}].level_at_drop`),
+        bonusPrimary: int(gear.bonus_primary, `${at}.gear[${index}].bonus_primary`),
+        bonusSecondary: nullableInt(gear.bonus_secondary, `${at}.gear[${index}].bonus_secondary`),
+        acquiredAt: text(gear.acquired_at, `${at}.gear[${index}].acquired_at`),
+      };
+    }),
+    items: array(body.items, `${at}.items`).map((row, index) => {
+      const item = object(row, `${at}.items[${index}]`);
+
+      return {
+        id: text(item.id, `${at}.items[${index}].id`),
+        itemDefId: text(item.item_def_id, `${at}.items[${index}].item_def_id`),
+        acquiredAt: text(item.acquired_at, `${at}.items[${index}].acquired_at`),
+      };
+    }),
   };
 }
 

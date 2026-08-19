@@ -6,7 +6,7 @@ import { type MirrorPlayer, readPlayer } from '../sync/mirror';
 import type { StatDeltas } from '../sync/writes';
 import { type BattleContent, loadBattleContent } from './content';
 import { type DropEncounterKind, dropTablesFrom } from './loot';
-import { readBestiary, readSatchel } from './mirror';
+import { readBestiary, readEquippedGear, readSatchel } from './mirror';
 import { SNAPSHOT_SCHEMA_VERSION, type BattleSnapshot } from './snapshot';
 import { type BattleContext, type BattleEvent, type BattleItem, beginBattle } from './state';
 import { type EncounterKind, type Move, rulesFor } from './types';
@@ -183,7 +183,9 @@ export function startEncounter(
     dropKindFor(input.encounterKind, bestiary.defeatCount),
   );
 
-  const playerStats = effectiveStats(player);
+  // Equipped gear counts — GDD 10 §6.3's tutorial arithmetic reads from Might 11, which is the
+  // Traveler's Blade's +1 (§5.2). ↯ Stride is unreachable from here by construction (GDD 8 §2).
+  const playerStats = effectiveStats(player, readEquippedGear(db));
 
   const opening = beginBattle({
     encounterKind: input.encounterKind,
@@ -214,6 +216,15 @@ export function startEncounter(
     playerStats,
   };
 }
+
+/**
+ * GDD 10 §6 — the tutorial's enemy, and the one place its id is written down.
+ *
+ * `enemy_waystone_wisp` is tutorial-exclusive and non-canon: no zone, no type, no drop-table rows
+ * (§6.2). Its "Drops: None" therefore falls out of empty content rather than a special case, which
+ * is what lets the whole fight run without taking a single RNG draw (T5 §11.3).
+ */
+export const TUTORIAL_ENEMY_ID = 'enemy_waystone_wisp';
 
 /** The satchel as the Item menu needs it: what is held, and what each one does. */
 export function battleItems(

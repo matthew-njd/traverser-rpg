@@ -1,6 +1,9 @@
 import { Redirect } from 'expo-router';
 
+import { getDatabase } from '@/db/open';
+import { hasFinishedTutorial } from '@/onboarding/tutorial';
 import { useAppStore } from '@/state/appStore';
+import { useBattleStore } from '@/state/battleStore';
 
 /**
  * tech-04 §7.1 step 5 — the boot router.
@@ -9,16 +12,37 @@ import { useAppStore } from '@/state/appStore';
  * mirror is read flashes onboarding at a registered player — visible on Android, where a warm DOM
  * would have forgiven it.
  *
- * "Registered" is M1's whole onboarding-complete signal, because naming writes the player row. M2
- * inserts GDD 10 screens 5–7 after naming, and this will need a flag of its own.
+ * Four destinations, in priority order. **A battle in progress outranks everything**: boot has
+ * already decided whether the snapshot is resumable (T5 §8.1), and one that is must be re-entered
+ * before any screen that could start a second fight over the top of it.
  */
 export default function BootRouter() {
   const booted = useAppStore((state) => state.booted);
   const registered = useAppStore((state) => state.registered);
+  const snapshot = useBattleStore((state) => state.snapshot);
 
   if (!booted) {
     return null;
   }
 
-  return <Redirect href={registered ? '/character' : '/01-splash'} />;
+  if (!registered) {
+    return <Redirect href="/01-splash" />;
+  }
+
+  if (snapshot !== null) {
+    return (
+      <Redirect
+        href={snapshot.state.encounterKind === 'tutorial' ? '/06-tutorial' : '/battle'}
+      />
+    );
+  }
+
+  // Registration writes the player row, but onboarding does not end there any more — GDD 10 screens
+  // 5–7 follow it, and a player who closed the app between naming and the tutorial resumes at the
+  // step they stopped on rather than landing on the hub having skipped it.
+  if (!hasFinishedTutorial(getDatabase())) {
+    return <Redirect href="/05-loadout" />;
+  }
+
+  return <Redirect href="/character" />;
 }

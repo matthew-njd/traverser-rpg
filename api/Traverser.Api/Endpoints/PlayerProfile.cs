@@ -33,6 +33,18 @@ internal static class PlayerProfile
                 Streak = db.StreakStates.FirstOrDefault(s => s.PlayerId == p.Id),
                 XpToNext = db.XpCurve.Where(x => x.Level == p.Level).Select(x => x.XpToNext).FirstOrDefault(),
                 ZoneIds = db.PlayerZoneProgress.Where(z => z.PlayerId == p.Id).Select(z => z.ZoneId).ToList(),
+
+                // Ordered so two calls return the same document byte for byte — the client replaces
+                // its mirror from whichever arrives last, and an unordered list would make a repair
+                // look like a change.
+                Gear = db.PlayerGear
+                    .Where(g => g.PlayerId == p.Id)
+                    .OrderBy(g => g.AcquiredAt).ThenBy(g => g.Id)
+                    .ToList(),
+                Items = db.PlayerItems
+                    .Where(i => i.PlayerId == p.Id)
+                    .OrderBy(i => i.AcquiredAt).ThenBy(i => i.Id)
+                    .ToList(),
             })
             .FirstOrDefaultAsync(ct);
 
@@ -87,7 +99,23 @@ internal static class PlayerProfile
                 SfxVolume: Decimal2(row.Settings.SfxVolume),
                 BirthYear: row.Settings.BirthYear),
 
-            UnlockedZoneIds: row.ZoneIds);
+            UnlockedZoneIds: row.ZoneIds,
+
+            Gear: row.Gear
+                .Select(g => new PlayerGearResponse(
+                    Id: g.Id,
+                    GearDefId: g.GearDefId,
+                    // The enum's own name, lower-cased, matching `gear_def.slot`'s content ids.
+                    EquippedSlot: g.EquippedSlot?.ToString().ToLowerInvariant(),
+                    LevelAtDrop: g.LevelAtDrop,
+                    BonusPrimary: g.BonusPrimary,
+                    BonusSecondary: g.BonusSecondary,
+                    AcquiredAt: g.AcquiredAt))
+                .ToList(),
+
+            Items: row.Items
+                .Select(i => new PlayerItemResponse(i.Id, i.ItemDefId, i.AcquiredAt))
+                .ToList());
     }
 
     /// <summary>Fixed scale and invariant culture — a comma decimal separator would be a wire break.</summary>

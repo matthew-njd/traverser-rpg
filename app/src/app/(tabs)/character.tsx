@@ -3,7 +3,8 @@ import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getDatabase } from '@/db/open';
-import { effectiveStats } from '@/progression/stats';
+import { readEquippedGear } from '@/battle/mirror';
+import { type EquippedBonus, effectiveStats } from '@/progression/stats';
 import { syncNow } from '@/runtime';
 import type { ActivityDay } from '@/sync/dto';
 import { type MirrorPlayer, readActivityDays, readPlayer } from '@/sync/mirror';
@@ -30,6 +31,7 @@ export default function Character() {
   const router = useRouter();
   const [view, setView] = useState<'avatar' | 'stats'>('avatar');
   const [player, setPlayer] = useState<MirrorPlayer | null>(null);
+  const [equipped, setEquipped] = useState<readonly EquippedBonus[]>([]);
   const [days, setDays] = useState<readonly ActivityDay[]>([]);
   const [allocating, setAllocating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,6 +44,7 @@ export default function Character() {
     const db = getDatabase();
 
     setPlayer(readPlayer(db));
+    setEquipped(readEquippedGear(db));
     setDays(readActivityDays(db, ACTIVITY_LOG_LIMIT));
   }, []);
 
@@ -165,7 +168,7 @@ export default function Character() {
               {player === null ? null : (
                 <StatPanel
                   unspent={player.unspentStatPoints}
-                  current={effectiveStats(player)}
+                  current={effectiveStats(player, equipped)}
                   busy={allocating}
                   onConfirm={confirm}
                 />

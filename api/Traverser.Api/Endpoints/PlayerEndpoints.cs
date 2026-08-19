@@ -4,6 +4,7 @@ using Traverser.Api.Auth;
 using Traverser.Api.Contracts;
 using Traverser.Api.Data;
 using Traverser.Api.Data.Entities;
+using Traverser.Api.Data.Seed;
 using Traverser.Api.Http;
 
 namespace Traverser.Api.Endpoints;
@@ -22,6 +23,9 @@ public static class PlayerEndpoints
     /// and not a migration (tech-01 §2); they get a shared home when P4 brings the XP maths in.
     /// </summary>
     private const int Level1BaseVigor = 20;
+
+    /// <summary>GDD 10 §5.2 — available *during* the tutorial battle, not withheld until after it.</summary>
+    private const int StartingSalves = 3;
 
     /// <summary>Postgres <c>unique_violation</c>.</summary>
     private const string UniqueViolation = "23505";
@@ -98,6 +102,8 @@ public static class PlayerEndpoints
             // nothing else to seed.
             db.PlayerZoneProgress.Add(new PlayerZoneProgress { PlayerId = player.Id, ZoneId = "olympion" });
 
+            GrantStartingLoadout(db, player);
+
             try
             {
                 await db.SaveChangesAsync(ct);
@@ -164,4 +170,50 @@ public static class PlayerEndpoints
         VigorCurrent = Level1BaseVigor,
         VigorAnchorAt = DateTime.UtcNow,
     };
+
+    /// <summary>
+    /// GDD 10 §5.2 — the Traveler's Blade, auto-equipped, and three Traveler's Salves.
+    /// <para>
+    /// ↯ Granted <b>here rather than on the device</b>, even though GDD 10 shows it on Screen 5.
+    /// <c>player_item.id</c> is what a battle payload's <c>items_consumed</c> names, so a
+    /// client-minted row would be named by an id this tier never had — every later consumption
+    /// would be a no-op delete and the server's inventory would drift up by one per spend. The
+    /// client mirrors these rows from the registration response instead, ids intact, which also
+    /// means a restore onto new hardware recovers the loadout rather than silently dropping the
+    /// Blade's +1 Might.
+    /// </para>
+    /// <para>
+    /// Inside the create branch only, so the idempotent replay of <c>POST /players</c> cannot grant
+    /// a second Blade — the same discipline as every other grant on this surface.
+    /// </para>
+    /// </summary>
+    private static void GrantStartingLoadout(TraverserDbContext db, Player player)
+    {
+        var now = DateTime.UtcNow;
+
+        db.PlayerGear.Add(new PlayerGear
+        {
+            PlayerId = player.Id,
+            GearDefId = Ids.Gear.WeaponMortal,
+            LevelAtDrop = 1,
+            // GDD 8 §3.2 at the Mortal tier: round(0.05 × 1) + 1 = 1 Might, taking the Level 1
+            // Traverser to 11 and giving GDD 10 §6.3's tutorial its stated attacker stat. Frozen
+            // at grant time like every other bonus, never recomputed.
+            BonusPrimary = 1,
+            EquippedSlot = GearSlot.Weapon,
+            AcquiredAt = now,
+            Source = "tutorial",
+        });
+
+        for (var i = 0; i < StartingSalves; i += 1)
+        {
+            db.PlayerItems.Add(new PlayerItem
+            {
+                PlayerId = player.Id,
+                ItemDefId = Ids.Item.TravelersSalve,
+                AcquiredAt = now,
+                Source = ItemSource.Tutorial,
+            });
+        }
+    }
 }

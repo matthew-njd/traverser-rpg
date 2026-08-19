@@ -1,9 +1,9 @@
 {
   "player": {
-    "player_id": "73816d1b-c140-435d-bdeb-f862abba4979",
+    "player_id": "e501e46e-b739-46c7-bfa8-e77cba42e2ba",
     "traverser_name": "WireProbe",
     "timezone": "America/New_York",
-    "created_at": "2026-08-06T00:36:54.036189Z",
+    "created_at": "2026-08-19T02:15:21.725183Z",
     "level": 4,
     "xp_current": 1,
     "xp_to_next": 429,
@@ -34,5 +34,33 @@
   },
   "unlocked_zone_ids": [
     "olympion"
+  ],
+  "gear": [
+    {
+      "id": "01a017cd-3d7b-7d02-a1ee-faf88e3d8871",
+      "gear_def_id": "gear_weapon_mortal",
+      "equipped_slot": "weapon",
+      "level_at_drop": 1,
+      "bonus_primary": 1,
+      "bonus_secondary": null,
+      "acquired_at": "2026-08-19T02:15:21.723564Z"
+    }
+  ],
+  "items": [
+    {
+      "id": "01a017cd-3d7b-72d9-8d92-9b564371cbcf",
+      "item_def_id": "item_travelers_salve",
+      "acquired_at": "2026-08-19T02:15:21.723564Z"
+    },
+    {
+      "id": "01a017cd-3d7b-7916-925d-5557c68e6da7",
+      "item_def_id": "item_travelers_salve",
+      "acquired_at": "2026-08-19T02:15:21.723564Z"
+    },
+    {
+      "id": "01a017cd-3d7b-7e27-8432-e9bad4c0801b",
+      "item_def_id": "item_travelers_salve",
+      "acquired_at": "2026-08-19T02:15:21.723564Z"
+    }
   ]
 }

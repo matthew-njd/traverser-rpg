@@ -384,6 +384,20 @@ public static class SyncEndpoints
         player.VigorCurrent = latest.VigorAfter;
         player.VigorAnchorAt = latest.EndedAt.ToUniversalTime();
 
+        // GDD 10 §6 — the tutorial is one-time, and the battle row is the proof it happened, so
+        // there is no separate endpoint to call and nothing to get out of step. Set once: a replayed
+        // payload returns no rows at all, and the null check keeps the original instant even if a
+        // second tutorial battle somehow arrived.
+        var tutorial = inserted
+            .Where(b => b.EncounterKind == BattleEncounterKind.Tutorial && b.Outcome == BattleOutcome.Win)
+            .OrderBy(b => b.EndedAt)
+            .FirstOrDefault();
+
+        if (tutorial is not null && player.TutorialCompletedAt is null)
+        {
+            player.TutorialCompletedAt = tutorial.EndedAt.ToUniversalTime();
+        }
+
         var consumed = inserted.SelectMany(b => b.ItemsConsumed ?? []).Distinct().ToList();
 
         if (consumed.Count > 0)

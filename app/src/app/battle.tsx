@@ -28,7 +28,8 @@ export default function Battle() {
   const kind = (params.kind ?? 'wild') as EncounterKind;
 
   useEffect(() => {
-    if (enemyId === undefined) {
+    // No enemy means this route was reached by boot resuming a fight, not by starting one.
+    if (enemyId === undefined || useBattleStore.getState().snapshot !== null) {
       return;
     }
 
