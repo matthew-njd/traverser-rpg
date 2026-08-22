@@ -125,6 +125,10 @@ T5 §1.6 establishes that **the client rolls loot and the server records it**. `
 > Stopped server-side at P8: a drop naming an id the seed does not have is **skipped rather than inserted**, for gear and items alike, so a bad drop costs one grant instead of every future sync. **This does not resolve the conflict** — it stops the bleeding. Resolution belongs to M3, when GDD 8's loot table can resolve a tier to a piece, and whichever way it goes, both specs move together.
 >
 > The drop tests did not catch it because their fixture passed `gear_weapon_mortal` — a value the client cannot produce. Two transcriptions agreeing with each other while both disagree with the client.
+>
+> ✅ **Resolved 2026-08-22 (M3/P2). `def_id` is a resolved piece, and this spec's example was right all along — T5 §10.1 moves to match it.** The client resolves the tier to a piece and sends the id, because GDD 8's tier ladder is seeded content the device already caches: a lookup on a table it holds, not a roll it has to defer. The alternative — the server resolving a tier — would put a roll on the server that T5 §1.6 deliberately put on the client so loot exists offline.
+>
+> Two things the example does not show and the payload now carries: `bonus_secondary`, non-null only on a Trinket (GDD 8 §3.1 splits its bonus across Favor and Aegis), and a `"kind": "trinket"` entry of the same shape. **The server's skip-unresolvable guard stays** — it is what made a bad drop cost one grant instead of every future sync, and a backstop is worth more now that three zones of drop sources are reachable.
 
 The order below is normative. It is the order tech-01 §7 asked T2 to fix, and steps 3–6 in particular cannot be reordered without changing outcomes.
 

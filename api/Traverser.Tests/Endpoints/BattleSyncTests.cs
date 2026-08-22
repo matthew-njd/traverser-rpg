@@ -338,6 +338,11 @@ public class BattleSyncTests(TraverserApiFixture api)
     /// <c>gear_weapon_mortal</c>, a value the client does not produce. Two transcriptions agreeing
     /// with each other while both disagree with the client.
     /// </para>
+    /// <para>
+    /// **Resolved at M3/P2**: the client now resolves the tier to a piece and sends the id, so no
+    /// client produces the payload below any more. The guard stays and so does this test — it is
+    /// the backstop that keeps a bad drop costing one grant instead of every future sync.
+    /// </para>
     /// </summary>
     [Fact]
     public async Task A_gear_drop_naming_a_tier_is_skipped_rather_than_failing_the_sync()
@@ -345,7 +350,7 @@ public class BattleSyncTests(TraverserApiFixture api)
         var (playerId, token) = await api.RegisterAsync();
         var client = api.CreateAuthenticatedClient(token);
 
-        // Exactly what `rollDrops` produces for a wild encounter: drop_rate.tier, verbatim.
+        // What `rollDrops` produced before M3/P2 — a `drop_rate.tier`, verbatim.
         await SyncAsync(client, [
             Battle(Guid.CreateVersion7(), drops: [GearDrop("mortal", 10, 1), ItemDrop("item_stormveil")]),
         ]);
@@ -393,6 +398,37 @@ public class BattleSyncTests(TraverserApiFixture api)
 
         Assert.Single(dropped);
         Assert.Equal(2, dropped[0].BonusPrimary);
+    }
+
+    /// <summary>
+    /// A Trinket carries a second stat — GDD 8 §3.1 splits its bonus across Favor and Aegis — and
+    /// it is the only drop that does. Reachable from M3/P2, when the client began resolving the
+    /// piece rather than sending the tier.
+    /// </summary>
+    [Fact]
+    public async Task A_trinket_drop_keeps_both_halves_of_its_split_bonus()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        await SyncAsync(client, [
+            Battle(Guid.CreateVersion7(), drops: [new
+            {
+                kind = "trinket",
+                def_id = "gear_skyroad_sigil",
+                level_at_drop = 10,
+                bonus_primary = 2,
+                bonus_secondary = 2,
+            }]),
+        ]);
+
+        var dropped = await ReadAsync(db =>
+            db.PlayerGear.Where(g => g.PlayerId == playerId && g.Source == "trinket").ToList());
+
+        Assert.Single(dropped);
+        Assert.Equal("gear_skyroad_sigil", dropped[0].GearDefId);
+        Assert.Equal(2, dropped[0].BonusPrimary);
+        Assert.Equal(2, dropped[0].BonusSecondary);
     }
 
     // ---- The tutorial (GDD 10 §6) ---------------------------------------------------------------

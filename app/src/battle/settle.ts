@@ -2,7 +2,7 @@ import { enqueue } from '../db/outbox';
 import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
 import { writeVigor } from '../sync/mirror';
-import type { Drops } from './loot';
+import type { Drops, GearDrop } from './loot';
 import { clearSnapshot, recordBattle } from './mirror';
 import type { BattleOutcome, BattleState } from './state';
 
@@ -61,6 +61,23 @@ export function battlePayload(
   };
 }
 
+/**
+ * A resolved piece and its frozen bonus (T5 §10.1, amended 2026-08-22).
+ *
+ * ↯ `bonus_primary` is the one value on this surface the server could derive and deliberately does
+ * not: it is frozen at drop by design, so re-deriving it later would be the bug rather than the
+ * check (T2 §4.1).
+ */
+function wireGear(kind: 'gear' | 'trinket', drop: GearDrop): Record<string, unknown> {
+  return {
+    kind,
+    def_id: drop.defId,
+    level_at_drop: drop.levelAtDrop,
+    bonus_primary: drop.bonusPrimary,
+    bonus_secondary: drop.bonusSecondary,
+  };
+}
+
 /** The wire shape of T2 §4.1's battle payload. Keys are the server's, as everywhere below `dto`. */
 export function toWireBattle(battle: SettledBattle): Record<string, unknown> {
   return {
@@ -77,10 +94,8 @@ export function toWireBattle(battle: SettledBattle): Record<string, unknown> {
     items_consumed: [...battle.itemsConsumed],
     drops: [
       ...battle.drops.items.map((defId) => ({ kind: 'item', def_id: defId })),
-      // Gear and trinket carry the tier they rolled; the piece and its frozen bonus are GDD 8's,
-      // and land with gear at M3 (T5 §10.1).
-      ...battle.drops.gear.map((tier) => ({ kind: 'gear', def_id: tier })),
-      ...(battle.drops.trinket === null ? [] : [{ kind: 'trinket', def_id: battle.drops.trinket }]),
+      ...battle.drops.gear.map((drop) => wireGear('gear', drop)),
+      ...(battle.drops.trinket === null ? [] : [wireGear('trinket', battle.drops.trinket)]),
     ],
   };
 }

@@ -65,17 +65,46 @@ describe('the payload', () => {
     expect(() => battlePayload(battle.state, META)).toThrow(/not settled/);
   });
 
-  /** T2 §4.1's shape: one flat `drops` array of `{ kind, def_id }`, not three keyed lists. */
+  /**
+   * T2 §4.1's shape: one flat `drops` array, not three keyed lists.
+   *
+   * ↯ Gear carries a **resolved `def_id` and its frozen bonus** (amended 2026-08-22). The tier the
+   * roll produced never reaches the wire — it named no row the server had, and one such drop wedged
+   * sync permanently at M2 (DECISIONS 2026-08-20).
+   */
   it('flattens drops onto the wire as kind + def_id', () => {
     const wire = toWireBattle({
       ...battlePayload(wonBattle().state, META),
-      drops: { items: ['item_stormveil'], gear: ['mortal'], trinket: 'heroic' },
+      drops: {
+        items: ['item_stormveil'],
+        gear: [
+          { defId: 'gear_weapon_mortal', levelAtDrop: 15, bonusPrimary: 2, bonusSecondary: null },
+        ],
+        trinket: {
+          defId: 'gear_skyroad_sigil',
+          levelAtDrop: 15,
+          bonusPrimary: 2,
+          bonusSecondary: 2,
+        },
+      },
     });
 
     expect(wire.drops).toEqual([
       { kind: 'item', def_id: 'item_stormveil' },
-      { kind: 'gear', def_id: 'mortal' },
-      { kind: 'trinket', def_id: 'heroic' },
+      {
+        kind: 'gear',
+        def_id: 'gear_weapon_mortal',
+        level_at_drop: 15,
+        bonus_primary: 2,
+        bonus_secondary: null,
+      },
+      {
+        kind: 'trinket',
+        def_id: 'gear_skyroad_sigil',
+        level_at_drop: 15,
+        bonus_primary: 2,
+        bonus_secondary: 2,
+      },
     ]);
 
     expect(wire.client_battle_id).toBe(META.clientBattleId);

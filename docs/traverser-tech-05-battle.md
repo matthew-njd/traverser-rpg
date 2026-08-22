@@ -146,7 +146,9 @@ A seeded RNG only yields a reproducible fight if the number and order of draws p
 1. **Round start:** turn-order tie-break, *only* if neither side has Swift and effective Stride is exactly equal.
 2. **Enemy action selection**, at the point the enemy acts (not at round start), one draw. §5.
 3. **Per resolved hit, in resolution order:** crit draw, then random-factor draw. Skipped entirely when the corresponding rule flag is off (§1.2).
-4. **On victory only:** the loot dice, in the fixed order item → gear → trinket, then one pool-selection draw per granted item. §10.
+4. **On victory only:** the loot dice, in the fixed order item → gear → trinket, then one selection draw per granted reward that needs one, in that same order. §10.
+
+> **Amended 2026-08-22 (M3/P2).** Step 4 read "one pool-selection draw per granted item", which was exact while gear resolved to a tier and took no draw. A granted **gear** roll now takes one draw as well — GDD 8 §5.1's equal-weight slot pick — and a granted **Trinket** still takes none, because its zone and tier name it outright. So: three dice, then the item pool draws, then the slot draw, and nothing for the Trinket.
 
 An action that ends the battle before the second combatant acts consumes no further draws that round (GDD 2 §5.3). Any change to this list is a breaking change to every `ScriptedRng` test and must be made deliberately.
 
@@ -345,6 +347,12 @@ drops: { items[], gear[], trinket? }   ← new; see §12
 > ⚠️ **Amended 2026-08-20 (M2/P8, found on the device). What `drops` carries for gear and trinket is contested, and T2 §4.1 describes a different value than this spec does.** §10.1 resolves gear and trinket to a **tier**, on the reasoning that which piece of that tier is granted is GDD 8's loot-table job and lands with gear at M3 — so the client puts the literal string `mortal` on the wire. T2 §4.1's payload example shows `"def_id": "gear_weapon_mortal"`, a resolved piece, and the server inserts it straight into `player_gear.gear_def_id`. The foreign key fails, sync returns 500, and a 500 keeps the outbox entry queued — **one gear drop wedged every later sync permanently**.
 >
 > Stopped server-side at P8 by skipping drops it cannot resolve. **The conflict is unresolved**; it belongs to M3, and both specs move together whichever way it goes. See T2 §4.1's amendment of the same date and DECISIONS 2026-08-20.
+
+> ✅ **Resolved 2026-08-22 (M3/P2). §10.1 resolves gear and trinket to a piece, not a tier.** T2 §4.1 was right; this paragraph moves to it. GDD 8's tier ladder is seeded content the device already caches, so `mortal` → `gear_weapon_mortal` is a lookup on a table in hand rather than a roll deferred to the next sync — which §1.6 put on the client precisely so loot exists offline.
+>
+> - **Weapon/Armor/Accessory:** GDD 8 §5.1's equal-weight draw across the three slots, scanned in the GDD's own order (Weapon, Armor, Accessory) so a scripted draw maps to the table as written. **One draw**, taken only when the gear die has already granted.
+> - **Trinket:** **no draw at all.** GDD 8 §5.2 gives each zone exactly one Trinket per tier, so the enemy's `zone_id` and the rolled tier name the piece outright. An enemy with no zone (`enemy_waystone_wisp`) resolves nothing and grants nothing.
+> - **The frozen bonus rides with it** — GDD 8 §3.2's `round(rate × L) + flat` at the level the piece dropped at, and `round(split × that)` to each of Favor and Aegis on a Trinket. ↯ **Half rounds to even.** fixtures §5 pins three cells that only come out that way (Mortal L10, Divine L10, Divine L42), and JS's `Math.round` gets each wrong by one.
 
 > **Amended 2026-08-22 (M2/P8). Nothing on the device shows a drop, for the whole of M2.** §10.1's inventory-overflow prompt and GDD 13 §6.3's Reveal Card are both unbuilt, the combat log deliberately says nothing, and an ordinary sync does not refresh the satchel (T2 §3). So the roll is real, recorded, and invisible. **Not built at M2 deliberately** — a reveal announcing an item the player does not receive is worse than silence, so the reveal and the local grant land together at M3. DECISIONS 2026-08-20, corrected 2026-08-22.
 

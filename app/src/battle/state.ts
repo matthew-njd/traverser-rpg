@@ -352,6 +352,10 @@ function settle(
       encounterKind: context.dropEncounterKind,
       tables: context.tables,
       pool: context.pool,
+      // Enemy level equals the player's level at encounter time (GDD 5–7), so it is the level the
+      // bonus freezes against — and it is history, not a live value (T1 §4).
+      level: state.enemyLevel,
+      zoneId: context.enemy.zoneId,
       rng,
     });
 
