@@ -23,6 +23,7 @@ export default function Battle() {
   const params = useLocalSearchParams<{ enemyId?: string; kind?: string }>();
   const router = useRouter();
   const store = useBattleStore();
+  const traverserName = usePlayerStore((state) => state.traverserName) || 'Traverser';
   const [failed, setFailed] = useState<string | null>(null);
 
   const enemyId = params.enemyId;
@@ -90,6 +91,7 @@ export default function Battle() {
       context={store.context}
       moves={store.moves}
       labels={store.labels}
+      traverserName={traverserName}
       events={store.events}
       items={store.items}
       reveals={revealsFor(store.snapshot.state.drops, store.labels, store.revealDetails)}

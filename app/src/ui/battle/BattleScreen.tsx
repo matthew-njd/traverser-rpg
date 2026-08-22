@@ -13,7 +13,7 @@ import { CombatLog } from './CombatLog';
 import { VigorBar } from './VigorBar';
 import { type Callout, calloutOf, logLines } from './log';
 import { usePacedLines } from './paced';
-import { skillOptions } from './options';
+import { skillOptions, slotsFor } from './options';
 
 /**
  * GDD 13 §6's battle screen — enemy panel, player panel, combat log, action menu, in that order.
@@ -34,7 +34,7 @@ export interface BattleScript {
  * Outside the tutorial these two are the honest general cases: Skills unlock with levels (GDD 2 §5)
  * and the six bosses are the only unfleeable fights (GDD 2 §9).
  */
-const DEFAULT_SKILL_LOCKED = 'No Skills unlocked yet — they arrive as you level.';
+export const DEFAULT_SKILL_LOCKED = 'No Skills unlocked yet — they arrive as you level.';
 const DEFAULT_FLEE_LOCKED = 'There is no leaving this one.';
 
 export function BattleScreen({
@@ -45,6 +45,7 @@ export function BattleScreen({
   events,
   items,
   reveals = [],
+  traverserName,
   chevronsUnlocked,
   script = null,
   resolving = false,
@@ -64,6 +65,8 @@ export function BattleScreen({
   labels: Labels;
   events: readonly BattleEvent[];
   items: readonly ItemOption[];
+  /** GDD 13 §6.1 — the player panel names its Traverser, as the enemy panel names the enemy. */
+  traverserName: string;
   /** GDD 13 §6.3 — what this fight dropped, already joined to its content. Empty for a loss. */
   reveals?: readonly Reveal[];
   chevronsUnlocked: boolean;
@@ -103,6 +106,12 @@ export function BattleScreen({
   const attack = options.find((option) => option.usesLeft === null);
   const skills = options.filter((option) => option !== attack);
 
+  // Four slots, filled or not (GDD 3 §2.4). Enemy level equals the player’s at encounter time.
+  const slots = useMemo(
+    () => slotsFor(skills, context.content.skills, state.enemyLevel),
+    [skills, context.content.skills, state.enemyLevel],
+  );
+
   const callout = latestCallout(events);
   const over = state.outcome !== null;
   const beat = script?.beat ?? null;
@@ -140,8 +149,17 @@ export function BattleScreen({
       </View>
 
       <View style={styles.player}>
-        <Text style={styles.roundLabel}>Round {state.round}</Text>
+        {/*
+          The player’s own name, mirroring the enemy’s above it — the slot held the round number and
+          read as a label for the bar beneath (M2 drill note 1.5). The round moved to the log’s
+          header, where a counter belongs.
+        */}
+        <Text style={styles.playerName}>{traverserName}</Text>
         <VigorBar side="player" vigor={state.player.vigor} vigorMax={state.player.vigorMax} />
+      </View>
+
+      <View style={styles.logHeader}>
+        <Text style={styles.roundLabel}>Round {state.round}</Text>
       </View>
 
       <CombatLog lines={paced} />
@@ -177,7 +195,7 @@ export function BattleScreen({
       ) : attack === undefined ? null : (
         <ActionMenu
           attack={attack}
-          skills={skills}
+          slots={slots}
           items={items}
           attackEnabled={beat === null ? true : beat.attackEnabled}
           skillsEnabled={state.rules.skillsEnabled}
@@ -261,6 +279,8 @@ const styles = StyleSheet.create({
   },
 
   player: { gap: space.xs },
+  playerName: { ...type.body, color: colors.text },
+  logHeader: { alignItems: 'flex-end', paddingHorizontal: space.xs },
   roundLabel: { ...type.small, ...tabular, color: colors.textDim },
 
   guide: { gap: space.xs, paddingHorizontal: space.xs },

@@ -110,6 +110,8 @@ A tutorial battle that merely uses very favorable stats can still — however ra
 
 Only **Attack** and **Item** are available; **Skill** is visibly present but greyed out with tooltip *"Skills unlock at Level 4,"* and **Flee** is disabled with tooltip *"You can't flee this fight — it's perfectly safe."* This establishes the full UI chrome early without letting the player wander off-script.
 
+> **Amended 2026-08-22 (M3/P4a). There is no Skill button; there are four skill slots, and at Level 1 all four are locked.** GDD 13 §6.1's action menu was re-laid out and the Skill button deleted, so this paragraph names a control that no longer exists. What it was establishing still happens and is now more literal: the player sees **the whole loadout they will grow into** rather than one greyed button standing in for it. Each locked slot names the level that fills it, and tapping one gives this section's tooltip — *"Skills unlock at Level 4"* — which is exactly true of the first slot. Flee is unchanged.
+
 | Round | Event | Enemy Vigor | Player Vigor |
 |---|---|---|---|
 | — | Start | 15 | 20 |
@@ -135,9 +137,11 @@ Section 3's cross-section flag explicitly assigned two further scripted moments 
 
 ### 7.1 Level 4 — First Skill Unlock
 
-When Iron Advance unlocks, the Skill button (greyed out with a tooltip since the tutorial battle, §6.4) becomes active for the first time. The player's next battle — a normal, RNG-driven wild encounter, not another scripted fight — opens with a one-time tooltip:
+When Iron Advance unlocks, the first skill slot (locked with a tooltip since the tutorial battle, §6.4) fills for the first time. The player's next battle — a normal, RNG-driven wild encounter, not another scripted fight — opens with a one-time tooltip:
 
-> *"Iron Advance is ready — tap Skill to use it. It hits harder than a Basic Attack, but has limited uses per battle, so time it well."*
+> *"Iron Advance is ready — it's in your first skill slot now. It hits harder than a Basic Attack, but has limited uses per battle, so time it well."*
+
+> **Amended 2026-08-22 (M3/P4a).** The line read *"tap Skill to use it"* and named a button GDD 13 §6.1's new layout deletes. The sentence's job was to say **where**, and the slot is now the where — the first of four, the one that has been showing *Lv 4* since the tutorial. The second sentence is untouched, and so is everything else about the beat: still passive, still a one-time in-battle tooltip, still no scripted encounter of its own.
 
 This is a passive unlock notification plus an in-battle tooltip only; no separate scripted encounter is created for it, since the tutorial battle already established the Attack/Item flow and a second guaranteed-win fight would feel redundant.
 

@@ -12,7 +12,7 @@ import {
   ITEM_ONLY_NOTE,
   SKILL_LOCKED_NOTE,
 } from '../../../onboarding/tutorial';
-import { type BattleScript, BattleScreen } from '../BattleScreen';
+import { DEFAULT_SKILL_LOCKED, type BattleScript, BattleScreen } from '../BattleScreen';
 import { RESISTED, SUPER_EFFECTIVE } from '../log';
 import type { Reveal } from '../reveal';
 
@@ -42,6 +42,7 @@ const LABELS = new Map([
   ['storm', 'Storm'],
   ['war', 'War'],
   ['skill_basic_attack', 'Basic Attack'],
+  ['skill_iron_advance', 'Iron Advance'],
   ['skill_thunderers_wrath', "Thunderer's Wrath"],
   ['skill_warlords_advance', "Warlord's Advance"],
   ['item_travelers_salve', "Traveler's Salve"],
@@ -107,6 +108,7 @@ async function show(
     state?: Partial<BattleState>;
     events?: readonly BattleEvent[];
     items?: readonly typeof SALVE[];
+    moves?: readonly ReturnType<typeof skill>[];
     script?: BattleScript;
     chevronsUnlocked?: boolean;
     reveals?: readonly Reveal[];
@@ -126,8 +128,9 @@ async function show(
     <BattleScreen
       state={stateOf(overrides.state)}
       context={CONTEXT}
-      moves={MOVES}
+      moves={overrides.moves ?? MOVES}
       labels={LABELS}
+      traverserName="Matthew"
       events={overrides.events ?? []}
       items={overrides.items ?? [SALVE]}
       chevronsUnlocked={overrides.chevronsUnlocked ?? true}
@@ -204,8 +207,7 @@ describe('the type-effectiveness surfaces', () => {
 
     expect(StyleSheet.flatten(screen.getByText(RESISTED).props.style).color).toBe(colors.madder);
 
-    await fireEvent.press(screen.getByText('Skill'));
-
+    // The chevron is on the slot now, with no sub-menu to open in front of it.
     expect(StyleSheet.flatten(screen.getByText('▽').props.style).color).toBe(colors.madder);
   });
 
@@ -238,10 +240,14 @@ describe('the type-effectiveness surfaces', () => {
 describe('the action menu', () => {
 
   /**
-   * GDD 13 §6.1 — four buttons, **always in this fixed order and position**, which §6.1 ties to
-   * menu-scanning time rather than to taste. Asserted as a sequence, not as four presences.
+   * GDD 13 §6.1 (amended 2026-08-22) — **seven targets, every one at a fixed position**. The four
+   * slots come first in the tree, then the Attack circle, then the two bars.
+   *
+   * ↯ Attack is centred *visually* and last in the tree, and those cannot both be first: RN paints
+   * siblings in tree order with no z-index, so the circle has to come after the slots it overlaps.
+   * A screen reader therefore reaches it after the four slots.
    */
-  it('offers Attack, Skill, Item and Flee in that order', async () => {
+  it('offers four slots, Attack and the two bars, each in a fixed position', async () => {
     await show();
 
     const order = screen
@@ -249,7 +255,15 @@ describe('the action menu', () => {
       .map((node) => node.props.accessibilityLabel ?? textOf(node))
       .filter((label): label is string => typeof label === 'string');
 
-    expect(order).toEqual(['Attack', 'Skill', 'Item', 'Flee']);
+    expect(order).toEqual([
+      'Iron Advance',
+      "Thunderer's Wrath, 4 left",
+      "Warlord's Advance, 4 left",
+      'Skill slot, locked until level 16',
+      'Attack',
+      'Items',
+      'Flee',
+    ]);
   });
 
   it('sends the unlimited-use move when Attack is tapped', async () => {
@@ -260,19 +274,52 @@ describe('the action menu', () => {
     expect(handlers.onMove).toHaveBeenCalledWith('skill_basic_attack');
   });
 
-  it('opens the Skill sub-menu and sends the chosen move', async () => {
+  /** The point of the re-layout: a skill is **one tap**, with no sub-menu in front of it. */
+  it('sends a skill from its slot in a single tap', async () => {
     const handlers = await show();
 
-    await fireEvent.press(screen.getByText('Skill'));
     await fireEvent.press(screen.getByText("Thunderer's Wrath"));
 
     expect(handlers.onMove).toHaveBeenCalledWith('skill_thunderers_wrath');
   });
 
+  /**
+   * GDD 3 §2.4 — Levels 1–3 hold no skills at all, and that is exactly when GDD 10's tutorial runs.
+   * So four locked slots is the **first** battle screen a player ever sees, not an edge case.
+   */
+  it('shows four locked slots naming their levels at Level 1', async () => {
+    await show({ moves: [skill('skill_basic_attack')], state: { enemyLevel: 1 } });
+
+    expect(screen.getByText('Lv 4')).toBeTruthy();
+    expect(screen.getByText('Lv 6')).toBeTruthy();
+    expect(screen.getByText('Lv 10')).toBeTruthy();
+    expect(screen.getByText('Lv 16')).toBeTruthy();
+  });
+
+  /** §6.1's reason for keeping a disabled action in place applies to a slot: it explains itself. */
+  it('explains a locked slot rather than letting it vanish', async () => {
+    const handlers = await show({ moves: [skill('skill_basic_attack')], state: { enemyLevel: 1 } });
+
+    await fireEvent.press(screen.getByText('Lv 4'));
+
+    expect(screen.getByText(DEFAULT_SKILL_LOCKED)).toBeTruthy();
+    expect(handlers.onMove).not.toHaveBeenCalled();
+  });
+
+  /**
+   * ↯ **A locked slot and a spent one must not read alike.** One has never existed; the other has
+   * just been used. Collapsing them into "greyed out" is how a player concludes their skills are
+   * gone — so the two say different things and this pins that they do.
+   */
+  it('distinguishes a spent slot from a locked one', async () => {
+    await show({ state: { uses: { skill_thunderers_wrath: 0, skill_warlords_advance: 4 } } });
+
+    expect(screen.getByText('0 left')).toBeTruthy();
+    expect(screen.getByText('Lv 16')).toBeTruthy();
+  });
+
   it('shows the chevron beside a typed move once the enemy has been fought', async () => {
     await show();
-
-    await fireEvent.press(screen.getByText('Skill'));
 
     expect(screen.getByLabelText(/Storm vs\. Storm/)).toBeTruthy();
   });
@@ -284,8 +331,6 @@ describe('the action menu', () => {
    */
   it('gives the three chevron tones three different colours', async () => {
     await show();
-
-    await fireEvent.press(screen.getByText('Skill'));
 
     const colourOf = (glyph: string) =>
       StyleSheet.flatten(screen.getByText(glyph).props.style).color;
@@ -301,12 +346,12 @@ describe('the action menu', () => {
    * ↯ Not a nicety: the chevron says how the match goes and not which way round it runs, and GDD 6
    * and 7 flag three times that Sea and Wisdom reverse depending on who attacks. P8 found this
    * unimplemented — the description existed but was wired only to `accessibilityHint`, so TalkBack
-   * read it and a sighted player never saw it.
+   * read it and a sighted player never saw it. It has no sub-menu to live in now, so the slot
+   * carries it.
    */
   it('spells out the matchup on a long press', async () => {
     await show();
 
-    await fireEvent.press(screen.getByText('Skill'));
     await fireEvent(screen.getByText("Warlord's Advance"), 'longPress');
 
     expect(screen.getByText(/War vs. Storm/)).toBeTruthy();
@@ -315,41 +360,40 @@ describe('the action menu', () => {
   it('offers no explanation for a move that has no chevron', async () => {
     await show({ chevronsUnlocked: false });
 
-    await fireEvent.press(screen.getByText('Skill'));
     await fireEvent(screen.getByText("Warlord's Advance"), 'longPress');
 
     expect(screen.queryByText(/vs./)).toBeNull();
   });
+
   it('withholds the chevron on a first encounter', async () => {
     await show({ chevronsUnlocked: false });
-
-    await fireEvent.press(screen.getByText('Skill'));
 
     expect(screen.queryByLabelText(/vs\./)).toBeNull();
   });
 
-  it('will not send a move whose uses are spent', async () => {
+  it('will not send a move whose uses are spent, and says why', async () => {
     const handlers = await show({ state: { uses: { skill_thunderers_wrath: 0 } } });
 
-    await fireEvent.press(screen.getByText('Skill'));
     await fireEvent.press(screen.getByText("Thunderer's Wrath"));
 
     expect(handlers.onMove).not.toHaveBeenCalled();
+    expect(screen.getByText(/spent for this fight/)).toBeTruthy();
   });
 
   it('hands the whole item back so the spend can name its player_item_id', async () => {
     const handlers = await show();
 
-    await fireEvent.press(screen.getByText('Item'));
+    await fireEvent.press(screen.getByText('Items'));
     await fireEvent.press(screen.getByText("Traveler's Salve"));
 
     expect(handlers.onItem).toHaveBeenCalledWith(SALVE);
   });
 
+  /** Items stays a list: it is a variable-length inventory, not a fixed loadout. */
   it('says so rather than showing an empty list when the satchel is bare', async () => {
     await show({ items: [] });
 
-    await fireEvent.press(screen.getByText('Item'));
+    await fireEvent.press(screen.getByText('Items'));
 
     expect(screen.getByText('Your satchel is empty.')).toBeTruthy();
   });
@@ -358,9 +402,10 @@ describe('the action menu', () => {
    * GDD 10 §6.4 — a locked action stays **visible and in its slot**, and explains itself when
    * tapped. Removing it would move the other three, which §6.1 ties to menu-scanning time.
    */
-  it('keeps Skill and Flee in place in the tutorial and explains why they are locked', async () => {
+  it('keeps the slots and Flee in place in the tutorial and explains why they are locked', async () => {
     const handlers = await show({
-      state: { rules: TUTORIAL_RULES },
+      moves: [skill('skill_basic_attack')],
+      state: { rules: TUTORIAL_RULES, enemyLevel: 1 },
       script: {
         beat: null,
         skillLockedNote: SKILL_LOCKED_NOTE,
@@ -368,10 +413,10 @@ describe('the action menu', () => {
       },
     });
 
-    expect(screen.getByText('Skill')).toBeTruthy();
+    expect(screen.getByText('Lv 4')).toBeTruthy();
     expect(screen.getByText('Flee')).toBeTruthy();
 
-    await fireEvent.press(screen.getByText('Skill'));
+    await fireEvent.press(screen.getByText('Lv 4'));
 
     expect(screen.getByText(SKILL_LOCKED_NOTE)).toBeTruthy();
     expect(handlers.onMove).not.toHaveBeenCalled();

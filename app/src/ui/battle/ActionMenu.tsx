@@ -3,14 +3,21 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from '../theme';
 import type { Chevron } from './log';
+import type { Slot } from './options';
 
 /**
- * GDD 13 §6.1's action menu: **Attack, Skill, Item, Flee, always in this fixed order and position**.
+ * GDD 13 §6.1's action menu (amended 2026-08-22): **Attack at the centre, four skill slots around
+ * it, Items and Flee beneath** — seven targets, every one at a permanently fixed location.
+ * `docs/mockups/battle-action-layout.png`.
  *
- * The order is not a layout preference — §6.1 ties it to menu-scanning time, so the four buttons
- * render unconditionally and a disabled one keeps its slot rather than collapsing the row. That is
- * also why a locked action shows a tooltip on tap instead of vanishing (§6.4's inventory of six
- * overlays, two of which are exactly this).
+ * The layout it replaces had four buttons and a Skill submenu. §6.1 tied that order to
+ * menu-scanning time, and this serves the same reason better: a skill costs **one tap instead of
+ * two**, and the four slots are visible whether or not they hold anything, so the player learns the
+ * shape of their loadout before they own it.
+ *
+ * ↯ **48dp and the overlapping circle are what decide the geometry.** The circle is absolutely
+ * positioned over the centre of the grid, so the grid keeps its own row heights and the circle
+ * cannot shrink a slot below the floor by sitting in it.
  */
 
 export interface SkillOption {
@@ -31,11 +38,12 @@ export interface ItemOption {
   readonly label: string;
 }
 
-export type PendingMenu = 'skill' | 'item' | null;
+/** The Items list is the one menu left — it is a variable-length inventory, not a fixed loadout. */
+export type PendingMenu = 'item' | null;
 
 export function ActionMenu({
   attack,
-  skills,
+  slots,
   items,
   attackEnabled = true,
   skillsEnabled,
@@ -51,7 +59,8 @@ export function ActionMenu({
   onFlee,
 }: {
   attack: SkillOption;
-  skills: readonly SkillOption[];
+  /** Always four (GDD 3 §2.4), filled or not. */
+  slots: readonly Slot[];
   items: readonly ItemOption[];
   /** False only while a script withholds it (GDD 10 §6.4). Ordinary battles never set this. */
   attackEnabled?: boolean;
@@ -71,163 +80,235 @@ export function ActionMenu({
   const [open, setOpen] = useState<PendingMenu>(null);
   const [note, setNote] = useState<string | null>(null);
 
-  const choose = (menu: PendingMenu) => {
-    setNote(null);
-    setOpen((current) => (current === menu ? null : menu));
-  };
-
   const locked = (message: string) => {
     setOpen(null);
     setNote(message);
   };
 
-  const skillsUsable = skillsEnabled && skills.length > 0;
+  const act = (run: () => void) => {
+    setOpen(null);
+    setNote(null);
+    run();
+  };
+
+  const slotProps = { disabled, skillsEnabled, skillLockedNote, onSkill, act, locked, setNote };
 
   return (
     <View style={styles.wrapper}>
+      {/*
+        §6.4's inline hint, and the only one this layout has: a note about the control just tapped.
+        The four overlay tooltips are a different component and land with boss dialogue (M4+).
+      */}
       {note === null ? null : (
         <Text accessibilityRole="alert" style={styles.note}>
           {note}
         </Text>
       )}
 
-      {open === 'skill' ? (
-        <Submenu label="Skills">
-          {skills.map((skill) => (
-            <SkillRow
-              key={skill.moveId}
-              skill={skill}
-              disabled={disabled || skill.usesLeft === 0}
-              onExplain={setNote}
-              onPress={() => {
-                setOpen(null);
-                onSkill(skill.moveId);
-              }}
-            />
-          ))}
-        </Submenu>
-      ) : null}
-
       {open === 'item' ? (
-        <Submenu label="Items">
+        <View accessibilityLabel="Items" style={styles.submenu}>
           {items.length === 0 ? (
             <Text style={styles.empty}>Your satchel is empty.</Text>
           ) : (
             items.map((item) => (
-              <SkillRow
+              <ItemRow
                 key={item.playerItemId}
-                skill={{ moveId: item.itemDefId, label: item.label, usesLeft: null, chevron: null }}
+                label={item.label}
                 disabled={disabled}
-                onExplain={setNote}
-                onPress={() => {
-                  setOpen(null);
-                  onItem(item);
-                }}
+                onPress={() => act(() => onItem(item))}
               />
             ))
           )}
-        </Submenu>
+        </View>
       ) : null}
 
-      <View style={styles.actions}>
-        <Action
-          label="Attack"
-          dimmed={!attackEnabled}
+      <View style={styles.grid}>
+        <View style={styles.gridRow}>
+          <SkillSlot slot={slots[0]} side="left" {...slotProps} />
+          <SkillSlot slot={slots[1]} side="right" {...slotProps} />
+        </View>
+
+        <View style={styles.gridRow}>
+          <SkillSlot slot={slots[2]} side="left" {...slotProps} />
+          <SkillSlot slot={slots[3]} side="right" {...slotProps} />
+        </View>
+
+        {/*
+          ↯ Absolutely positioned, with `pointerEvents="box-none"` on the wrapper so the circle takes
+          its own taps and the gap it sits in belongs to nobody. Laying it out in flow instead would
+          divide the row's width three ways and pull both slots under the 48dp floor on a narrow
+          phone — the constraint decides the geometry, not the sketch's proportions.
+        */}
+        <View pointerEvents="box-none" style={styles.centre}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: disabled || !attackEnabled }}
+            disabled={disabled}
+            onPress={() =>
+              attackEnabled
+                ? act(() => onAttack(attack.moveId))
+                : locked(attackLockedNote ?? 'Not this round.')
+            }
+            style={({ pressed }) => [
+              styles.attack,
+              pressed && styles.pressed,
+              (disabled || !attackEnabled) && styles.off,
+            ]}
+          >
+            <Text style={styles.attackLabel}>Attack</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.bars}>
+        <Bar
+          label="Items"
+          selected={open === 'item'}
+          dimmed={!itemsEnabled}
           disabled={disabled}
           onPress={() => {
-            if (!attackEnabled) {
-              locked(attackLockedNote ?? 'Not this round.');
+            if (!itemsEnabled) {
+              locked('Items are sealed in this fight.');
 
               return;
             }
 
-            setOpen(null);
             setNote(null);
-            onAttack(attack.moveId);
+            setOpen((current) => (current === 'item' ? null : 'item'));
           }}
         />
-        <Action
-          label="Skill"
-          dimmed={!skillsUsable}
-          selected={open === 'skill'}
-          disabled={disabled}
-          onPress={() => (skillsUsable ? choose('skill') : locked(skillLockedNote))}
-        />
-        <Action
-          label="Item"
-          dimmed={!itemsEnabled}
-          selected={open === 'item'}
-          disabled={disabled}
-          onPress={() => (itemsEnabled ? choose('item') : locked('Items are sealed in this fight.'))}
-        />
-        <Action
+        <Bar
           label="Flee"
           dimmed={!fleeable}
           disabled={disabled}
-          onPress={() => {
-            setOpen(null);
-
-            if (fleeable) {
-              setNote(null);
-              onFlee();
-            } else {
-              locked(fleeLockedNote);
-            }
-          }}
+          onPress={() => (fleeable ? act(onFlee) : locked(fleeLockedNote))}
         />
       </View>
     </View>
   );
 }
 
-function Submenu({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View accessibilityLabel={label} style={styles.submenu}>
-      {children}
-    </View>
-  );
-}
-
-function SkillRow({
-  skill,
+/**
+ * One quadrant. A filled slot carries what the submenu rows used to: the name, §6.2's chevron, and
+ * the uses left.
+ *
+ * ↯ **Three disabled states that must not look alike.** Spent shows `0 left`; locked shows the
+ * level that fills it; a resolving turn dims everything and explains nothing. Only the first two
+ * take a tap — the note is how a slot says why it cannot be used (§6.1, §6.4).
+ */
+function SkillSlot({
+  slot,
+  side,
   disabled,
-  onPress,
-  onExplain,
+  skillsEnabled,
+  skillLockedNote,
+  onSkill,
+  act,
+  locked,
+  setNote,
 }: {
-  skill: SkillOption;
+  slot: Slot | undefined;
+  side: 'left' | 'right';
   disabled: boolean;
-  onPress: () => void;
-  onExplain: (description: string) => void;
+  skillsEnabled: boolean;
+  skillLockedNote: string;
+  onSkill: (moveId: string) => void;
+  act: (run: () => void) => void;
+  locked: (message: string) => void;
+  setNote: (message: string) => void;
 }) {
-  const { chevron } = skill;
+  const shape = [styles.slot, side === 'left' ? styles.slotLeft : styles.slotRight];
+
+  // Fewer than four skills exist in the whole game only below the content's fourth unlock, so this
+  // is the shape of a slot nothing will ever fill rather than one waiting for a level.
+  if (slot === undefined) {
+    return <View style={[...shape, styles.slotBlank]} />;
+  }
+
+  if (slot.kind === 'locked') {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Skill slot, locked until level ${slot.unlockLevel}`}
+        accessibilityState={{ disabled: true }}
+        disabled={disabled}
+        onPress={() => locked(skillLockedNote)}
+        style={({ pressed }) => [...shape, styles.off, pressed && styles.pressed]}
+      >
+        <Text style={styles.slotLocked}>Lv {slot.unlockLevel}</Text>
+      </Pressable>
+    );
+  }
+
+  const { skill } = slot;
+  const chevron = skill.chevron;
+  const spent = skill.usesLeft === 0;
+  const usable = skillsEnabled && !spent;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
+      // Named with its budget, because the two are one fact to a player who cannot see the slot.
+      accessibilityLabel={
+        skill.usesLeft === null ? skill.label : `${skill.label}, ${skill.usesLeft} left`
+      }
+      accessibilityState={{ disabled: disabled || !usable }}
       accessibilityHint={chevron?.description}
       disabled={disabled}
-      onPress={onPress}
-      // GDD 13 §6.2's direction disambiguation. The chevron says how the match goes and not which
-      // way round it runs, and GDD 6 and 7 flag three times that Sea and Wisdom reverse depending on
-      // who attacks — so the long press is where the pair is spelled out rather than a nicety.
-      onLongPress={chevron === null ? undefined : () => onExplain(chevron.description)}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.off]}
+      onPress={() =>
+        usable
+          ? act(() => onSkill(skill.moveId))
+          : locked(spent ? `${skill.label} is spent for this fight.` : skillLockedNote)
+      }
+      // §6.2's direction disambiguation. The chevron says how the match goes and not which way round
+      // it runs, and GDD 6 and 7 flag three times that Sea and Wisdom reverse depending on who
+      // attacks — so the long press is where the pair is spelled out rather than a nicety.
+      onLongPress={chevron === null ? undefined : () => setNote(chevron.description)}
+      style={({ pressed }) => [...shape, pressed && styles.pressed, !usable && styles.off]}
     >
-      <Text style={styles.rowLabel}>{skill.label}</Text>
+      <Text numberOfLines={1} style={styles.slotLabel}>
+        {skill.label}
+      </Text>
 
-      {chevron === null ? null : (
-        <Text accessibilityLabel={chevron.description} style={[styles.chevron, toneStyles[chevron.tone]]}>
-          {chevron.glyph}
-        </Text>
-      )}
+      <View style={styles.slotMeta}>
+        {chevron === null ? null : (
+          <Text
+            accessibilityLabel={chevron.description}
+            style={[styles.chevron, toneStyles[chevron.tone]]}
+          >
+            {chevron.glyph}
+          </Text>
+        )}
 
-      {skill.usesLeft === null ? null : <Text style={styles.uses}>{skill.usesLeft} left</Text>}
+        {skill.usesLeft === null ? null : <Text style={styles.uses}>{skill.usesLeft} left</Text>}
+      </View>
     </Pressable>
   );
 }
 
-function Action({
+function ItemRow({
+  label,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.off]}
+    >
+      <Text style={styles.rowLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function Bar({
   label,
   onPress,
   disabled,
@@ -244,40 +325,88 @@ function Action({
     <Pressable
       accessibilityRole="button"
       // ↯ `dimmed` is deliberately not `disabled`: a locked action must still take the tap, or the
-      // tooltip that explains why it is locked can never fire (GDD 10 §6.4). Only a resolving turn
+      // note that explains why it is locked can never fire (GDD 10 §6.4). Only a resolving turn
       // truly disables it, and TalkBack is told which of the two is true.
       accessibilityState={{ disabled: disabled || dimmed }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
-        styles.action,
-        selected && styles.actionSelected,
+        styles.bar,
+        selected && styles.barSelected,
         pressed && styles.pressed,
         (disabled || dimmed) && styles.off,
       ]}
     >
-      <Text style={styles.actionLabel}>{label}</Text>
+      <Text style={styles.barLabel}>{label}</Text>
     </Pressable>
   );
 }
+
+/** The circle's diameter, and therefore the gap the grid leaves down its middle. */
+const ATTACK_SIZE = 96;
 
 const styles = StyleSheet.create({
   wrapper: { gap: space.sm },
   note: { ...type.small, color: colors.gold, paddingHorizontal: space.xs },
 
-  actions: { flexDirection: 'row', gap: space.sm },
-  action: {
+  grid: { gap: space.sm },
+  gridRow: { flexDirection: 'row', gap: ATTACK_SIZE - space.md },
+
+  slot: {
     flex: 1,
-    minHeight: MIN_TOUCH_TARGET,
-    alignItems: 'center',
+    minHeight: MIN_TOUCH_TARGET + space.md,
     justifyContent: 'center',
+    gap: space.xs,
+    paddingHorizontal: space.sm,
     backgroundColor: colors.surfaceRaised,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  actionSelected: { borderColor: colors.accent },
-  actionLabel: { ...type.heading, color: colors.text },
+  // Content hugs the outside edge, so the two halves read as a band with a disc set into it.
+  slotLeft: { alignItems: 'flex-start' },
+  slotRight: { alignItems: 'flex-end' },
+  slotBlank: { backgroundColor: colors.surface, borderStyle: 'dashed' },
+  slotLabel: { ...type.body, color: colors.text },
+  slotLocked: { ...type.small, ...tabular, color: colors.textDim },
+  slotMeta: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+
+  centre: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attack: {
+    width: ATTACK_SIZE,
+    height: ATTACK_SIZE,
+    borderRadius: ATTACK_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    // Against the page rather than a hairline, so the disc reads as cut out of the band.
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  attackLabel: { ...type.heading, color: colors.accentText },
+
+  bars: { flexDirection: 'row', gap: space.sm },
+  bar: {
+    flex: 1,
+    minHeight: MIN_TOUCH_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  barSelected: { borderColor: colors.accent },
+  barLabel: { ...type.body, color: colors.text },
+
   pressed: { opacity: 0.85 },
   off: { opacity: 0.45 },
 
@@ -297,11 +426,10 @@ const styles = StyleSheet.create({
   },
   rowLabel: { ...type.body, color: colors.text, flex: 1 },
   chevron: { ...type.body, fontWeight: '700' },
-  uses: { ...type.small, ...tabular, color: colors.textDim, minWidth: 52, textAlign: 'right' },
-  empty: { ...type.small, color: colors.textDim, paddingHorizontal: space.md, paddingVertical: space.sm },
+  uses: { ...type.small, ...tabular, color: colors.textDim },
+  empty: { ...type.small, color: colors.textDim, padding: space.md },
 });
 
-/** GDD 13 §6.2's three tones. `madder` exists for the weak one and for nothing else (§11). */
 const toneStyles = StyleSheet.create({
   strong: { color: colors.verdigris },
   neutral: { color: colors.textDim },

@@ -11,6 +11,7 @@ import {
   beatFor,
 } from '@/onboarding/tutorial';
 import { battleInProgress, useBattleStore } from '@/state/battleStore';
+import { usePlayerStore } from '@/state/playerStore';
 import { BattleScreen } from '@/ui/battle/BattleScreen';
 import { Body, Screen } from '@/ui/primitives';
 
@@ -26,6 +27,7 @@ import { Body, Screen } from '@/ui/primitives';
 export default function TutorialBattle() {
   const router = useRouter();
   const store = useBattleStore();
+  const traverserName = usePlayerStore((state) => state.traverserName) || 'Traverser';
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -86,6 +88,7 @@ export default function TutorialBattle() {
       context={store.context}
       moves={store.moves}
       labels={store.labels}
+      traverserName={traverserName}
       events={store.events}
       items={store.items}
       chevronsUnlocked={false}

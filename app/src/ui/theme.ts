@@ -113,12 +113,16 @@ export const radius = {
 export const tabular: Pick<TextStyle, 'fontVariant'> = { fontVariant: ['tabular-nums'] };
 
 /**
- * Deliberately **not** a theme token. 44dp is an accessibility floor, not a look — a restyle may
+ * Deliberately **not** a theme token. This is an accessibility floor, not a look — a restyle may
  * change every colour and radius in this file, and must not be able to shrink a tap target below
  * this. Kept here so it is next to the values it constrains, and named so a future palette pass
  * reads it as a limit rather than a preference.
+ *
+ * ↯ **48, not 44. 44 is Apple's number** and this app is Android-only (CLAUDE.md) — Material's
+ * minimum is 48dp, and the two get quoted interchangeably in cross-platform advice. Raised at
+ * M3/P4a, where the battle grid made the floor load-bearing rather than incidental.
  */
-export const MIN_TOUCH_TARGET = 44;
+export const MIN_TOUCH_TARGET = 48;
 
 /**
  * GDD 13 §11's scale, on Spectral. Only the three weights the config plugin embeds are used —

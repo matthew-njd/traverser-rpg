@@ -57,3 +57,45 @@ function hintFor(
     ? null
     : chevronFor(multiplier, labelFor(labels, move.typeId), labelFor(labels, enemyTypeId));
 }
+
+/** GDD 2 §5 / GDD 3 §2.4 — the loadout is four slots, filled or not. */
+export const SKILL_SLOTS = 4;
+
+/**
+ * A slot in GDD 13 §6.1's grid: an unlocked skill, or the level that will fill it.
+ *
+ * ↯ **A locked slot and a spent one must never read alike.** A spent slot shows `0 left` and is
+ * disabled because it has been used; a locked slot shows a level and is disabled because it does
+ * not exist yet. Collapsing either into "greyed out" is how a player concludes their skills are
+ * gone (§6.1, amended 2026-08-22).
+ */
+export type Slot = { readonly kind: 'skill'; readonly skill: SkillOption } | {
+  readonly kind: 'locked';
+  readonly unlockLevel: number;
+};
+
+/**
+ * The four slots, in unlock order: everything unlocked, then the levels that fill what is left.
+ *
+ * Levels 1–3 hold no skills at all (GDD 3 §2.4) and that is when GDD 10's tutorial runs, so the
+ * four-locked case is the **first** battle screen a player ever sees rather than an edge case.
+ *
+ * ↯ Above Level 22 there are more unlocked skills than slots and GDD 2 §5 makes the loadout a
+ * choice. The equip flow is unbuilt, so the first four by unlock order stand in for it — the same
+ * stand-in `availableMoves` already makes, and the reason both say so.
+ */
+export function slotsFor(
+  skills: readonly SkillOption[],
+  allSkills: readonly { readonly id: string; readonly unlockLevel: number }[],
+  level: number,
+): readonly Slot[] {
+  const filled: Slot[] = skills.slice(0, SKILL_SLOTS).map((skill) => ({ kind: 'skill', skill }));
+
+  const upcoming = allSkills
+    .filter((skill) => skill.unlockLevel > level)
+    .sort((left, right) => left.unlockLevel - right.unlockLevel || left.id.localeCompare(right.id))
+    .slice(0, SKILL_SLOTS - filled.length)
+    .map((skill): Slot => ({ kind: 'locked', unlockLevel: skill.unlockLevel }));
+
+  return [...filled, ...upcoming];
+}

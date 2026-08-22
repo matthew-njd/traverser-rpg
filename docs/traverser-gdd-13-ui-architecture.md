@@ -164,11 +164,19 @@ Three sub-tabs sharing one top-level destination, resolving Section 8's "distinc
 - **Compact combat log**: a 2–3 line scrolling text feed above the action menu ("Thunderer's Wrath — Super Effective! 26 damage."), giving the player a persistent record within the fight without needing a full-screen combat report.
 - **Action menu**: four buttons — **Attack, Skill, Item, Flee** — always in this fixed order and position (spatial consistency reduces menu-scanning time, matching "quick, scannable" from Section 2).
 
+> **Amended 2026-08-22 (M3/P4a). The action menu is seven fixed targets and there is no Skill button.** Attack is a circle at the centre; the **four equipped skill slots** (Section 3 §2.4) sit in the quadrants around it and are **always visible, filled or not**; Items and Flee are thin bars beneath. `docs/mockups/battle-action-layout.png`.
+>
+> The wording above changes and **its stated reason survives intact and is better served**: every action still sits at a permanently fixed location, and a skill now costs **one tap instead of two**. An amendment that serves the original rationale better than the wording it replaces is the kind worth taking; one that only serves the code is not.
+>
+> **An empty slot names the level that fills it** — `Lv 4`, `Lv 6`, `Lv 10`, `Lv 16` — read from the content ladder, so a rebalance moves them with no code change. Levels 1–3 therefore open on four locked slots rather than on four blanks, which is also when GDD 10 §6.4's tutorial runs. A locked slot explains itself on tap and is never mistaken for a spent one: a spent slot shows `0 left`, a locked slot shows a level.
+>
+> ↯ **The 48dp minimum touch target and the circle overlapping the grid are what decide the geometry**, not the sketch's proportions.
+
 ### 6.2 Type-effectiveness indicator (resolves the Section 6/7/12 flag, raised three times)
 
 Two complementary surfaces, addressing both *before* and *after* the fact:
 
-- **Pre-selection hint:** when the Skill sub-menu is open, each typed move shows a small colored chevron next to its type icon — green double-chevron (▲▲, 2×), grey single dash (–, 1×/neutral), red single chevron (▽, 0.5×) — computed against the *current target's* known type. This hint is withheld during a player's first-ever battle against a given enemy type and becomes available starting with that enemy's second encounter onward. This is a distinct, later-firing trigger than Bestiary discovery (§5.3), which unlocks on first *sighting* — the enemy is visible and named in the Bestiary immediately, but the chevron hint specifically requires having already *fought* it once, preserving some discovery tension on the first real fight without leaving the Bestiary entry itself gated on the same condition. This directly targets Section 7's flagged risk of "explaining why a fight is hard" without duplicating Section 12's narrative role.
+- **Pre-selection hint:** *(amended 2026-08-22 — there is no Skill sub-menu; the hint is always visible on a typed slot. The gate below is unchanged and is the part this bullet is about.)* each typed move shows a small colored chevron next to its type icon — green double-chevron (▲▲, 2×), grey single dash (–, 1×/neutral), red single chevron (▽, 0.5×) — computed against the *current target's* known type. This hint is withheld during a player's first-ever battle against a given enemy type and becomes available starting with that enemy's second encounter onward. This is a distinct, later-firing trigger than Bestiary discovery (§5.3), which unlocks on first *sighting* — the enemy is visible and named in the Bestiary immediately, but the chevron hint specifically requires having already *fought* it once, preserving some discovery tension on the first real fight without leaving the Bestiary entry itself gated on the same condition. This directly targets Section 7's flagged risk of "explaining why a fight is hard" without duplicating Section 12's narrative role.
 - **Post-hit callout:** the combat log line and a brief floating text overlay on the enemy sprite read **"Super Effective!"** (2×), nothing extra (1×, no callout needed — silence is itself informative), or **"Resisted..."** (0.5×) — standard JRPG-familiar language.
 - **Direction disambiguation:** both surfaces always frame the match as **"[Move Type] vs. [Enemy Type]"** in the underlying tooltip-on-long-press, never just "Sea" or "Wisdom" alone — this directly answers Section 7's flag that the same two types (Sea/Wisdom) produce opposite outcomes depending on attacker/defender direction, so the UI must never leave that ambiguous.
 
@@ -188,6 +196,10 @@ A shared full-width card component, used for: post-battle loot reveal (items + g
 | Boss defeat text overlay | Section 12 §5–7 | Any boss defeat, first-kill (2–3 lines) or repeat-kill (1 line) variant |
 
 All six share one underlying **Tooltip/Overlay component** with two size variants (inline tooltip vs. full dialogue box) rather than six bespoke implementations — inline tooltips are small anchored bubbles near the relevant UI element; dialogue overlays are bottom-third text boxes over the battle background, matching the visual register Section 12 specifies for boss dialogue.
+
+> **Amended 2026-08-22 (M3/P4a). These are two components, not one with two variants.** The split in the table is real and it is not a size: the first two are **inline hints on a control the player just tapped** and are already served by the action menu's own note slot, which the new layout keeps and which the skill slots now feed. The other four are **overlays that interrupt**, and all four are unbuilt — type intro, secondary effect, and Section 12's two boss dialogues.
+>
+> One component serving both would be written today against four consumers that do not exist, which is a guess wearing an abstraction's clothes. The dialogue overlay lands with boss dialogue at M4+, and if it turns out to share anything with the note slot then, that is when the sharing is knowable. DECISIONS 2026-08-20 assigned this decision to M3/P4a; this is it.
 
 ### 6.5 Overactivity warning — rendering rule
 
