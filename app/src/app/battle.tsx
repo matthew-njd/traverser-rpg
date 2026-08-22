@@ -61,7 +61,8 @@ export default function Battle() {
     usePlayerStore.getState().hydrate(db);
 
     // Best-effort: the battle is durable in the outbox whether or not the server is reachable.
-    void syncNow().catch(() => undefined);
+    // `withNewWork` because a pass already running built its payload before this battle existed.
+    void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
 
     leave();
   };

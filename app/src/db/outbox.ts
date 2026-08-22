@@ -78,17 +78,36 @@ export function enqueueAll(
  * the drain rather than posting a mixed batch somewhere that understands part of it.
  */
 export function peek(db: SqliteDatabase, limit: number, kind?: OutboxKind): OutboxEntry[] {
-  const where = kind === undefined ? '' : 'WHERE kind = ?';
-  const params = kind === undefined ? [limit] : [kind, limit];
+  const where = kind === undefined ? '' : 'AND kind = ?';
+  const params = kind === undefined ? [MAX_ATTEMPTS, limit] : [MAX_ATTEMPTS, kind, limit];
 
   return db
     .getAllSync<OutboxRow>(
       `SELECT client_op_id, kind, payload, created_at, attempts
        FROM outbox
+       WHERE attempts < ?
        ${where}
        ORDER BY created_at, client_op_id
        LIMIT ?`,
       params,
+    )
+    .map(toEntry);
+}
+
+/**
+ * Entries the drain has stopped offering (§5's retry rule, extended at M3/P3).
+ *
+ * They are **kept, not deleted**: a parked entry is a defect to look at, and the payload is the only
+ * record of what the device tried to say.
+ */
+export function parked(db: SqliteDatabase): OutboxEntry[] {
+  return db
+    .getAllSync<OutboxRow>(
+      `SELECT client_op_id, kind, payload, created_at, attempts
+       FROM outbox
+       WHERE attempts >= ?
+       ORDER BY created_at, client_op_id`,
+      [MAX_ATTEMPTS],
     )
     .map(toEntry);
 }
@@ -119,7 +138,18 @@ export function acknowledge(db: SqliteDatabase, clientOpIds: readonly string[]):
   return removed;
 }
 
-/** Records a failed drain attempt. Diagnostic only — nothing decides on it yet (tech-02 §5). */
+/**
+ * How many times the server may answer with an error about one entry before the drain stops
+ * offering it (M3/P3). Five survives a transient outage across five foregrounds and stops a
+ * permanently poisoned entry inside a day.
+ *
+ * ↯ **Counted only when the server *answered*.** An unreachable server is the ordinary case by
+ * design (T6, T2 §1.2) — counting it would park a week of legitimate steps because the API was
+ * switched off, which is exactly the state this app is built to live in.
+ */
+export const MAX_ATTEMPTS = 5;
+
+/** Records a drain attempt the server refused. Above {@link MAX_ATTEMPTS} the entry is parked. */
 export function recordAttempt(db: SqliteDatabase, clientOpIds: readonly string[]): void {
   if (clientOpIds.length === 0) {
     return;

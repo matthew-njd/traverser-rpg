@@ -30,6 +30,8 @@ interface AppStore {
   markBooted(registered: boolean): void;
   setRegistered(registered: boolean): void;
   syncStarted(): void;
+  /** Mid-pass, as soon as the platform has been read — the banner does not wait for the server. */
+  healthRead(health: HealthPassResult, banner: BannerKind | null): void;
   syncFinished(result: SyncPassResult, banner: BannerKind | null): void;
   syncAborted(): void;
   consumeLevelUps(): readonly LevelUp[];
@@ -54,6 +56,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   syncStarted() {
     set({ syncing: true });
+  },
+
+  healthRead(health, banner) {
+    set({ health, banner });
   },
 
   syncFinished(result, banner) {

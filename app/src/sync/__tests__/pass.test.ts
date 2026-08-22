@@ -1,7 +1,7 @@
 import { parseBundle, readContentVersion } from '../../content/bundle';
 import { EMBEDDED_BUNDLE } from '../../content/embedded.generated';
 import { seedEmbeddedContent } from '../../content/store';
-import { count, enqueue, peek } from '../../db/outbox';
+import { MAX_ATTEMPTS, count, enqueue, parked, peek } from '../../db/outbox';
 import type { SqliteDatabase } from '../../db/types';
 import { readWatermark } from '../../db/watermarks';
 import type { MintedDelta } from '../../health/deltas';
@@ -182,13 +182,33 @@ describe('the offline pass', () => {
     expect(online.sent[0]?.map((delta) => delta.clientDeltaId)).toEqual(queued);
   });
 
-  it('counts a failed upload as an attempt', async () => {
+  /**
+   * ↯ **An unreachable server counts as nothing** (M3/P4). T2 §1.2 and T6 both make "no server" the
+   * ordinary case rather than a failure, and `attempts` now decides whether an entry is parked — so
+   * counting it would park a week of legitimate steps because the API was switched off, which is
+   * the state this app is designed to live in. Only an answer the server gave is evidence.
+   */
+  it('does not count an unreachable server against an entry', async () => {
     const db = registeredDatabase();
 
     await run(db, {
       api: fakeApi({
         sync: async () => {
           throw new ApiUnreachableError('no route to host');
+        },
+      }),
+    });
+
+    expect(peek(db, 10)[0]?.attempts).toBe(0);
+  });
+
+  it('counts an answer the server refused', async () => {
+    const db = registeredDatabase();
+
+    await run(db, {
+      api: fakeApi({
+        sync: async () => {
+          throw new ApiStatusError(500, 'server_error', 'the sync failed');
         },
       }),
     });
@@ -708,5 +728,122 @@ describe('reconciling inventory after a battle uploads', () => {
 
     expect(profiles).toEqual([]);
     expect(peek(db, 10, 'battle')).toHaveLength(1);
+  });
+});
+
+/**
+ * The poisoned entry (T2 §5, M3/P4). One unresolvable gear drop returned 500 forever at M2, and a
+ * 500 keeps the entry queued — so every later sync retried the same payload and nothing behind it
+ * ever left the device (DECISIONS 2026-08-20).
+ */
+describe('parking an entry the server keeps refusing', () => {
+  const refusing = () =>
+    fakeApi({
+      sync: async () => {
+        throw new ApiStatusError(500, 'server_error', 'the sync failed');
+      },
+    });
+
+  it('stops offering an entry after MAX_ATTEMPTS refusals', async () => {
+    const db = registeredDatabase();
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+      await run(db, { api: refusing() });
+    }
+
+    // Still on the device — a parked entry is a defect to look at, not something to delete.
+    expect(count(db)).toBeGreaterThan(0);
+    expect(peek(db, 10)).toEqual([]);
+    expect(parked(db)).toHaveLength(1);
+  });
+
+  it('reports the parked count so it is not silent', async () => {
+    const db = registeredDatabase();
+    let result = await run(db, { api: refusing() });
+
+    expect(result.parked).toBe(0);
+
+    for (let attempt = 1; attempt < MAX_ATTEMPTS; attempt += 1) {
+      result = await run(db, { api: refusing() });
+    }
+
+    expect(result.parked).toBe(1);
+  });
+
+  /** The whole point of the split: an app that has been offline for a week parks nothing. */
+  it('never parks an entry through an unreachable server alone', async () => {
+    const db = registeredDatabase();
+    const offline = () =>
+      fakeApi({
+        sync: async () => {
+          throw new ApiUnreachableError('no route to host');
+        },
+      });
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS * 2; attempt += 1) {
+      await run(db, { api: offline() });
+    }
+
+    expect(parked(db)).toEqual([]);
+    expect(peek(db, 10).length).toBeGreaterThan(0);
+  });
+
+  /** A parked entry must not block the queue behind it — that was the M2 symptom, not the cause. */
+  it('lets later entries drain past a parked one', async () => {
+    const db = registeredDatabase();
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+      await run(db, { api: refusing() });
+    }
+
+    const api = fakeApi();
+
+    await run(db, { api });
+
+    expect(parked(db)).toHaveLength(1);
+    // The pass reached the server and drained everything still on offer.
+    expect(peek(db, 10)).toEqual([]);
+  });
+});
+
+describe('the health result', () => {
+  /**
+   * ↯ Published **before** the network, so a re-granted permission clears its banner immediately
+   * rather than when the server answers or times out (2026-08-16, never landed until M3/P4).
+   */
+  it('is reported before the server is contacted', async () => {
+    const order: string[] = [];
+
+    await runForegroundSync({
+      db: registeredDatabase(),
+      provider: fakeProvider({ read: async () => walked(8000) }),
+      api: fakeApi({
+        contentVersion: async () => {
+          order.push('server');
+
+          return 0;
+        },
+      }),
+      dates,
+      now: NOW,
+      onHealth: () => order.push('health'),
+    });
+
+    expect(order).toEqual(['health', 'server']);
+  });
+
+  it('is reported even when the pass never reaches a server', async () => {
+    const seen: string[] = [];
+
+    await runForegroundSync({
+      db: registeredDatabase(),
+      provider: fakeProvider({ read: async () => walked(8000) }),
+      api: null,
+      dates,
+      now: NOW,
+      onHealth: (health) => seen.push(health.availability),
+    });
+
+    expect(seen).toEqual(['available']);
   });
 });

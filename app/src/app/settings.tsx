@@ -1,9 +1,10 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 
 import { readContentRows } from '@/content/bundle';
 import { getDatabase } from '@/db/open';
+import { parked } from '@/db/outbox';
 import { apiBaseUrl } from '@/env';
 import { healthConnectProvider } from '@/health/healthconnect';
 import {
@@ -56,7 +57,7 @@ export default function Settings() {
     setSaved(true);
 
     // Replays with the next pass whether or not this one reaches the server.
-    void syncNow().catch(() => undefined);
+    void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
   };
 
   return (
@@ -104,6 +105,8 @@ export default function Settings() {
         steps={health?.permissions.steps ?? false}
         heartRate={health?.permissions.heartRate ?? false}
       />
+
+      <StuckUploads />
 
       <DebugEncounters />
     </Screen>
@@ -265,7 +268,7 @@ function IdentityImport() {
       await refreshIdentity();
 
       // The restored profile's history arrives from the server, and the re-minted steps with it.
-      void syncNow().catch(() => undefined);
+      void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
 
       setOpen(false);
       setPasted('');
@@ -376,6 +379,41 @@ function HealthStatus({
         variant="secondary"
         onPress={() => healthConnectProvider.openSettings()}
       />
+    </Card>
+  );
+}
+
+/**
+ * Entries the drain has given up on (T2 §5). Nothing here fixes one — the point is that it stops
+ * being invisible, which is how the M2 poisoned drop cost two days (DECISIONS 2026-08-20).
+ */
+function StuckUploads() {
+  const [stuck, setStuck] = useState<readonly { clientOpId: string; kind: string }[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setStuck(parked(getDatabase()));
+    }, []),
+  );
+
+  if (stuck.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <Heading>Stuck uploads</Heading>
+
+      <Body dim>
+        The server refused these repeatedly, so the app stopped retrying them. Nothing else is
+        blocked, and nothing has been lost — they are still on the device.
+      </Body>
+
+      <View style={styles.rows}>
+        {stuck.map((entry) => (
+          <Row key={entry.clientOpId} label={entry.kind} value={entry.clientOpId.slice(0, 8)} />
+        ))}
+      </View>
     </Card>
   );
 }

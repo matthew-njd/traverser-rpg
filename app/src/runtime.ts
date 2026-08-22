@@ -7,6 +7,7 @@ import { healthConnectProvider } from './health/healthconnect';
 import { deviceLocalDates } from './health/localDate';
 import { apiBaseUrl } from './env';
 import { type TraverserApi, createApi } from './sync/api';
+import { coalescePasses } from './sync/coalesce';
 import { type SyncPassResult, runForegroundSync } from './sync/pass';
 import { useAppStore } from './state/appStore';
 import { useBattleStore } from './state/battleStore';
@@ -62,45 +63,44 @@ function apiClient(): TraverserApi | null {
   return identity === null ? null : createApi({ baseUrl: apiBaseUrl, token: identity.token });
 }
 
-/**
- * ↯ Re-entrancy guard: `AppState` delivers `'active'` more than once in quick succession — a
- * permission dialog dismissing, a sheet closing. The second pass mints nothing but still uploads.
- */
-let inFlight: Promise<SyncPassResult> | null = null;
+const runPass = coalescePasses(async (now = Date.now()): Promise<SyncPassResult> => {
+  useAppStore.getState().syncStarted();
 
-export function syncNow(now = Date.now()): Promise<SyncPassResult> {
-  if (inFlight !== null) {
-    return inFlight;
+  try {
+    const db = getDatabase();
+    const result = await runForegroundSync({
+      db,
+      provider: healthConnectProvider,
+      api: apiClient(),
+      dates: deviceLocalDates,
+      now,
+      // The banner is a fact about the platform, not about the server, so it lands as soon as the
+      // platform has been read rather than when the network eventually answers.
+      onHealth: (health) => useAppStore.getState().healthRead(health, bannerFor(health)),
+    });
+
+    // SQLite first, store second, always (tech-04 §5.2).
+    usePlayerStore.getState().hydrate(db);
+    useAppStore.getState().syncFinished(result, bannerFor(result.health));
+
+    return result;
+  } catch (error) {
+    useAppStore.getState().syncAborted();
+
+    throw error;
   }
+});
 
-  const pass = (async () => {
-    useAppStore.getState().syncStarted();
-
-    try {
-      const db = getDatabase();
-      const result = await runForegroundSync({
-        db,
-        provider: healthConnectProvider,
-        api: apiClient(),
-        dates: deviceLocalDates,
-        now,
-      });
-
-      // SQLite first, store second, always (tech-04 §5.2).
-      usePlayerStore.getState().hydrate(db);
-      useAppStore.getState().syncFinished(result, bannerFor(result.health));
-
-      return result;
-    } catch (error) {
-      useAppStore.getState().syncAborted();
-
-      throw error;
-    } finally {
-      inFlight = null;
-    }
-  })();
-
-  inFlight = pass;
-
-  return pass;
+/**
+ * A foreground pass (T4 §8.1).
+ *
+ * ↯ **Set `withNewWork` when the caller has just written to the outbox** — a settled battle, a
+ * queued allocation, a Rest Day tag. A pass already in flight built its payload before that entry
+ * existed, so joining it silently defers the upload to the next foreground. See `coalesce.ts`.
+ */
+export function syncNow(
+  now = Date.now(),
+  { withNewWork = false }: { withNewWork?: boolean } = {},
+): Promise<SyncPassResult> {
+  return runPass(now, withNewWork);
 }

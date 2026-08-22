@@ -253,6 +253,10 @@ Two days offline, then one open. Day 1: 8,000 steps, 45 min Vigorous. Day 2: 6,2
 
 **Retry.** Capped exponential backoff (1s → 60s), full jitter. The queue drains completely before the response is applied to the mirror; a partial upload is never partially reconciled.
 
+> **Amended 2026-08-22 (M3/P4). Retry is not unbounded, and what counts as a failed attempt is narrower than it sounds.** An entry the server has answered with an error **five times is parked**: the drain stops offering it, the row stays on the device, and the pass reports a non-zero `parked` count that Settings renders and Sentry receives. Without a cap, one entry the server will never accept blocks every entry behind it forever — which is exactly what one unresolvable gear drop did at M2, invisibly, for two days (DECISIONS 2026-08-20).
+>
+> ↯ **An unreachable server counts as nothing at all.** §1.2 and T6 both make "no server" the ordinary case rather than a failure, so counting it would park a week of legitimate steps because the API was switched off — the state this app is designed to live in. Only an answer the server actually gave is evidence about the entry. Parking never deletes: the payload is the only record of what the device tried to say.
+
 **Optimistic preview.** The client projects XP and Leagues locally the instant a delta is created and shows them immediately — waiting for a PC that may be off is not an option. On response, **the server's numbers replace the projection outright.** The client never adds the server's result to its own; never treats a lower server value as an error to correct; never re-queues to "make up" a difference. If a projection was optimistic, the display corrects quietly. Server wins for all progression, unconditionally.
 
 **Long offline stretches.** Deltas are tiny (~100 bytes) and bounded by real activity — a month offline is a few hundred entries, single-digit KB. Cap the queue at **5,000 entries**; on reaching it, coalesce the oldest entries *within the same `activity_date` and `source`* into one delta with a fresh ID, which preserves every step and minute and loses only per-delta granularity. Never drop an entry.

@@ -96,7 +96,7 @@ export default function Character() {
       reload();
 
       // Best-effort — they replay on the next foreground either way.
-      void syncNow().catch(() => undefined);
+      void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
     } finally {
       setAllocating(false);
     }
@@ -117,7 +117,7 @@ export default function Character() {
     usePlayerStore.getState().hydrate(getDatabase());
     reload();
 
-    void syncNow().catch(() => undefined);
+    void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
   };
 
   return (

@@ -12,6 +12,7 @@ import { ActionMenu, type ItemOption } from './ActionMenu';
 import { CombatLog } from './CombatLog';
 import { VigorBar } from './VigorBar';
 import { type Callout, calloutOf, logLines } from './log';
+import { usePacedLines } from './paced';
 import { skillOptions } from './options';
 
 /**
@@ -80,6 +81,10 @@ export function BattleScreen({
 }) {
   const lines = useMemo(() => logLines(events, labels), [events, labels]);
 
+  // GDD 13 §6 pacing — one line at a time, so a turn cannot resolve in a single frame.
+  const paced = usePacedLines(lines);
+  const catchingUp = paced.length < lines.length;
+
   const options = useMemo(
     () =>
       skillOptions({
@@ -139,7 +144,7 @@ export function BattleScreen({
         <VigorBar side="player" vigor={state.player.vigor} vigorMax={state.player.vigorMax} />
       </View>
 
-      <CombatLog lines={lines} />
+      <CombatLog lines={paced} />
 
       {/* The guided band. Note first, then what to do — the order the player earned them in. */}
       {beat === null ? null : (
@@ -181,7 +186,9 @@ export function BattleScreen({
           attackLockedNote={script?.attackLockedNote}
           skillLockedNote={script?.skillLockedNote ?? DEFAULT_SKILL_LOCKED}
           fleeLockedNote={script?.fleeLockedNote ?? DEFAULT_FLEE_LOCKED}
-          disabled={resolving}
+          // Closed to input until the log has caught up: the next turn must not start before the
+          // player has been able to read the one that just happened (M2 drill note 1.11).
+          disabled={resolving || catchingUp}
           onAttack={onMove}
           onSkill={onMove}
           onItem={onItem}

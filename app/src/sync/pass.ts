@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/react-native';
 import { type SettledBattle, toWireBattle } from '../battle/settle';
 import { readContentVersion } from '../content/bundle';
 import { adoptBundle } from '../content/store';
-import { acknowledge, peek, recordAttempt } from '../db/outbox';
+import { acknowledge, parked, peek, recordAttempt } from '../db/outbox';
 import { readWatermark } from '../db/watermarks';
 import type { SqliteDatabase } from '../db/types';
 import { type MintedDelta, commitHealthRead } from '../health/deltas';
@@ -95,6 +95,11 @@ export interface SyncPassResult {
   readonly contentStale: boolean;
   /** The only source of a level-up. Never projected (§8.4). */
   readonly levelUps: readonly LevelUp[];
+  /**
+   * Entries the drain has given up on (§5). Non-zero means a defect the player cannot see and the
+   * queue cannot clear on its own — Settings reports it and Sentry is told once per pass.
+   */
+  readonly parked: number;
 }
 
 export interface SyncPassDeps {
@@ -104,6 +109,15 @@ export interface SyncPassDeps {
   readonly api: TraverserApi | null;
   readonly dates: LocalDateResolver;
   readonly now: number;
+  /**
+   * Called the moment the platform has been read, before the network is touched at all.
+   *
+   * ↯ The banner is why this exists. Re-granting a permission in Android's settings returns the app
+   * to the foreground immediately, so a banner published only when the *whole* pass finishes
+   * outlives the fix that cleared it — for as long as the sync takes, on a screen the player is
+   * looking at. Named "a polish item for M2" on 2026-08-16 and never landed.
+   */
+  readonly onHealth?: (health: HealthPassResult) => void;
 }
 
 /** Steps 2–8. Platform calls reject rather than resolving empty (§8.3), so all are wrapped. */
@@ -165,6 +179,23 @@ async function consumeHealth(
       minted: [],
     };
   }
+}
+
+/**
+ * Entries the drain has given up on, counted and reported once per pass.
+ *
+ * ↯ Sentry rather than a retry: a parked entry is a **defect**, not a network condition. The M2
+ * incident it exists for — one unresolvable gear drop returning 500 forever — was invisible for two
+ * days precisely because nothing said anything (DECISIONS 2026-08-20).
+ */
+function reportParked(db: SqliteDatabase): number {
+  const stuck = parked(db);
+
+  for (const entry of stuck) {
+    Sentry.captureMessage(`outbox_parked:${entry.kind}:${entry.attempts}`);
+  }
+
+  return stuck.length;
 }
 
 /** Step 9. */
@@ -243,6 +274,10 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
 
   const { health, minted } = await consumeHealth(deps);
 
+  // Before the network, deliberately — a re-granted permission clears its banner now rather than
+  // when the server eventually answers or times out.
+  deps.onHealth?.(health);
+
   project(db, minted);
 
   const queuedNow = () => peek(db, MAX_BATCH).length;
@@ -256,6 +291,7 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
     contentVersion,
     contentStale: contentVersion !== null && contentVersion > heldVersion(),
     levelUps: [],
+    parked: reportParked(db),
   });
 
   if (api === null) {
@@ -350,12 +386,18 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
       contentVersion: response.contentVersion,
       contentStale: response.contentVersion > heldVersion(),
       levelUps: response.levelUps,
+      parked: reportParked(db),
     };
   } catch (error) {
-    recordAttempt(db, [
-      ...pending.map((entry) => entry.clientOpId),
-      ...pendingBattles.map((entry) => entry.clientOpId),
-    ]);
+    // ↯ **An unreachable server counts as nothing.** T2 §1.2 and T6 both make "no server" the
+    // ordinary case, so counting it would park a week of legitimate steps because the API was
+    // switched off. Only an answer the server actually gave is evidence about *this* entry.
+    if (!(error instanceof ApiUnreachableError)) {
+      recordAttempt(db, [
+        ...pending.map((entry) => entry.clientOpId),
+        ...pendingBattles.map((entry) => entry.clientOpId),
+      ]);
+    }
 
     if (error instanceof ApiUnreachableError) {
       return stopped('unreachable', contentVersion);
