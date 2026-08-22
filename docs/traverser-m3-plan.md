@@ -180,6 +180,8 @@ empty one.
 - A persistent server error surfaces, and a poisoned outbox entry stops being retried forever — both
   gaps M2 found the hard way and left open.
 - Combat-log lines arrive with a delay; both Vigor bars animate rather than jump (§3.4).
+- The health banner clears on a permission re-grant without waiting out the next completed pass —
+  named "a polish item for M2" on 2026-08-16 and never landed.
 
 **Tests:** a battle settled mid-pass is uploaded without a foreground. An entry that fails N times is
 parked rather than retried. Pacing is device-verified at P9 — RNTL cannot see it, and P1 of M2 was
@@ -195,6 +197,10 @@ Sequenced beside P4 because both touch `BattleScreen` and both are verified by t
 - Rebuild `ActionMenu.tsx` to the mockup. Attack centred; four fixed skill slots; Items and Flee
   beneath. Items still opens a list — it is a variable-length inventory, not a fixed loadout.
 - Uses-remaining and the chevron both move onto the slot itself, from the submenu row that carried them.
+- The slot above the player's Vigor bar shows the player's name, not the round number (M2 drill
+  note 1.5); the round indicator finds another home.
+- Decide whether GDD 13 §6.4's shared tooltip component survives this layout — DECISIONS 2026-08-20
+  assigned it here, and the slots now carry the hints the submenu rows did. Amend §6.4 to the answer.
 - ↯ Minimum touch target is 48dp and the circle overlaps the grid. This is the constraint that decides
   the geometry, not the sketch's proportions.
 
@@ -239,6 +245,8 @@ packet's real verification is P9.
 - Explore enabled only when the Viewport is centred on a previously-unlocked segment (GDD 9 §4.3).
 - Offline it records intent; the grant is issued by the next sync (T2 §1.3).
 - Valheon and Imperion rosters become selectable. They have been seeded since M0.
+- The Settings debug-encounter card is deleted. M2 shipped it intending exactly this removal
+  (`traverser-m2-plan.md` §3.3), and this packet builds its replacement.
 
 **Tests:** Explore consumes one roll from the same pool and respects the 5/day cap. An enemy is
 selected from the segment's roster, not the frontier's.
@@ -292,3 +300,9 @@ Verified at P9, before the wrap-up. M3 is done when, on the Pixel:
   §3.6 builds against that choice; if the art phase revisits it, only layout moves.
 - **The overactivity warning (GDD 1 §5, GDD 11 §8)** fires at sync time and is M4's, but it reads the
   same Tier 1+ minutes step 8's session bonus does. Build the minute accounting once.
+- **The GDD balance pass has three open flags and no owner:** storm reachability (DECISIONS
+  2026-08-15), fixtures §10.9's one-shot finding, and the ×4.5 effect triple (DECISIONS 2026-08-16).
+  M2's drills were the first playtest and recorded no balance verdict. Every flag is pinned by a test
+  or an exemption, so nothing regresses silently — but the decision needs an owner, and M3's
+  encounter volume is the evidence it has been waiting for. Take the verdict at this milestone's
+  close-out or assign it a milestone in writing.
