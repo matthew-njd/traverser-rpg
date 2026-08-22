@@ -41,6 +41,7 @@ M2's drills.
 | Inventory drift | The satchel refreshes on an ordinary sync | T2 §3 |
 | Sync reliability | A battle settling mid-pass is not stranded | T4 §7.2 |
 | Battle pacing | Combat-log line delay, Vigor bars animate | GDD 13 §6 |
+| Battle action layout | Attack centred, four skill slots always visible | GDD 13 §6.1, §6.2 — **amended here** |
 | Gate evaluation | T2 §4 step 7 | T2 §4, GDD 9 §3 |
 | Encounter checkpoints | T2 §4 step 8 — travel, session bonus, Explore; the 5/day cap | T2 §4, GDD 9 §5 |
 | Map read | `GET /players/me/map`, derived on every read | T2 §3, tech-01 §4 |
@@ -102,7 +103,30 @@ landed in the same frame. That is a comprehension defect, not polish, and it doe
 a delay between combat-log lines and an animated Vigor bar are both layout-level. T5 §13's
 choreography, and every sprite, stay at M4+.
 
-### 3.5 The Road ships as state, not as illustration
+### 3.5 The action menu is re-laid out, and GDD 13 §6.1 is amended to match
+
+`docs/mockups/battle-action-layout.png`. Attack becomes a circle at the centre; the four equipped
+skill slots sit in the quadrants around it and are **always visible**; Items and Flee are thin bars
+beneath. The Skill submenu disappears.
+
+§6.1 currently reads *"four buttons — Attack, Skill, Item, Flee — always in this fixed order and
+position (spatial consistency reduces menu-scanning time)"*. The new layout has seven targets and no
+Skill button, so the sentence changes — **but its stated reason survives intact and is better served**:
+a skill costs one tap instead of two, and every action sits at a permanently fixed location. An
+amendment that serves the original rationale better than the wording it replaces is the kind worth
+taking; one that only serves the code is not.
+
+§6.2 moves with it. The pre-selection chevron is specified as appearing *"when the Skill sub-menu is
+open"*, and there is no submenu. The hint becomes always-visible on a typed slot, still gated on the
+enemy's **second** encounter — that gate is the part §6.2 cares about and it does not change.
+
+↯ **The empty state decides what the tutorial says, so it is a design question and not a layout one.**
+Levels 1–3 have zero skills (GDD 3 §2.4) and that is exactly when GDD 10's tutorial runs — so a new
+player's first screen is the Attack circle ringed by four empty slots. GDD 10's script also says
+*"tap Skill to use it"* at the Iron Advance beat, wording that names a button this layout deletes.
+**Both are settled at P4a before any component is written**, not discovered while building it.
+
+### 3.6 The Road ships as state, not as illustration
 
 GDD 9 §4.1 leaves the axis to the art phase and the design pass already redrew it as a vertical climb
 (DECISIONS 2026-08-14). M3 builds node states, thresholds, the Waymarker and the Viewport against
@@ -160,6 +184,27 @@ empty one.
 **Tests:** a battle settled mid-pass is uploaded without a foreground. An entry that fails N times is
 parked rather than retried. Pacing is device-verified at P9 — RNTL cannot see it, and P1 of M2 was
 right about that in writing.
+
+### P4a — Battle action layout (GDD 13 §6.1, §6.2)
+
+Sequenced beside P4 because both touch `BattleScreen` and both are verified by the same device drill.
+
+- Settle the two design questions from §3.5 **first**: what an empty skill slot shows at Levels 1–3,
+  and what GDD 10's script says in place of *"tap Skill to use it"*.
+- Amend GDD 13 §6.1 and §6.2, and GDD 10 §6 if the script line changes.
+- Rebuild `ActionMenu.tsx` to the mockup. Attack centred; four fixed skill slots; Items and Flee
+  beneath. Items still opens a list — it is a variable-length inventory, not a fixed loadout.
+- Uses-remaining and the chevron both move onto the slot itself, from the submenu row that carried them.
+- ↯ Minimum touch target is 48dp and the circle overlaps the grid. This is the constraint that decides
+  the geometry, not the sketch's proportions.
+
+**What does not change:** `chevronFor`, `calloutOf`, `usesFor`, the event queue and the store. This is
+a layout packet — if logic below `ActionMenu` moves, something has gone wrong.
+
+**Tests:** a locked slot explains itself rather than vanishing (§6.1's reason for keeping disabled
+actions in place still applies to a slot). A slot with no skill is not tappable and is not mistaken for
+a spent one. Long-press still frames the match as *"[Move Type] vs. [Enemy Type]"* — the tooltip was a
+P8 defect once already and has no submenu to live in now. Layout itself is P9's, since RNTL cannot see it.
 
 ### P5 — Gate evaluation and encounter checkpoints (T2 §4 steps 7, 8)
 
@@ -231,7 +276,8 @@ Verified at P9, before the wrap-up. M3 is done when, on the Pixel:
 7. Vigor recovers by regen, by daily reset, and by a Rest Day.
 8. A battle settled with the app in the foreground reaches the server without a foreground event.
 9. A turn is legible: the log lines and the Vigor bars do not resolve in a single frame.
-10. M2's eight criteria still pass.
+10. Every equipped skill is reachable in one tap, and a locked or empty slot says why.
+11. M2's eight criteria still pass, with drills 1 and 2 rewritten for the new layout.
 
 ---
 
@@ -243,6 +289,6 @@ Verified at P9, before the wrap-up. M3 is done when, on the Pixel:
   needs it. README's M1 section says sessions upload at M2; they did not, because nothing read them.
   Confirm at P5 rather than assuming.
 - **GDD 9 §4.1 leaves the Road's axis to the art phase**, and the design pass chose a vertical climb.
-  §3.5 builds against that choice; if the art phase revisits it, only layout moves.
+  §3.6 builds against that choice; if the art phase revisits it, only layout moves.
 - **The overactivity warning (GDD 1 §5, GDD 11 §8)** fires at sync time and is M4's, but it reads the
   same Tier 1+ minutes step 8's session bonus does. Build the minute accounting once.
