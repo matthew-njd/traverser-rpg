@@ -7,13 +7,14 @@ import { readEquippedGear } from '@/battle/mirror';
 import { type EquippedBonus, effectiveStats } from '@/progression/stats';
 import { syncNow } from '@/runtime';
 import type { ActivityDay } from '@/sync/dto';
-import { type MirrorPlayer, readActivityDays, readPlayer } from '@/sync/mirror';
-import { type StatDeltas, allocateStatPoints } from '@/sync/writes';
+import { deviceLocalDates } from '@/health/localDate';
+import { type MirrorPlayer, isRestTagged, readActivityDays, readPlayer } from '@/sync/mirror';
+import { type StatDeltas, allocateStatPoints, tagRestDay } from '@/sync/writes';
 import { useAppStore } from '@/state/appStore';
 import { usePlayerStore } from '@/state/playerStore';
 import { ActivityLog } from '@/ui/ActivityLog';
 import { HealthBanner } from '@/ui/HealthBanner';
-import { Card, Heading, Screen, SegmentedControl } from '@/ui/primitives';
+import { Button, Card, Heading, Screen, SegmentedControl } from '@/ui/primitives';
 import { XpBar } from '@/ui/XpBar';
 import { StatPanel } from '@/ui/StatPanel';
 import { colors, radius, space, tabular, type } from '@/ui/theme';
@@ -23,7 +24,8 @@ import { colors, radius, space, tabular, type } from '@/ui/theme';
  *
  * Avatar and Stats are sub-views, not routes (tech-04 §4.3) — one route, both panes mounted.
  *
- * M1 scope: no streak badge and no Rest Day control — both are GDD 11, which is M4.
+ * The streak badge is still GDD 11's and still M4. The Rest Day control landed early with Vigor
+ * recovery (GDD 2 §6) — it is the same one tap, and the Vigor half of it is buildable now.
  */
 const ACTIVITY_LOG_LIMIT = 90;
 
@@ -35,6 +37,7 @@ export default function Character() {
   const [days, setDays] = useState<readonly ActivityDay[]>([]);
   const [allocating, setAllocating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [rested, setRested] = useState(false);
 
   const slice = usePlayerStore();
   const banner = useAppStore((state) => state.banner);
@@ -46,6 +49,7 @@ export default function Character() {
     setPlayer(readPlayer(db));
     setEquipped(readEquippedGear(db));
     setDays(readActivityDays(db, ACTIVITY_LOG_LIMIT));
+    setRested(isRestTagged(db, deviceLocalDates.dateOf(Date.now())));
   }, []);
 
   // `lastServerOutcome` is a poor change signal — two successful syncs both read `'synced'`, so
@@ -96,6 +100,24 @@ export default function Character() {
     } finally {
       setAllocating(false);
     }
+  };
+
+  /**
+   * GDD 11 §3.1 — one tap, no cap, no explanation asked for. Vigor is restored locally before the
+   * server hears about it, so the confirmation is never waiting on a network the app assumes it
+   * does not have.
+   */
+  const rest = () => {
+    const now = Date.now();
+
+    if (tagRestDay(getDatabase(), deviceLocalDates.dateOf(now), now) === null) {
+      return;
+    }
+
+    usePlayerStore.getState().hydrate(getDatabase());
+    reload();
+
+    void syncNow().catch(() => undefined);
   };
 
   return (
@@ -149,6 +171,8 @@ export default function Character() {
           alwaysBounceVertical
         >
           <Avatar leagues={slice.leagues} lifetimeSteps={slice.lifetimeSteps} />
+
+          <RestDay name={slice.traverserName} tagged={rested} onTag={rest} />
         </ScrollView>
       </View>
 
@@ -180,6 +204,40 @@ export default function Character() {
         />
       </View>
     </Screen>
+  );
+}
+
+/**
+ * GDD 13 §3.1's Rest Day control. The confirmation is GDD 11 §5's copy verbatim, and it doubles as
+ * the already-tagged state — the same line either way, which is what §3.1 asks for.
+ *
+ * Nothing here is punitive and nothing counts: no cap, no cooldown, no "are you sure".
+ */
+function RestDay({
+  name,
+  tagged,
+  onTag,
+}: {
+  name: string;
+  tagged: boolean;
+  onTag: () => void;
+}) {
+  return (
+    <Card>
+      <Button
+        label={tagged ? '✓ Rest Day tagged' : 'Tag today as a Rest Day'}
+        variant="secondary"
+        disabled={tagged}
+        onPress={onTag}
+      />
+
+      {tagged ? (
+        <Text style={styles.restNote}>
+          Rest tagged. {name || 'The Traverser'}&apos;s strength returns — the road isn&apos;t going
+          anywhere.
+        </Text>
+      ) : null}
+    </Card>
   );
 }
 
@@ -224,6 +282,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   spriteGlyph: { fontSize: 72, color: colors.accent },
+
+  restNote: { ...type.small, color: colors.textDim, marginTop: space.sm },
 
   stat: { ...type.display, ...tabular, color: colors.gold },
   statNote: { ...type.small, ...tabular, color: colors.textDim },

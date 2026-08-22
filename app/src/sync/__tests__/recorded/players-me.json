@@ -1,9 +1,9 @@
 {
   "player": {
-    "player_id": "e501e46e-b739-46c7-bfa8-e77cba42e2ba",
+    "player_id": "fcbd1b53-ae07-4608-a5b8-eadbb2e0658f",
     "traverser_name": "WireProbe",
     "timezone": "America/New_York",
-    "created_at": "2026-08-19T02:15:21.725183Z",
+    "created_at": "2026-08-22T18:18:51.366255Z",
     "level": 4,
     "xp_current": 1,
     "xp_to_next": 429,
@@ -16,6 +16,7 @@
     "alloc_aegis": 0,
     "alloc_stride": 0,
     "vigor_current": 20,
+    "vigor_anchor_at": "2026-08-22T18:18:51.164051Z",
     "lifetime_steps": 8000,
     "daily_step_goal": 7000,
     "tutorial_completed_at": null
@@ -37,30 +38,30 @@
   ],
   "gear": [
     {
-      "id": "01a017cd-3d7b-7d02-a1ee-faf88e3d8871",
+      "id": "01a02ab2-6bf7-7f38-98d4-a4f990f816ea",
       "gear_def_id": "gear_weapon_mortal",
       "equipped_slot": "weapon",
       "level_at_drop": 1,
       "bonus_primary": 1,
       "bonus_secondary": null,
-      "acquired_at": "2026-08-19T02:15:21.723564Z"
+      "acquired_at": "2026-08-22T18:18:51.255437Z"
     }
   ],
   "items": [
     {
-      "id": "01a017cd-3d7b-72d9-8d92-9b564371cbcf",
+      "id": "01a02ab2-6c04-7b6a-b5cd-c46590797581",
       "item_def_id": "item_travelers_salve",
-      "acquired_at": "2026-08-19T02:15:21.723564Z"
+      "acquired_at": "2026-08-22T18:18:51.255437Z"
     },
     {
-      "id": "01a017cd-3d7b-7916-925d-5557c68e6da7",
+      "id": "01a02ab2-6c0e-7707-8189-9ceff8204cf7",
       "item_def_id": "item_travelers_salve",
-      "acquired_at": "2026-08-19T02:15:21.723564Z"
+      "acquired_at": "2026-08-22T18:18:51.255437Z"
     },
     {
-      "id": "01a017cd-3d7b-7e27-8432-e9bad4c0801b",
+      "id": "01a02ab2-6c0e-7d16-be70-07c9c8d8d930",
       "item_def_id": "item_travelers_salve",
-      "acquired_at": "2026-08-19T02:15:21.723564Z"
+      "acquired_at": "2026-08-22T18:18:51.255437Z"
     }
   ]
 }

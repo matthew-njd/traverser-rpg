@@ -67,9 +67,13 @@ public sealed record PlayerItemResponse(Guid Id, string ItemDefId, DateTime Acqu
 /// is the schema's way of saying XP accrual stops there with nothing banked (GDD 1 §4).
 /// </param>
 /// <param name="VigorCurrent">
-/// Raw stored value. Passive regen (1% of max per 10 minutes, GDD 2 §6) is deliberately not applied
-/// here: settling it needs max Vigor, which needs equipped gear, and gear is M3. M1 has no Vigor
-/// display and no battles to spend it on — M2 owns persistence and regen.
+/// Raw stored value, as at <c>VigorAnchorAt</c>. Passive regen is not applied here: it needs max
+/// Vigor, which needs the equipped gear and the live local-midnight boundary — both the client's
+/// (GDD 2 §6, T2 §2). The client derives recovery from these two fields on read.
+/// </param>
+/// <param name="VigorAnchorAt">
+/// When <c>VigorCurrent</c> was last set by a battle, a restore or registration. The client's regen
+/// clock, not the server's — nothing here reads it.
 /// </param>
 public sealed record PlayerStateResponse(
     Guid PlayerId,
@@ -88,6 +92,7 @@ public sealed record PlayerStateResponse(
     int AllocAegis,
     int AllocStride,
     int VigorCurrent,
+    DateTime VigorAnchorAt,
     long LifetimeSteps,
     int DailyStepGoal,
     DateTime? TutorialCompletedAt);

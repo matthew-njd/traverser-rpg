@@ -106,7 +106,9 @@ describe('settling', () => {
     expect(queued[0]?.clientOpId).toBe(META.clientBattleId);
     expect(JSON.parse(queued[0]?.payload ?? '{}')).toMatchObject({ outcome: 'win', vigorAfter: 13 });
 
-    expect(readPlayer(db)?.vigorCurrent).toBe(13);
+    // The anchor moves with the value (GDD 2 §6). Left behind, the next foreground would credit
+    // regen for the whole time the fight took.
+    expect(readPlayer(db)).toMatchObject({ vigorCurrent: 13, vigorAnchorAt: META.endedAt });
   });
 
   /**

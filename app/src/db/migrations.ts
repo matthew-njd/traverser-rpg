@@ -398,6 +398,22 @@ const V6_GEAR: readonly string[] = [
      WHERE equipped_slot IS NOT NULL`,
 ];
 
+/**
+ * Version 7 — `vigor_anchor_at` (GDD 2 §6), the instant `vigor_current` was last set. Recovery is
+ * derived from it on read; nothing accumulates and nothing ticks (T4 §7.2).
+ *
+ * Nullable rather than defaulted: a device that has not synced since this migration has no anchor,
+ * and no anchor means no regen. Defaulting to the migration's own instant would hand every existing
+ * device a bar that starts filling from whenever it happened to upgrade.
+ */
+const V7_VIGOR_ANCHOR: readonly string[] = [
+  'ALTER TABLE player ADD COLUMN vigor_anchor_at TEXT',
+
+  // GDD 11 §3.1's tag, mirrored from `ActivityDayResponse` like every other column here. Written
+  // locally first by the tag itself, then reconciled — a restore keeps the player's rest days.
+  'ALTER TABLE activity_day ADD COLUMN rest_tagged_at TEXT',
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
@@ -405,6 +421,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 4, statements: [...V4_CONTENT_ORDINALS] },
   { version: 5, statements: [...V5_BATTLE] },
   { version: 6, statements: [...V6_GEAR] },
+  { version: 7, statements: [...V7_VIGOR_ANCHOR] },
 ];
 
 /** The version a fully-migrated database reports. */

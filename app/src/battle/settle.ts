@@ -1,6 +1,7 @@
 import { enqueue } from '../db/outbox';
 import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
+import { writeVigor } from '../sync/mirror';
 import type { Drops } from './loot';
 import { clearSnapshot, recordBattle } from './mirror';
 import type { BattleOutcome, BattleState } from './state';
@@ -112,7 +113,9 @@ export function settleBattle(
       createdAt: new Date(now).toISOString(),
     });
 
-    db.runSync('UPDATE player SET vigor_current = ?', [battle.vigorAfter]);
+    // The anchor moves with the value, matching what the server writes from this same payload
+    // (T2 §4 step 2). Left behind, regen would credit the whole fight's duration back immediately.
+    writeVigor(db, battle.vigorAfter, battle.endedAt);
 
     // `items_consumed` still travels to the server, which deletes its own rows (T2 §4 step 2). The
     // local rows went at the moment they were spent, so the fight can be resumed after a crash

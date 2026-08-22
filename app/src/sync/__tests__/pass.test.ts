@@ -77,6 +77,7 @@ function fakeApi(
     activity: async () => [],
     allocate: async () => undefined,
     updateSettings: async () => undefined,
+    tagRestDay: async () => undefined,
     ...overrides,
   };
 }
@@ -569,5 +570,52 @@ describe('health states (tech-03 §3)', () => {
     expect(availability).toHaveBeenCalledTimes(2);
     expect(initialize).toHaveBeenCalledTimes(2);
     expect(grantedPermissions).toHaveBeenCalledTimes(2);
+  });
+});
+
+/**
+ * GDD 2 §6's recovery, settled by the pass because the pass is the app's only clock (T4 §7.2).
+ *
+ * NOW is 12:00 local at UTC−4, so an anchor earlier the same morning regenerates and one on the
+ * previous local day resets.
+ */
+describe('Vigor recovery', () => {
+  const withVigor = (vigorCurrent: number, vigorAnchorAt: string) =>
+    registeredDatabase({ vigor_current: vigorCurrent, vigor_anchor_at: vigorAnchorAt });
+
+  /** Recovery runs on the server's block, not on what the mirror held before the response. */
+  const serving = (vigorCurrent: number, vigorAnchorAt: string) =>
+    fakeApi({
+      sync: async (deltas) =>
+        response({
+          player: wirePlayer({ vigor_current: vigorCurrent, vigor_anchor_at: vigorAnchorAt }),
+          accepted_delta_ids: deltas.map((delta) => delta.clientDeltaId),
+        }),
+    });
+
+  it('credits regen after the response has been applied', async () => {
+    const db = withVigor(20, '2026-08-03T15:59:00Z');
+
+    // Two hours and forty minutes at one point per 50 minutes, from a max of 20.
+    await run(db, { api: serving(5, '2026-08-03T13:20:00Z') });
+
+    expect(readPlayer(db)?.vigorCurrent).toBe(8);
+  });
+
+  it('restores the bar when the anchor is on an earlier local day', async () => {
+    const db = withVigor(20, '2026-08-03T15:59:00Z');
+
+    await run(db, { api: serving(2, '2026-08-02T20:00:00Z') });
+
+    expect(readPlayer(db)?.vigorCurrent).toBe(20);
+  });
+
+  /** Offline is the ordinary case (T2 §1.2), and an anchor is readable with no server at all. */
+  it('recovers on a pass that never reached the server', async () => {
+    const db = withVigor(5, '2026-08-03T13:20:00Z');
+
+    await run(db, { api: null });
+
+    expect(readPlayer(db)?.vigorCurrent).toBe(8);
   });
 });

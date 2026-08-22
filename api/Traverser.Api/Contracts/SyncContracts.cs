@@ -119,6 +119,11 @@ public sealed record LevelUpResponse(int Level, int StatPointsAwarded);
 /// Always null in M1: T2 §4 step 9 is streak evaluation and GDD 11 is M4's section. Present on the
 /// wire now because the column exists and the client mirrors it.
 /// </param>
+/// <param name="RestTaggedAt">
+/// When the player tagged the day (GDD 11 §3.1), or null. Distinct from
+/// <paramref name="StreakCreditMethod"/>: this records that the tag happened, while crediting the
+/// day for it is step 9's and lands at M4.
+/// </param>
 public sealed record ActivityDayResponse(
     DateOnly ActivityDate,
     int Steps,
@@ -128,7 +133,8 @@ public sealed record ActivityDayResponse(
     int XpAwarded,
     int StepGoalSnapshot,
     bool GoalMet,
-    StreakCreditMethod? StreakCreditMethod);
+    StreakCreditMethod? StreakCreditMethod,
+    DateTime? RestTaggedAt);
 
 /// <summary>
 /// <c>POST /api/v1/players/me/allocations</c> — spend unspent stat points (T2 §3).
@@ -166,3 +172,22 @@ public sealed record AllocateStatPointsRequest(
 /// </para>
 /// </summary>
 public sealed record UpdateSettingsRequest(int? DailyStepGoal, int? BirthYear);
+
+/// <summary>
+/// <c>POST /api/v1/players/me/rest-days</c> — GDD 11 §3.1's manual tag, which is also GDD 2 §6's
+/// Vigor restore. One tag, one action, two effects.
+/// <para>
+/// No operation id, unlike an allocation: every field here is set to a value rather than added to
+/// one, so a replayed tag lands on the same row with the same result.
+/// </para>
+/// </summary>
+/// <param name="ActivityDate">
+/// The player's own local calendar date, never derived from an instant here (T2 §2). GDD 11 §3.1's
+/// 24-hour retroactive window is the client's to enforce, for the same reason.
+/// </param>
+/// <param name="VigorAfter">
+/// ↯ The restored value, sent rather than computed. 100% of max needs max Vigor, which needs the
+/// equipped gear and GDD 8's tier bonuses — the client's, exactly as <c>vigor_after</c> on a battle
+/// payload is (T5 §1.6).
+/// </param>
+public sealed record TagRestDayRequest(DateOnly ActivityDate, int VigorAfter);

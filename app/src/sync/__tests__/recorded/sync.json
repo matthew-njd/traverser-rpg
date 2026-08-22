@@ -1,11 +1,11 @@
 {
-  "server_time": "2026-08-19T02:15:21.8197323Z",
+  "server_time": "2026-08-22T18:18:51.9000858Z",
   "content_version": 2,
   "player": {
-    "player_id": "e501e46e-b739-46c7-bfa8-e77cba42e2ba",
+    "player_id": "fcbd1b53-ae07-4608-a5b8-eadbb2e0658f",
     "traverser_name": "WireProbe",
     "timezone": "America/New_York",
-    "created_at": "2026-08-19T02:15:21.725183Z",
+    "created_at": "2026-08-22T18:18:51.366255Z",
     "level": 4,
     "xp_current": 1,
     "xp_to_next": 429,
@@ -18,6 +18,7 @@
     "alloc_aegis": 0,
     "alloc_stride": 0,
     "vigor_current": 20,
+    "vigor_anchor_at": "2026-08-22T18:18:51.164051Z",
     "lifetime_steps": 8000,
     "daily_step_goal": 7000,
     "tutorial_completed_at": null
@@ -32,6 +33,6 @@
   "activity_days": [],
   "accepted_delta_ids": [],
   "duplicate_delta_ids": [
-    "0edfca6e-a393-45d2-97b6-256dcffd4a96"
+    "122ae4dd-59d6-4bfc-ae7e-7093ef1c5f28"
   ]
 }

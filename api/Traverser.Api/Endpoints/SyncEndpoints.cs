@@ -162,7 +162,7 @@ public static class SyncEndpoints
             .OrderBy(a => a.ActivityDate)
             .Select(a => new ActivityDayResponse(
                 a.ActivityDate, a.Steps, a.Tier1Minutes, a.Tier2Minutes, a.Tier3Minutes,
-                a.XpAwarded, a.StepGoalSnapshot, a.GoalMet, a.StreakCreditMethod))
+                a.XpAwarded, a.StepGoalSnapshot, a.GoalMet, a.StreakCreditMethod, a.RestTaggedAt))
             .ToListAsync(ct);
 
         var contentVersion = await db.ContentVersions.AsNoTracking().Select(c => c.Version).SingleAsync(ct);

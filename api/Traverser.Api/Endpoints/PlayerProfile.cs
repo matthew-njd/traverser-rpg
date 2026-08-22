@@ -83,6 +83,7 @@ internal static class PlayerProfile
                 AllocAegis: p.AllocAegis,
                 AllocStride: p.AllocStride,
                 VigorCurrent: p.VigorCurrent,
+                VigorAnchorAt: p.VigorAnchorAt,
                 LifetimeSteps: p.LifetimeSteps,
                 DailyStepGoal: p.DailyStepGoal,
                 TutorialCompletedAt: p.TutorialCompletedAt),

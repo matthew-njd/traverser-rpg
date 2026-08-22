@@ -2,8 +2,9 @@ import { enqueue } from '../db/outbox';
 import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
 import { mintUuidV7 } from '../health/deltaId';
-import type { AllocationPayload, SettingsPayload } from './dto';
-import { readPlayer, writeSettings } from './mirror';
+import { maxVigorFor, restoreVigor } from '../progression/vigor';
+import type { AllocationPayload, RestDayPayload, SettingsPayload } from './dto';
+import { readPlayer, writeRestTag, writeSettings, writeVigor } from './mirror';
 
 /**
  * tech-02 §3's progression writes — the endpoints marked `•`, which **apply optimistically to the
@@ -138,3 +139,43 @@ export function changeSettings(db: SqliteDatabase, settings: SettingsPayload, no
 
 /** GDD 11 §2.1's hard floor. The nudge copy lives with the screen; the rule lives here. */
 export const MIN_DAILY_STEP_GOAL = 3000;
+
+/**
+ * GDD 11 §3.1's manual Rest Day tag, which is also GDD 2 §6's Vigor restore — one tag, one action,
+ * two effects, and neither waits for the server.
+ *
+ * Unlimited and uncapped by design: rationing rest would contradict the constraint GDD 11 is built
+ * on. The 24-hour retroactive window is the caller's, since only the client knows local midnight.
+ */
+export function tagRestDay(
+  db: SqliteDatabase,
+  activityDate: string,
+  now: number,
+): RestDayPayload | null {
+  let payload: RestDayPayload | null = null;
+
+  transact(db, () => {
+    const player = readPlayer(db);
+
+    if (player === null) {
+      return;
+    }
+
+    const restored = restoreVigor(maxVigorFor(db, player), now);
+    const taggedAt = new Date(now).toISOString();
+
+    payload = { activityDate, vigorAfter: restored.vigorCurrent };
+
+    writeVigor(db, restored.vigorCurrent, restored.vigorAnchorAt ?? taggedAt);
+    writeRestTag(db, player.playerId, activityDate, taggedAt, player.dailyStepGoal);
+
+    enqueue(db, {
+      clientOpId: mintUuidV7(db, now),
+      kind: 'rest_day',
+      payload,
+      createdAt: new Date(now).toISOString(),
+    });
+  });
+
+  return payload;
+}

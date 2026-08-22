@@ -8,6 +8,7 @@ import { readWatermark } from '../db/watermarks';
 import type { SqliteDatabase } from '../db/types';
 import { type MintedDelta, commitHealthRead } from '../health/deltas';
 import { ageFromBirthYear, thresholdsForAge } from '../health/derive';
+import { applyVigorRecovery } from '../progression/vigor';
 import type { LocalDateResolver } from '../health/localDate';
 import {
   HealthError,
@@ -20,7 +21,7 @@ import {
 } from '../health/provider';
 import { ApiStatusError, ApiUnreachableError, type TraverserApi } from './api';
 import { backfillActivity, needsHistoryRepair } from './history';
-import type { AllocationPayload, SettingsPayload } from './dto';
+import type { AllocationPayload, RestDayPayload, SettingsPayload } from './dto';
 import { type LevelUp, WireFormatError } from './dto';
 import { applySyncResponse, readBirthYear, readPlayer, writeProjection } from './mirror';
 import { projectGains, projectState } from './projection';
@@ -189,12 +190,15 @@ async function replayWrites(db: SqliteDatabase, api: TraverserApi): Promise<void
   const queued = [
     ...peek(db, MAX_BATCH, 'allocation'),
     ...peek(db, MAX_BATCH, 'settings'),
+    ...peek(db, MAX_BATCH, 'rest_day'),
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.clientOpId.localeCompare(b.clientOpId));
 
   for (const entry of queued) {
     try {
       if (entry.kind === 'allocation') {
         await api.allocate(JSON.parse(entry.payload) as AllocationPayload);
+      } else if (entry.kind === 'rest_day') {
+        await api.tagRestDay(JSON.parse(entry.payload) as RestDayPayload);
       } else {
         await api.updateSettings(JSON.parse(entry.payload) as SettingsPayload);
       }
@@ -213,7 +217,22 @@ async function replayWrites(db: SqliteDatabase, api: TraverserApi): Promise<void
   }
 }
 
+/**
+ * Steps 1–13, plus GDD 2 §6's recovery on the way out.
+ *
+ * Recovery settles **after** step 12 and on the offline paths alike: the response's player block
+ * carries the authoritative Vigor and its anchor, so recovering before it would be overwritten, and
+ * a pass that never reached the server still has an anchor worth reading.
+ */
 export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassResult> {
+  const result = await runPass(deps);
+
+  applyVigorRecovery(deps.db, deps.now, deps.dates);
+
+  return result;
+}
+
+async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
   const { db, api } = deps;
 
   const { health, minted } = await consumeHealth(deps);

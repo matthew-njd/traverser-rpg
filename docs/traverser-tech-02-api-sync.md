@@ -72,6 +72,14 @@ All of these apply optimistically to the mirror and replay to the server; all ar
 | • `POST` | `/api/v1/players/me/items/{player_item_id}/discard` | Consumption happens inside a battle and arrives as part of the battle payload; this is the inventory-screen discard. |
 | • `POST` | `/api/v1/players/me/pending-rewards/{id}` | Resolve a `pending_reward` as `kept` or `discarded`. Idempotent on the reward ID — once `resolved_at` is set, a replay returns the existing resolution. |
 | • `POST` | `/api/v1/players/me/rest-days` | Tag a date as a Rest Day. Accepts today or, per GDD 11 §3.1, a date within 24h of its local midnight; the server rejects anything older with `rest_day_window_expired`. Triggers the 100% Vigor restore. |
+
+> **Amended 2026-08-22 (M3/P1). The rest-days endpoint carries no operation ID, and the 24-hour window is not enforced server-side.** Two departures from the table above, both deliberate.
+>
+> The blanket "idempotent on a client-generated operation ID" holds for the writes it was written for, which are additive — an allocation replayed without a ledger doubles. **This one sets every field it writes** (`rest_tagged_at`, `vigor_current`, `vigor_anchor_at`), so a replay lands on the same row with the same result and a ledger would buy nothing but a second failure mode in front of a one-tap action GDD 11 §3.1 requires to have no friction.
+>
+> `rest_day_window_expired` is **unimplemented and no client can currently trigger it**: the Character screen's control tags today and only today. The window is GDD 11 §3.1's rule about what a *player* may tag, and only the client knows where local midnight falls (§2) — so it is enforced where the retroactive tagging UI lands, at M4 with step 9. Recorded rather than skipped: the error code is still the right answer when something can send a stale date.
+>
+> ↯ **`vigor_after` is sent by the client, not computed here.** 100% of max Vigor needs the equipped gear and GDD 8's tier bonuses, which is the same reason a battle payload carries its own `vigor_after` (T5 §1.6).
 | • `POST` | `/api/v1/players/me/explore` | Queue an Explore request against a zone. Offline this records intent only; the grant is issued by the next sync (§1.3). |
 
 ### Reads
@@ -188,11 +196,13 @@ For each session in the payload, if cumulative Tier 1+ minutes ≥ 90 and `overa
   "server_time": "...",
   "content_version": 7,
   "player": { ...authoritative state: level, xp_current, xp_lifetime,
-              unspent_stat_points, lifetime_steps, vigor_current, ... },
+              unspent_stat_points, lifetime_steps, vigor_current,
+              vigor_anchor_at, ... },
   "leagues": 214,
   "level_ups": [ { "level": 12, "stat_points_awarded": 3 } ],
   "activity_days": [ { "activity_date": "...", "steps": ..., "xp_awarded": ...,
-                       "goal_met": true, "streak_credit_method": "goal_hit" } ],
+                       "goal_met": true, "streak_credit_method": "goal_hit",
+                       "rest_tagged_at": null } ],
   "streak": { "current": 9, "longest": 22 },
   "encounter_grants": [ { "grant_id": "...", "enemy_id": "enemy_harpy",
                           "zone_id": "olympion", "source": "travel" } ],

@@ -7,7 +7,7 @@ import type { SqliteDatabase } from './types';
  * Entries survive process death, drain FIFO, and are removed only once the server names the id in
  * `accepted_delta_ids` or `duplicate_delta_ids` — both mean "stop resending" to this queue.
  */
-export type OutboxKind = 'sync_delta' | 'allocation' | 'settings' | 'battle';
+export type OutboxKind = 'sync_delta' | 'allocation' | 'settings' | 'battle' | 'rest_day';
 
 export interface OutboxEntry {
   readonly clientOpId: string;

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Traverser.Api.Auth;
 using Traverser.Api.Contracts;
 using Traverser.Api.Data;
+using Traverser.Api.Data.Entities;
 using Traverser.Api.Http;
 
 namespace Traverser.Api.Endpoints;
@@ -38,6 +39,10 @@ public static class ProgressionEndpoints
         routes.MapPatch("/players/me/settings", UpdateSettingsAsync)
             .WithName("UpdateSettings")
             .WithSummary("Step goal and birth year. Last-write-wins.");
+
+        routes.MapPost("/players/me/rest-days", TagRestDayAsync)
+            .WithName("TagRestDay")
+            .WithSummary("Tag a local date as a Rest Day; restores Vigor to full (GDD 11 §3.1, GDD 2 §6).");
     }
 
     /// <summary>
@@ -157,7 +162,7 @@ public static class ProgressionEndpoints
             .OrderByDescending(a => a.ActivityDate)
             .Select(a => new ActivityDayResponse(
                 a.ActivityDate, a.Steps, a.Tier1Minutes, a.Tier2Minutes, a.Tier3Minutes,
-                a.XpAwarded, a.StepGoalSnapshot, a.GoalMet, a.StreakCreditMethod))
+                a.XpAwarded, a.StepGoalSnapshot, a.GoalMet, a.StreakCreditMethod, a.RestTaggedAt))
             .ToListAsync(ct);
 
         return Results.Ok(days);
@@ -217,6 +222,68 @@ public static class ProgressionEndpoints
 
         var profile = await PlayerProfile.LoadAsync(db, current.PlayerId, ct)
             ?? throw new InvalidOperationException($"Profile for {current.PlayerId} vanished mid-update.");
+
+        return Results.Ok(profile);
+    }
+
+    /// <summary>
+    /// GDD 11 §3.1's manual Rest Day tag. Unlimited, uncapped, no explanation asked for — a cap here
+    /// would contradict the design constraint the whole section is built on.
+    /// <para>
+    /// The tag is recorded; <c>streak_credit_method</c> is not set. Crediting the day is T2 §4 step
+    /// 9's, which is M4 — so until then a tag restores Vigor and leaves a record, and does not yet
+    /// protect a streak.
+    /// </para>
+    /// </summary>
+    private static async Task<IResult> TagRestDayAsync(
+        TagRestDayRequest request,
+        CurrentPlayer current,
+        TraverserDbContext db,
+        CancellationToken ct)
+    {
+        if (request.VigorAfter < 0)
+        {
+            return ApiProblem.BadRequest(ApiProblem.ValidationFailed, "vigor_after cannot be negative.");
+        }
+
+        var player = await db.Players.FirstOrDefaultAsync(p => p.Id == current.PlayerId, ct);
+
+        if (player is null)
+        {
+            return ApiProblem.Unauthorized(ApiProblem.InvalidBearerToken, "The player for this token no longer exists.");
+        }
+
+        var now = DateTime.UtcNow;
+        var day = await db.ActivityDays
+            .FirstOrDefaultAsync(a => a.PlayerId == player.Id && a.ActivityDate == request.ActivityDate, ct);
+
+        if (day is null)
+        {
+            // A rest day with no activity yet is the ordinary case — the row is created for the tag
+            // to live on, holding the goal in force today like any other insert (tech-01 §4).
+            db.ActivityDays.Add(new ActivityDay
+            {
+                PlayerId = player.Id,
+                ActivityDate = request.ActivityDate,
+                StepGoalSnapshot = player.DailyStepGoal,
+                RestTaggedAt = now,
+            });
+        }
+        else
+        {
+            day.RestTaggedAt = now;
+        }
+
+        // ↯ Vigor is the client's number here, as it is on a battle payload (T5 §1.6). A tag that
+        // replays after a battle the same offline session leaves this high until the next battle
+        // settles — the device's own mirror applied both in order and is what the player sees.
+        player.VigorCurrent = request.VigorAfter;
+        player.VigorAnchorAt = now;
+
+        await db.SaveChangesAsync(ct);
+
+        var profile = await PlayerProfile.LoadAsync(db, player.Id, ct)
+            ?? throw new InvalidOperationException($"Profile for {player.Id} vanished mid-tag.");
 
         return Results.Ok(profile);
     }

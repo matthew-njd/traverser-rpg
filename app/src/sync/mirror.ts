@@ -45,6 +45,7 @@ interface PlayerRow {
   alloc_aegis: number;
   alloc_stride: number;
   vigor_current: number;
+  vigor_anchor_at: string | null;
   lifetime_steps: number;
   daily_step_goal: number;
   tutorial_completed_at: string | null;
@@ -75,6 +76,9 @@ export function readPlayer(db: SqliteDatabase): MirrorPlayer | null {
     allocAegis: row.alloc_aegis,
     allocStride: row.alloc_stride,
     vigorCurrent: row.vigor_current,
+    // Null only until the first sync after v7's migration — an anchor at creation is the honest
+    // reading of "we have never been told otherwise", and the next response overwrites it.
+    vigorAnchorAt: row.vigor_anchor_at ?? row.created_at,
     lifetimeSteps: row.lifetime_steps,
     dailyStepGoal: row.daily_step_goal,
     tutorialCompletedAt: row.tutorial_completed_at,
@@ -88,10 +92,10 @@ export function writePlayer(db: SqliteDatabase, player: PlayerState): void {
     `INSERT INTO player (
        one_row, id, traverser_name, timezone, created_at, level, xp_current, xp_to_next,
        xp_lifetime, unspent_stat_points, alloc_vigor, alloc_might, alloc_resolve, alloc_favor,
-       alloc_aegis, alloc_stride, vigor_current, lifetime_steps, daily_step_goal,
+       alloc_aegis, alloc_stride, vigor_current, vigor_anchor_at, lifetime_steps, daily_step_goal,
        tutorial_completed_at, provisional
      )
-     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
      ON CONFLICT (one_row) DO UPDATE SET
        id = excluded.id,
        traverser_name = excluded.traverser_name,
@@ -109,6 +113,7 @@ export function writePlayer(db: SqliteDatabase, player: PlayerState): void {
        alloc_aegis = excluded.alloc_aegis,
        alloc_stride = excluded.alloc_stride,
        vigor_current = excluded.vigor_current,
+       vigor_anchor_at = excluded.vigor_anchor_at,
        lifetime_steps = excluded.lifetime_steps,
        daily_step_goal = excluded.daily_step_goal,
        tutorial_completed_at = excluded.tutorial_completed_at,
@@ -130,11 +135,23 @@ export function writePlayer(db: SqliteDatabase, player: PlayerState): void {
       player.allocAegis,
       player.allocStride,
       player.vigorCurrent,
+      player.vigorAnchorAt,
       player.lifetimeSteps,
       player.dailyStepGoal,
       player.tutorialCompletedAt,
     ],
   );
+}
+
+/**
+ * The Vigor pair, written together because they are one fact — a value and the instant it held
+ * (GDD 2 §6). Recovery and a settled battle are the only writers.
+ */
+export function writeVigor(db: SqliteDatabase, vigorCurrent: number, anchorAt: string): void {
+  db.runSync('UPDATE player SET vigor_current = ?, vigor_anchor_at = ? WHERE one_row = 1', [
+    vigorCurrent,
+    anchorAt,
+  ]);
 }
 
 /**
@@ -154,9 +171,9 @@ function writeActivityDay(db: SqliteDatabase, playerId: string, day: ActivityDay
   db.runSync(
     `INSERT INTO activity_day (
        player_id, activity_date, steps, tier1_minutes, tier2_minutes, tier3_minutes,
-       xp_awarded, step_goal_snapshot, goal_met, streak_credit_method
+       xp_awarded, step_goal_snapshot, goal_met, streak_credit_method, rest_tagged_at
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (player_id, activity_date) DO UPDATE SET
        steps = excluded.steps,
        tier1_minutes = excluded.tier1_minutes,
@@ -165,7 +182,8 @@ function writeActivityDay(db: SqliteDatabase, playerId: string, day: ActivityDay
        xp_awarded = excluded.xp_awarded,
        step_goal_snapshot = excluded.step_goal_snapshot,
        goal_met = excluded.goal_met,
-       streak_credit_method = excluded.streak_credit_method`,
+       streak_credit_method = excluded.streak_credit_method,
+       rest_tagged_at = excluded.rest_tagged_at`,
     [
       playerId,
       day.activityDate,
@@ -177,6 +195,7 @@ function writeActivityDay(db: SqliteDatabase, playerId: string, day: ActivityDay
       day.stepGoalSnapshot,
       day.goalMet ? 1 : 0,
       day.streakCreditMethod,
+      day.restTaggedAt,
     ],
   );
 }
@@ -204,6 +223,7 @@ export function readActivityDay(db: SqliteDatabase, activityDate: string): Activ
     step_goal_snapshot: number;
     goal_met: number;
     streak_credit_method: string | null;
+    rest_tagged_at: string | null;
   }>('SELECT * FROM activity_day WHERE activity_date = ?', [activityDate]);
 
   if (row === null) {
@@ -220,6 +240,7 @@ export function readActivityDay(db: SqliteDatabase, activityDate: string): Activ
     stepGoalSnapshot: row.step_goal_snapshot,
     goalMet: row.goal_met === 1,
     streakCreditMethod: row.streak_credit_method,
+    restTaggedAt: row.rest_tagged_at,
   };
 }
 
@@ -382,6 +403,7 @@ export function readActivityDays(db: SqliteDatabase, limit: number): ActivityDay
       step_goal_snapshot: number;
       goal_met: number;
       streak_credit_method: string | null;
+      rest_tagged_at: string | null;
     }>('SELECT * FROM activity_day ORDER BY activity_date DESC LIMIT ?', [limit])
     .map((row) => ({
       activityDate: row.activity_date,
@@ -393,7 +415,34 @@ export function readActivityDays(db: SqliteDatabase, limit: number): ActivityDay
       stepGoalSnapshot: row.step_goal_snapshot,
       goalMet: row.goal_met === 1,
       streakCreditMethod: row.streak_credit_method,
+      restTaggedAt: row.rest_tagged_at,
     }));
+}
+
+/** GDD 13 §3.1's already-tagged state, so today's button can show it rather than re-asking. */
+export function isRestTagged(db: SqliteDatabase, activityDate: string): boolean {
+  return (
+    db.getFirstSync<{ rest_tagged_at: string | null }>(
+      'SELECT rest_tagged_at FROM activity_day WHERE activity_date = ?',
+      [activityDate],
+    )?.rest_tagged_at != null
+  );
+}
+
+/** The tag itself. The row may not exist yet — a rest day often has no synced activity at all. */
+export function writeRestTag(
+  db: SqliteDatabase,
+  playerId: string,
+  activityDate: string,
+  taggedAt: string,
+  stepGoalSnapshot: number,
+): void {
+  db.runSync(
+    `INSERT INTO activity_day (player_id, activity_date, step_goal_snapshot, rest_tagged_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT (player_id, activity_date) DO UPDATE SET rest_tagged_at = excluded.rest_tagged_at`,
+    [playerId, activityDate, stepGoalSnapshot, taggedAt],
+  );
 }
 
 export function readStreak(db: SqliteDatabase): Streak {

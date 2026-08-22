@@ -5,6 +5,7 @@ import {
   type AllocationPayload,
   type PlayerProfile,
   type Registration,
+  type RestDayPayload,
   type SettingsPayload,
   type SyncResponse,
   parseActivityDays,
@@ -14,6 +15,7 @@ import {
   parseSyncResponse,
   toWireAllocation,
   toWireRegistration,
+  toWireRestDay,
   toWireSettings,
   toWireSyncRequest,
 } from './dto';
@@ -85,6 +87,8 @@ export interface TraverserApi {
   activity(from: string, to: string): Promise<readonly ActivityDay[]>;
   allocate(payload: AllocationPayload): Promise<void>;
   updateSettings(payload: SettingsPayload): Promise<void>;
+  /** GDD 11 §3.1's tag, which is also GDD 2 §6's Vigor restore. */
+  tagRestDay(payload: RestDayPayload): Promise<void>;
 }
 
 async function problemCode(response: Response): Promise<string | null> {
@@ -190,6 +194,13 @@ export function createApi(options: ApiOptions): TraverserApi {
       await request(options, '/players/me/settings', {
         method: 'PATCH',
         body: JSON.stringify(toWireSettings(payload)),
+      });
+    },
+
+    async tagRestDay(payload) {
+      await request(options, '/players/me/rest-days', {
+        method: 'POST',
+        body: JSON.stringify(toWireRestDay(payload)),
       });
     },
   };

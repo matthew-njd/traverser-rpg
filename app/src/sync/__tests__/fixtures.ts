@@ -24,6 +24,7 @@ export function wirePlayer(overrides: Record<string, unknown> = {}): Record<stri
     alloc_aegis: 0,
     alloc_stride: 0,
     vigor_current: 20,
+    vigor_anchor_at: '2026-07-01T12:00:00Z',
     lifetime_steps: 205_000,
     daily_step_goal: 7000,
     tutorial_completed_at: null,
@@ -106,6 +107,7 @@ export function wireActivityDay(
     step_goal_snapshot: 7000,
     goal_met: true,
     streak_credit_method: 'goal_hit',
+    rest_tagged_at: null,
     ...overrides,
   };
 }
@@ -118,8 +120,9 @@ export function registeredDatabase(overrides: Record<string, unknown> = {}): Sql
   db.runSync(
     `INSERT INTO player (
        one_row, id, traverser_name, timezone, created_at, level, xp_current, xp_to_next,
-       xp_lifetime, unspent_stat_points, vigor_current, lifetime_steps, daily_step_goal
-     ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       xp_lifetime, unspent_stat_points, vigor_current, vigor_anchor_at, lifetime_steps,
+       daily_step_goal
+     ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       player.player_id as string,
       player.traverser_name as string,
@@ -131,6 +134,7 @@ export function registeredDatabase(overrides: Record<string, unknown> = {}): Sql
       player.xp_lifetime as number,
       player.unspent_stat_points as number,
       player.vigor_current as number,
+      player.vigor_anchor_at as string,
       player.lifetime_steps as number,
       player.daily_step_goal as number,
     ],

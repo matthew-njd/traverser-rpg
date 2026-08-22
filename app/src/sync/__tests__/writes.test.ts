@@ -1,8 +1,14 @@
 import { count, peek } from '../../db/outbox';
 import type { SqliteDatabase } from '../../db/types';
 import { recordingDatabase } from '../../health/__tests__/fixtures';
-import { readBirthYear, readPlayer } from '../mirror';
-import { AllocationError, NO_STATS, allocateStatPoints, changeSettings } from '../writes';
+import { isRestTagged, readBirthYear, readPlayer } from '../mirror';
+import {
+  AllocationError,
+  NO_STATS,
+  allocateStatPoints,
+  changeSettings,
+  tagRestDay,
+} from '../writes';
 import { registeredDatabase } from './fixtures';
 
 /**
@@ -145,5 +151,56 @@ describe('settings', () => {
     changeSettings(db, { dailyStepGoal: null, birthYear: null }, NOW);
 
     expect(count(db)).toBe(0);
+  });
+});
+
+describe('the Rest Day tag', () => {
+  /** GDD 11 §3.1 — one tag, two effects, and neither of them waits for the server. */
+  it('restores Vigor, tags the day, and queues one replay', () => {
+    const db = registeredDatabase({ vigor_current: 3 });
+
+    const payload = tagRestDay(db, '2026-08-04', NOW);
+
+    expect(payload).toEqual({ activityDate: '2026-08-04', vigorAfter: 20 });
+    expect(readPlayer(db)).toMatchObject({
+      vigorCurrent: 20,
+      vigorAnchorAt: new Date(NOW).toISOString(),
+    });
+    expect(isRestTagged(db, '2026-08-04')).toBe(true);
+
+    const queued = peek(db, 10);
+
+    expect(queued).toHaveLength(1);
+    expect(queued[0]?.kind).toBe('rest_day');
+  });
+
+  /** Max Vigor is the stat block's, so an allocated point is worth a point of restore. */
+  it('restores to max including allocation', () => {
+    const db = registeredDatabase({ vigor_current: 3 });
+
+    db.runSync('UPDATE player SET alloc_vigor = 5');
+
+    expect(tagRestDay(db, '2026-08-04', NOW)?.vigorAfter).toBe(25);
+  });
+
+  /**
+   * Unlimited and uncapped (GDD 11 §3.1). Tagging twice is two queued writes and one tagged day —
+   * the mutation this catches is a cap or a cooldown someone adds for tidiness.
+   */
+  it('does not refuse a second tag', () => {
+    const db = registeredDatabase({ vigor_current: 3 });
+
+    tagRestDay(db, '2026-08-04', NOW);
+    expect(tagRestDay(db, '2026-08-04', NOW + 60_000)).not.toBeNull();
+    expect(count(db)).toBe(2);
+  });
+
+  /** The row a real rest day usually has: none. The tag creates it rather than being dropped. */
+  it('tags a date the mirror has never seen', () => {
+    const db = registeredDatabase();
+
+    tagRestDay(db, '2026-12-25', NOW);
+
+    expect(isRestTagged(db, '2026-12-25')).toBe(true);
   });
 });

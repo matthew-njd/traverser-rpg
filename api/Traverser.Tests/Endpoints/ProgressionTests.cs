@@ -378,4 +378,72 @@ public class ProgressionTests(TraverserApiFixture api)
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+// ---- Rest days --------------------------------------------------------------------------------
+
+    private static async Task<HttpResponseMessage> TagRestDayAsync(HttpClient client, DateOnly date, int vigorAfter) =>
+        await client.PostAsJsonAsync(
+            "/api/v1/players/me/rest-days",
+            new { activity_date = date.ToString("yyyy-MM-dd"), vigor_after = vigorAfter },
+            TraverserApiFixture.Json);
+
+    /// <summary>GDD 11 §3.1's tag and GDD 2 §6's restore are one action with two effects.</summary>
+    [Fact]
+    public async Task Tagging_a_rest_day_records_it_and_restores_vigor()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        await using (var scope = api.NewScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TraverserDbContext>();
+
+            await db.Players.Where(p => p.Id == playerId)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.VigorCurrent, 4));
+        }
+
+        var response = await TagRestDayAsync(client, Day1, 20);
+
+        response.EnsureSuccessStatusCode();
+
+        await using var check = api.NewScope();
+        var data = check.ServiceProvider.GetRequiredService<TraverserDbContext>();
+        var player = await data.Players.SingleAsync(p => p.Id == playerId);
+        var day = await data.ActivityDays.SingleAsync(a => a.PlayerId == playerId && a.ActivityDate == Day1);
+
+        Assert.Equal(20, player.VigorCurrent);
+        Assert.NotNull(day.RestTaggedAt);
+
+        // Crediting the day is T2 §4 step 9, which is M4 — the tag is recorded, not yet acted on.
+        Assert.Null(day.StreakCreditMethod);
+    }
+
+    /// <summary>
+    /// Unlimited and uncapped by design (GDD 11 §3.1). Every field the tag writes is set rather than
+    /// added to, which is why it needs no operation ledger to be replay-safe.
+    /// </summary>
+    [Fact]
+    public async Task Tagging_the_same_day_twice_is_accepted_and_lands_once()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        (await TagRestDayAsync(client, Day1, 20)).EnsureSuccessStatusCode();
+        (await TagRestDayAsync(client, Day1, 20)).EnsureSuccessStatusCode();
+
+        await using var scope = api.NewScope();
+        var db = scope.ServiceProvider.GetRequiredService<TraverserDbContext>();
+
+        Assert.Single(await db.ActivityDays.Where(a => a.PlayerId == playerId && a.ActivityDate == Day1).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Tagging_a_rest_day_requires_a_token()
+    {
+        var response = await api.CreateClient().PostAsJsonAsync(
+            "/api/v1/players/me/rest-days",
+            new { activity_date = "2026-08-01", vigor_after = 20 },
+            TraverserApiFixture.Json);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }

@@ -110,6 +110,8 @@ export interface PlayerState {
   readonly allocAegis: number;
   readonly allocStride: number;
   readonly vigorCurrent: number;
+  /** When `vigorCurrent` was last set. The regen clock (GDD 2 §6); the server never reads it. */
+  readonly vigorAnchorAt: string;
   readonly lifetimeSteps: number;
   readonly dailyStepGoal: number;
   readonly tutorialCompletedAt: string | null;
@@ -125,6 +127,11 @@ export interface ActivityDay {
   readonly stepGoalSnapshot: number;
   readonly goalMet: boolean;
   readonly streakCreditMethod: string | null;
+  /**
+   * When the player tagged the day (GDD 11 §3.1), or null. Separate from `streakCreditMethod`:
+   * this records the tag, while crediting the day for it is T2 §4 step 9's and lands at M4.
+   */
+  readonly restTaggedAt: string | null;
 }
 
 export interface Streak {
@@ -175,6 +182,7 @@ export function parsePlayerState(value: unknown, at = 'player'): PlayerState {
     allocAegis: int(player.alloc_aegis, `${at}.alloc_aegis`),
     allocStride: int(player.alloc_stride, `${at}.alloc_stride`),
     vigorCurrent: int(player.vigor_current, `${at}.vigor_current`),
+    vigorAnchorAt: text(player.vigor_anchor_at, `${at}.vigor_anchor_at`),
     lifetimeSteps: int(player.lifetime_steps, `${at}.lifetime_steps`),
     dailyStepGoal: int(player.daily_step_goal, `${at}.daily_step_goal`),
     tutorialCompletedAt: nullableText(player.tutorial_completed_at, `${at}.tutorial_completed_at`),
@@ -195,6 +203,7 @@ function parseActivityDay(value: unknown, index: number): ActivityDay {
     stepGoalSnapshot: int(day.step_goal_snapshot, `${at}.step_goal_snapshot`),
     goalMet: flag(day.goal_met, `${at}.goal_met`),
     streakCreditMethod: nullableText(day.streak_credit_method, `${at}.streak_credit_method`),
+    restTaggedAt: nullableText(day.rest_tagged_at, `${at}.rest_tagged_at`),
   };
 }
 
@@ -403,4 +412,19 @@ export interface SettingsPayload {
 
 export function toWireSettings(payload: SettingsPayload): Json {
   return { daily_step_goal: payload.dailyStepGoal, birth_year: payload.birthYear };
+}
+
+/**
+ * GDD 11 §3.1's Rest Day tag. No operation id: every field it writes is set rather than added to,
+ * so a replay lands on the same row with the same result.
+ */
+export interface RestDayPayload {
+  /** The player's own local calendar date (T2 §2). */
+  readonly activityDate: string;
+  /** Full Vigor, resolved here because max needs the equipped gear (GDD 2 §6, GDD 8 §2). */
+  readonly vigorAfter: number;
+}
+
+export function toWireRestDay(payload: RestDayPayload): Json {
+  return { activity_date: payload.activityDate, vigor_after: payload.vigorAfter };
 }
