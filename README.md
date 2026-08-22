@@ -516,6 +516,48 @@ sync loses nothing. Adding any of the three would be a regression (tech-06 §8.4
 
 ---
 
+## M2 is complete
+
+**All eight exit criteria verified on the Pixel, 2026-08-22** (`traverser-m2-plan.md` §5, §7, and
+the seven drills in `traverser-m2-drills.md`).
+
+Battles work end to end. A fresh install runs GDD 10's tutorial with its exact scripted damage, and
+a real encounter resolves under the full engine — crits, variance, the type chart, enemy AI, items,
+flee — then settles into the outbox and reaches the server exactly once.
+
+Five defects were found **on hardware** and fixed during the drills. Four of the five were invisible
+to a green test suite, which is the second consecutive milestone where that was true:
+
+| Defect | Why the suite could not see it |
+|---|---|
+| Bottom-anchored controls sat under the Android gesture bar | RNTL cannot see layout or safe-area insets. |
+| Every battle after the first re-rendered the finished one | The route guard checked "a snapshot exists", not "a fight is unresolved". |
+| One gear drop wedged **all** syncing, permanently | The drop fixture used a value the client cannot produce. Surfaced as "my Vigor will not update". |
+| The matchup tooltip existed only for screen readers | `accessibilityHint` was set and asserted; `onLongPress` was never written. |
+| Finishing a resumed battle stranded the player | `router.back()` is a silent no-op when boot's `Redirect` left no history to pop. |
+
+Three things worth knowing before reading a row of data and concluding something is broken:
+
+- **A battle drop is invisible on the device, and that is expected at M2.** The roll is real and the
+  server records it, but GDD 13 §6.3's Reveal Card is unbuilt, the combat log deliberately says
+  nothing, and an ordinary sync does not refresh the satchel. Query `player_item` to see a drop.
+  The reveal and the local grant land together at M3 — a reveal alone would announce an item the
+  player never receives.
+- **`battle` holds no Vigor column.** `vigor_after` travels on the payload and is applied to
+  `player.vigor_current`; nothing per-battle is retained, so a past fight's Vigor cannot be
+  reconstructed from the row.
+- **Vigor does not recover yet.** Only the 25% floor on defeat is built. Passive regen, the daily
+  reset and the Rest Day restore are all missing, so a low pool stays low until you lose a fight.
+  `vigor_anchor_at` is written for the regen that will read it (DECISIONS 2026-08-22).
+
+Deferred by explicit decision, not forgotten: **Vigor recovery**, three of GDD 2 §6's four paths;
+the **Reveal Card and the local drop grant**, which must land together; the **satchel not refreshing
+on an ordinary sync**, which is one missing call site rather than the API change the plan assumed;
+a **battle settling mid-sync** waiting for the next foreground; and the **T5 §10.1 / T2 §4.1 drop
+payload conflict**, stopped server-side but unresolved. All M3.
+
+---
+
 ## M1 is complete
 
 **All eight exit criteria verified on the Pixel, 2026-08-16** (`traverser-m1-plan.md` §5, §7).

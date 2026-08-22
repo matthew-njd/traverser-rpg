@@ -340,6 +340,14 @@ drops: { items[], gear[], trinket? }   ← new; see §12
 
 `enemy_level` equals the player's level at encounter time and is recorded as history (T1 §4). `client_battle_id` is minted at battle start under T2 §5's never-derive-from-content rule, so a resumed battle keeps the ID it began with and a replayed payload is a no-op rather than a repeat.
 
+> **Amended 2026-08-17 (M2/P5). The payload also carries `activity_date`** — the player's own local date, supplied by the client under T2 §2's general rule. Step 4 has no day to credit battle XP to without it. Amended into T2 §4.1 at the same time.
+
+> ⚠️ **Amended 2026-08-20 (M2/P8, found on the device). What `drops` carries for gear and trinket is contested, and T2 §4.1 describes a different value than this spec does.** §10.1 resolves gear and trinket to a **tier**, on the reasoning that which piece of that tier is granted is GDD 8's loot-table job and lands with gear at M3 — so the client puts the literal string `mortal` on the wire. T2 §4.1's payload example shows `"def_id": "gear_weapon_mortal"`, a resolved piece, and the server inserts it straight into `player_gear.gear_def_id`. The foreign key fails, sync returns 500, and a 500 keeps the outbox entry queued — **one gear drop wedged every later sync permanently**.
+>
+> Stopped server-side at P8 by skipping drops it cannot resolve. **The conflict is unresolved**; it belongs to M3, and both specs move together whichever way it goes. See T2 §4.1's amendment of the same date and DECISIONS 2026-08-20.
+
+> **Amended 2026-08-22 (M2/P8). Nothing on the device shows a drop, for the whole of M2.** §10.1's inventory-overflow prompt and GDD 13 §6.3's Reveal Card are both unbuilt, the combat log deliberately says nothing, and an ordinary sync does not refresh the satchel (T2 §3). So the roll is real, recorded, and invisible. **Not built at M2 deliberately** — a reveal announcing an item the player does not receive is worse than silence, so the reveal and the local grant land together at M3. DECISIONS 2026-08-20, corrected 2026-08-22.
+
 ---
 
 ## 11. Test plan

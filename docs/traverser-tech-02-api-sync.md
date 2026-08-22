@@ -44,6 +44,10 @@ GDD 11 §11 leaves multi-device sync open. This spec assumes one device and does
 |---|---|---|
 | ▲ `POST` | `/api/v1/players` | Creates the guest profile. Body carries the client-minted `player_id`, `traverser_name`, `timezone`. Idempotent on `player_id` — re-registering returns the existing profile and token rather than 409, so a lost response doesn't strand the device. Inserts `player_zone_progress` for `olympion`. |
 | ▲ `GET` | `/api/v1/players/me` | Full authoritative state snapshot. This is the mirror's repair path — if the client ever suspects drift, it refetches rather than reconciling field-by-field. |
+
+> **Amended 2026-08-18 (M2/P7). The snapshot carries `gear` and `items`, and it is the *only* surface that does.** Both lists arrive whole, so a repair replaces the satchel and the gear rack rather than merging — a row the server no longer has is a row the device must lose, and the ids are the server's because `items_consumed` names the same physical row on both tiers (tech-01 §4).
+>
+> ⚠️ **Amended 2026-08-22 (M2/P8, found on the device).** "The mirror's repair path" is doing more work in that sentence than the build honours. `POST /sync`'s response carries no inventory, and the client only rebuilds the satchel from this endpoint at registration and at a restore — so **an ordinary sync never refreshes inventory**, and every battle drop widens a silent drift between the device and the server. The drift is invisible until something reads it, which at M2 nothing does. Recorded in DECISIONS 2026-08-22 and scheduled for M3; the fix is a call site, not a new field.
 | • `PATCH` | `/api/v1/players/me/settings` | Step goal, reminder time, volumes. Last-write-wins (§6.3). |
 
 ### Content
@@ -105,6 +109,14 @@ T5 §1.6 establishes that **the client rolls loot and the server records it**. `
 `kind` is one of `item` \| `gear` \| `trinket`. Gear and trinket drops carry their **frozen** rolled bonus and `level_at_drop` (tech-01 §4 — the bonus is persisted, never recomputed); items carry neither. This is the only place in the API where the client supplies a value the server would otherwise derive, and it is deliberate: the bonus is frozen at drop time by design, so re-deriving it server-side would be the bug, not the check. `level_at_drop` is stored alongside purely so it *can* be re-derived for verification.
 
 **Trust boundary.** This does widen what a tampered client can mint — to items and gear, and no further. XP, levels, Leagues, gates, and encounter grants all stay server-derived (§1.1), so the ceiling on abuse is cosmetic-plus-stats in a single-player game, which the sanctioned no-anti-cheat trim already accepts. Stated here so the boundary is explicit rather than incidental.
+
+> **Amended 2026-08-17 (M2/P5). The payload above is missing `activity_date`, and step 4 has no day to credit battle XP to without it.** Every other dated write in this spec supplies it and §2 makes the rule general — *always supplied by the client, never derived server-side* — so a battle deriving its day from `ended_at` would put the boundary in the wrong place for a player who travels, and only for battles. Add `"activity_date": "YYYY-MM-DD"` beside `ended_at`.
+>
+> ⚠️ **Amended 2026-08-20 (M2/P8, found on the device). `def_id` on a gear or trinket drop is contested, and this spec and T5 §10.1 each describe a different value.** The example above shows `"gear_weapon_mortal"`, a resolved piece. T5 §10.1 says the engine resolves gear and trinket to a **tier** and that "which piece of that tier is granted is GDD 8's loot-table job and lands with gear at M3" — so the client sends the literal string `mortal`. The build implements one half of each: the client sends the tier, the server inserts `def_id` as `player_gear.gear_def_id`. The foreign key fails, sync returns 500, and a 500 keeps the outbox entry queued — so **one gear drop wedged every later sync permanently**, and nothing on the device said so.
+>
+> Stopped server-side at P8: a drop naming an id the seed does not have is **skipped rather than inserted**, for gear and items alike, so a bad drop costs one grant instead of every future sync. **This does not resolve the conflict** — it stops the bleeding. Resolution belongs to M3, when GDD 8's loot table can resolve a tier to a piece, and whichever way it goes, both specs move together.
+>
+> The drop tests did not catch it because their fixture passed `gear_weapon_mortal` — a value the client cannot produce. Two transcriptions agreeing with each other while both disagree with the client.
 
 The order below is normative. It is the order tech-01 §7 asked T2 to fix, and steps 3–6 in particular cannot be reordered without changing outcomes.
 

@@ -189,3 +189,38 @@ Verified at P9, before the wrap-up. M2 is done when, on the Pixel:
 - **The debug battle control is scheduled for deletion at M3** (§3.3), when encounter grants replace it.
 - **M3 inherits** the Road (GDD 9, redrawn as a vertical climb), encounter grants and gates (T2 §4 steps 7–8), the Valheon and Imperion rosters, gear beyond the starter Weapon, and Trinkets with their gear-granted moves.
 - **Manifest:** M2 introduces no content IDs. It makes `enemy_move` weights and `enemy_drop_pool` load-bearing at runtime for the first time — the seed already validates both.
+
+---
+
+## 7. Packets, as delivered
+
+| Plan packet | Commit(s) | Date | Contents |
+|---|---|---|---|
+| **P1** | `1b7747a` | 08-16 | GDD 13 §11 written, Spectral embedded, Tier 2 restyle. |
+| **P2** | `c47b555`, `c0815fc` | 08-16 | Content bundle (API + client, embedded at build time). The second commit is **not P2** — see §7.1. |
+| **P3** | `a7735e4` | 08-16 | Damage pipeline per T5 §3.2, type rule, RNG, effects. Found and fixed T5 §4's ×3.0 ceiling. |
+| **P4** | `dc84885` | 08-17 | State machine, enemy AI, snapshot, loot rolls. |
+| **P5** | `0280150` | 08-17 | T2 §4 step 2: battle ingest, drops, bestiary, Vigor. `activity_date` added to the payload. |
+| **P6** | `78619e6` | 08-18 | Battle UI: event queue, action menu, the two type surfaces. `madder` added to §11. |
+| **P7** | `11e0ba3` | 08-18 | Onboarding screens 5–7, starter loadout granted server-side, snapshot resume. |
+| **P8** | `6c3bc8b` | 08-22 | Device build and the seven drills. Five defects found on hardware and fixed. All eight exit criteria pass. |
+| **P9** | `100d0aa` | 08-22 | Close-out review. Seven items passed, item 5 failed and was recorded. |
+| **P10** | *this packet* | 08-22 | Wrap-up: README, four spec amendments, this section, `traverser-m3-plan.md`. |
+
+### 7.1 Where the delivery diverged from the intent
+
+- **The commit-numbering lesson from M1 was taken, and broke once.** §4 opens with it: *the commit subject names the packet number from this plan or no number at all*. Nine of ten commits comply, against M1's six mis-attributed. The exception is `c0815fc`, "Settings identity import and activity-log repair **(P2)**" — that work is T6 §13.1, an M1 obligation finished inside M2, and it has no packet in this plan at all. It borrowed the number of the packet it landed beside. *Lesson: work with no packet needs no number, and giving it one is the same failure in a smaller size.* `c47b555` also dropped the `Phase 2 -` prefix.
+
+- **The drills found four defects the test suite structurally could not.** 519 client tests and 180 API tests were green the whole time. The gesture-bar inset, the settled-battle guard, the screen-reader-only tooltip and `router.back()` on a route with no history are each invisible to RNTL, which cannot see layout, insets, or a navigation stack. *This is the same shape as M1's step-XP defect and the second consecutive milestone where the device found what the suite could not.* P1's own test note predicted it in writing — "this packet's real verification is P8's device build" — and it was right about more than P1.
+
+- **One defect was found by symptom, not by test or drill.** The gear-drop foreign key surfaced as *"my Vigor will not update"*. A 500 keeps an outbox entry queued, so a single poisoned battle stopped **all** syncing — steps, XP, allocations, Vigor — silently and permanently. Nothing surfaces a persistent server error to the player, and nothing caps retries on an entry that will never succeed. Both gaps remain open. *Lesson: the outbox's durability guarantee is also a way to fail forever without saying so.*
+
+- **Two specs disagreed and each half of the code implemented a different one.** T5 §10.1 says a gear drop carries a **tier**; T2 §4.1's example shows a resolved **piece**. Both were written months apart, both are internally reasonable, and the conflict was invisible until the two halves met on a device. The drop tests missed it because their fixture used a value the client cannot produce. *Lesson: a fixture asserting a shape should be generated from the producing side, not transcribed alongside it.*
+
+- **P9 stayed a gate, which is the thing M1's P10 failed to do.** M1's review absorbed a design pass and a comment-density pass and ran for a week. This one ran in a sitting, found one failure — three of Vigor's four recovery paths unbuilt with no `DECISIONS.md` line — recorded it, and pushed the implementation to M3. Item 9 was written to make that happen and it did.
+
+- **The drill sheet asserted a screen that does not exist.** Drill 3 was written from GDD 13 §6.3 and asserted a Reveal Card no packet built. Caught before the drill ran, but only because the sheet was re-read against the code rather than trusted. *Lesson: a drill written from the spec tests the spec; it has to be written against the build to test the build.*
+
+- **Vigor recovery was never scoped, never built, and never deferred in writing.** `vigor_anchor_at` is written on every battle and read by nothing — the column exists precisely to support the regen that was never implemented. Three of GDD 2 §6's four paths are missing. It survived plan, build and drills without a line anywhere, and only P9 item 5 caught it.
+
+- **One item shipped that this plan did not contain:** the Settings identity import and activity-log repair (`c0815fc`), finishing T6 §13.1 from M1.
