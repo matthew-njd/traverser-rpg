@@ -98,6 +98,7 @@ export function ActionMenu({
               key={skill.moveId}
               skill={skill}
               disabled={disabled || skill.usesLeft === 0}
+              onExplain={setNote}
               onPress={() => {
                 setOpen(null);
                 onSkill(skill.moveId);
@@ -117,6 +118,7 @@ export function ActionMenu({
                 key={item.playerItemId}
                 skill={{ moveId: item.itemDefId, label: item.label, usesLeft: null, chevron: null }}
                 disabled={disabled}
+                onExplain={setNote}
                 onPress={() => {
                   setOpen(null);
                   onItem(item);
@@ -190,10 +192,12 @@ function SkillRow({
   skill,
   disabled,
   onPress,
+  onExplain,
 }: {
   skill: SkillOption;
   disabled: boolean;
   onPress: () => void;
+  onExplain: (description: string) => void;
 }) {
   const { chevron } = skill;
 
@@ -204,6 +208,10 @@ function SkillRow({
       accessibilityHint={chevron?.description}
       disabled={disabled}
       onPress={onPress}
+      // GDD 13 §6.2's direction disambiguation. The chevron says how the match goes and not which
+      // way round it runs, and GDD 6 and 7 flag three times that Sea and Wisdom reverse depending on
+      // who attacks — so the long press is where the pair is spelled out rather than a nicety.
+      onLongPress={chevron === null ? undefined : () => onExplain(chevron.description)}
       style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.off]}
     >
       <Text style={styles.rowLabel}>{skill.label}</Text>
@@ -295,7 +303,7 @@ const styles = StyleSheet.create({
 
 /** GDD 13 §6.2's three tones. `madder` exists for the weak one and for nothing else (§11). */
 const toneStyles = StyleSheet.create({
-  strong: { color: colors.gold },
+  strong: { color: colors.verdigris },
   neutral: { color: colors.textDim },
   weak: { color: colors.madder },
 });

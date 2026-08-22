@@ -11,7 +11,7 @@ import { colors, space, type } from '@/ui/theme';
  */
 export default function Map() {
   return (
-    <Screen>
+    <Screen tabbed>
       <Title>The Road</Title>
 
       <View style={styles.centre}>

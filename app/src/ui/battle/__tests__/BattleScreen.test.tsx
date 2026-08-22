@@ -180,7 +180,9 @@ describe('the type-effectiveness surfaces', () => {
     await show({ events: [hit(2)] });
 
     expect(screen.getByText(SUPER_EFFECTIVE)).toBeTruthy();
-    expect(StyleSheet.flatten(screen.getByText(SUPER_EFFECTIVE).props.style).color).toBe(colors.gold);
+    expect(StyleSheet.flatten(screen.getByText(SUPER_EFFECTIVE).props.style).color).toBe(
+      colors.verdigris,
+    );
   });
 
   it('calls out a resisted hit', async () => {
@@ -291,6 +293,30 @@ describe('the action menu', () => {
     expect(colourOf('▽')).toBe(colors.madder);
   });
 
+  /**
+   * GDD 13 §6.2 — the long press is where the match is spelled out as *move type* vs. *enemy type*.
+   * ↯ Not a nicety: the chevron says how the match goes and not which way round it runs, and GDD 6
+   * and 7 flag three times that Sea and Wisdom reverse depending on who attacks. P8 found this
+   * unimplemented — the description existed but was wired only to `accessibilityHint`, so TalkBack
+   * read it and a sighted player never saw it.
+   */
+  it('spells out the matchup on a long press', async () => {
+    await show();
+
+    await fireEvent.press(screen.getByText('Skill'));
+    await fireEvent(screen.getByText("Warlord's Advance"), 'longPress');
+
+    expect(screen.getByText(/War vs. Storm/)).toBeTruthy();
+  });
+
+  it('offers no explanation for a move that has no chevron', async () => {
+    await show({ chevronsUnlocked: false });
+
+    await fireEvent.press(screen.getByText('Skill'));
+    await fireEvent(screen.getByText("Warlord's Advance"), 'longPress');
+
+    expect(screen.queryByText(/vs./)).toBeNull();
+  });
   it('withholds the chevron on a first encounter', async () => {
     await show({ chevronsUnlocked: false });
 

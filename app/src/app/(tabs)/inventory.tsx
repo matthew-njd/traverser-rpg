@@ -11,7 +11,7 @@ import { colors, space, type } from '@/ui/theme';
  */
 export default function Inventory() {
   return (
-    <Screen>
+    <Screen tabbed>
       <Title>Satchel</Title>
 
       <View style={styles.centre}>

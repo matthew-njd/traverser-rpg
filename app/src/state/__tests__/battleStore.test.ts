@@ -6,7 +6,7 @@ import { peek } from '../../db/outbox';
 import type { SqliteDatabase } from '../../db/types';
 import { PLAYER_ID, registeredDatabase } from '../../sync/__tests__/fixtures';
 import { readPlayer } from '../../sync/mirror';
-import { useBattleStore } from '../battleStore';
+import { battleInProgress, useBattleStore } from '../battleStore';
 
 /**
  * T5 §9's adapter. The engine is proven elsewhere; what is only observable here is **durability** —
@@ -204,5 +204,46 @@ describe('settling', () => {
     expect(readSnapshot(db)).toBeNull();
     expect(peek(db, 10, 'battle')).toEqual([]);
     expect(useBattleStore.getState().snapshot).toBeNull();
+  });
+});
+
+/**
+ * ↯ **P8 found this on the device.** `settle` leaves the finished battle in the store so the outcome
+ * panel can keep rendering, and the battle route skipped `begin` whenever a snapshot existed — so
+ * every fight after the first re-rendered the previous one’s defeat screen and no new battle could
+ * be started. The route now asks whether a fight is *unresolved*, which is the condition it always
+ * meant.
+ */
+describe('battleInProgress', () => {
+  it('is false with no battle open', () => {
+    expect(battleInProgress()).toBe(false);
+  });
+
+  it('is true while a fight is unresolved', () => {
+    const db = battleReady();
+
+    open(db);
+
+    expect(battleInProgress()).toBe(true);
+  });
+
+  it('is false once the fight has ended, before it is even settled', () => {
+    const db = battleReady();
+
+    open(db);
+    fightOut(db);
+
+    expect(battleInProgress()).toBe(false);
+  });
+
+  it('is false after settling, so the next battle can start', () => {
+    const db = battleReady();
+
+    open(db);
+    fightOut(db);
+    useBattleStore.getState().settle(db, '2026-08-19');
+
+    expect(useBattleStore.getState().snapshot).not.toBeNull();
+    expect(battleInProgress()).toBe(false);
   });
 });

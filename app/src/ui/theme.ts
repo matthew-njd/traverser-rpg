@@ -27,6 +27,15 @@ export const colors = {
   gold: '#E0B457',
 
   /**
+   * GDD 13 §11 — the **super-effective signal** (§6.2), and Mythic tier when gear lands at M3.
+   *
+   * §6.2 asks for green and the palette has exactly one. Scoped to the chevron and its callout
+   * rather than borrowing `gold`, which already means XP and a goal met — two meanings on one
+   * screen is how a colour stops carrying either.
+   */
+  verdigris: '#5B8577',
+
+  /**
    * GDD 13 §11 — **enemy health only**, and the scope is the point. It is the one alarming colour
    * in the palette, so a second consumer costs it the meaning it is carrying.
    */

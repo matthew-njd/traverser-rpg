@@ -94,8 +94,9 @@ export function toWireBattle(battle: SettledBattle): Record<string, unknown> {
  * ↯ **Drops are not granted locally.** They ride the payload and the server mints their
  * `player_item.id` (T1 §4), so granting a second row here under a client-minted id would make
  * `items_consumed` name rows the server never had, and its inventory would drift up by one per
- * spend. The Reveal Card shows what was rolled from the `loot_rolled` event; the satchel gains it
- * when inventory reconciliation lands with gear at M3.
+ * spend. The payload carries the roll and the server records it; **nothing on the device shows it**
+ * — GDD 13 §6.3's Reveal Card is unbuilt, and `writeInventory` runs only from `writeProfile`, so an
+ * ordinary sync never refreshes the satchel (DECISIONS 2026-08-22).
  */
 export function settleBattle(
   db: SqliteDatabase,

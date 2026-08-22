@@ -10,7 +10,7 @@ import {
   SKILL_LOCKED_NOTE,
   beatFor,
 } from '@/onboarding/tutorial';
-import { useBattleStore } from '@/state/battleStore';
+import { battleInProgress, useBattleStore } from '@/state/battleStore';
 import { BattleScreen } from '@/ui/battle/BattleScreen';
 import { Body, Screen } from '@/ui/primitives';
 
@@ -31,7 +31,7 @@ export default function TutorialBattle() {
   useEffect(() => {
     // Boot already resumed an interrupted fight (T5 §8). Opening a second one over the top of it
     // would abandon a battle the player is mid-way through and mint a second `client_battle_id`.
-    if (useBattleStore.getState().snapshot !== null) {
+    if (battleInProgress()) {
       return;
     }
 

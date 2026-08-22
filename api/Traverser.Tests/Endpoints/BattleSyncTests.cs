@@ -325,6 +325,76 @@ public class BattleSyncTests(TraverserApiFixture api)
         Assert.Equal(salves[1], remaining[0]);
     }
 
+    // ---- Drops the seed cannot resolve ----------------------------------------------------------
+
+    /// <summary>
+    /// ↯ **P8 found this on the device, and it wedged sync permanently.** T5 §10.1 has the client
+    /// send a gear *tier* — the literal string <c>mortal</c> — because GDD 8's loot table is M3's
+    /// work; T2 §4.1's example sends a <c>gear_def_id</c>. Inserting the tier raised a foreign-key
+    /// violation, the sync returned 500, and a 500 keeps the entry queued — so one gear drop from
+    /// one won battle stopped every later sync for that device.
+    /// <para>
+    /// The existing drop tests never caught it because their fixture passes
+    /// <c>gear_weapon_mortal</c>, a value the client does not produce. Two transcriptions agreeing
+    /// with each other while both disagree with the client.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task A_gear_drop_naming_a_tier_is_skipped_rather_than_failing_the_sync()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        // Exactly what `rollDrops` produces for a wild encounter: drop_rate.tier, verbatim.
+        await SyncAsync(client, [
+            Battle(Guid.CreateVersion7(), drops: [GearDrop("mortal", 10, 1), ItemDrop("item_stormveil")]),
+        ]);
+
+        // The battle still lands, and so does the item beside it.
+        Assert.Single(await ReadAsync(db => db.Battles.Where(b => b.PlayerId == playerId).ToList()));
+        Assert.Single(await ReadAsync(db =>
+            db.PlayerItems.Where(i => i.PlayerId == playerId && i.Source != ItemSource.Tutorial).ToList()));
+
+        // Only the registration Blade — the unresolvable tier granted nothing.
+        var gear = await ReadAsync(db => db.PlayerGear.Where(g => g.PlayerId == playerId).ToList());
+
+        Assert.Single(gear);
+        Assert.Equal("gear_weapon_mortal", gear[0].GearDefId);
+        Assert.Equal("tutorial", gear[0].Source);
+    }
+
+    /// <summary>An item drop naming nothing in the seed is skipped on the same grounds.</summary>
+    [Fact]
+    public async Task An_item_drop_naming_an_unknown_id_is_skipped()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        await SyncAsync(client, [Battle(Guid.CreateVersion7(), drops: [ItemDrop("item_does_not_exist")])]);
+
+        Assert.Single(await ReadAsync(db => db.Battles.Where(b => b.PlayerId == playerId).ToList()));
+        Assert.Empty(await ReadAsync(db =>
+            db.PlayerItems.Where(i => i.PlayerId == playerId && i.Source != ItemSource.Tutorial).ToList()));
+    }
+
+    /// <summary>A resolvable gear drop still grants, so the guard did not disable the feature.</summary>
+    [Fact]
+    public async Task A_gear_drop_naming_a_real_piece_still_grants()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        await SyncAsync(client, [
+            Battle(Guid.CreateVersion7(), drops: [GearDrop("gear_weapon_mortal", 10, 2)]),
+        ]);
+
+        var dropped = await ReadAsync(db =>
+            db.PlayerGear.Where(g => g.PlayerId == playerId && g.Source != "tutorial").ToList());
+
+        Assert.Single(dropped);
+        Assert.Equal(2, dropped[0].BonusPrimary);
+    }
+
     // ---- The tutorial (GDD 10 §6) ---------------------------------------------------------------
 
     /// <summary>

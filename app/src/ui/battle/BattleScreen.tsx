@@ -105,9 +105,9 @@ export function BattleScreen({
 
           {/*
             ↯ A dark chip rather than ink straight onto the plate. On `marble` the only palette
-            colour that clears 4.5:1 is `oxblood` — `gold` sits at 1.5:1 and `madder` at 3.0:1 — so
+            colour that clears 4.5:1 is `oxblood` — `verdigris` sits at 3.2:1 and `madder` at 3.0:1 — so
             a two-tone callout is unreadable there and a one-tone one cannot say which it is. On the
-            chip's own ground both clear AA (9.9:1 and 5.0:1) and match the chevron the player just
+            chip's own ground both clear AA (4.7:1 and 5.0:1) and match the chevron the player just
             read in the Skill menu.
           */}
           {callout === null ? null : (
@@ -178,7 +178,7 @@ export function BattleScreen({
 
 /** The chevron's tones, on the chip's dark ground. One vocabulary across both surfaces (§6.2). */
 const calloutTone = StyleSheet.create({
-  strong: { color: colors.gold },
+  strong: { color: colors.verdigris },
   neutral: { color: colors.text },
   weak: { color: colors.madder },
 });

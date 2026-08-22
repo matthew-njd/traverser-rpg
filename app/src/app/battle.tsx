@@ -5,7 +5,7 @@ import { getDatabase } from '@/db/open';
 import { mintUuidV7 } from '@/health/deltaId';
 import { deviceLocalDates } from '@/health/localDate';
 import { syncNow } from '@/runtime';
-import { useBattleStore } from '@/state/battleStore';
+import { battleInProgress, useBattleStore } from '@/state/battleStore';
 import { usePlayerStore } from '@/state/playerStore';
 import type { EncounterKind } from '@/battle/types';
 import { BattleScreen } from '@/ui/battle/BattleScreen';
@@ -29,7 +29,7 @@ export default function Battle() {
 
   useEffect(() => {
     // No enemy means this route was reached by boot resuming a fight, not by starting one.
-    if (enemyId === undefined || useBattleStore.getState().snapshot !== null) {
+    if (enemyId === undefined || battleInProgress()) {
       return;
     }
 
@@ -48,6 +48,11 @@ export default function Battle() {
     }
   }, [enemyId, kind]);
 
+  // ↯ A battle can be entered by boot's redirect (`app/index.tsx`) rather than by a push, and a
+  // redirect leaves no history to pop — `back()` is a silent no-op there, stranding the player on
+  // the settled panel. Every exit from this route goes through here.
+  const leave = () => (router.canGoBack() ? router.back() : router.replace('/character'));
+
   const finish = () => {
     const db = getDatabase();
 
@@ -57,14 +62,14 @@ export default function Battle() {
     // Best-effort: the battle is durable in the outbox whether or not the server is reachable.
     void syncNow().catch(() => undefined);
 
-    router.back();
+    leave();
   };
 
   if (failed !== null) {
     return (
       <Screen>
         <Body>{failed}</Body>
-        <Button label="Back" onPress={() => router.back()} />
+        <Button label="Back" onPress={leave} />
       </Screen>
     );
   }

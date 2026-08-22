@@ -21,19 +21,35 @@ import { MIN_TOUCH_TARGET, colors, radius, space, type } from './theme';
  * all. Expecting a parent's `color` or `fontFamily` to reach a child is the habit that breaks here.
  */
 
+/**
+ * ↯ **The bottom inset is taken by default, and a tab screen opts out.** Android draws the gesture
+ * bar over the app, so a control anchored to the bottom of a screen sits under it unless something
+ * reserves the space — there is no viewport edge to stop at the way there is on the web.
+ *
+ * The default is this way round because the two mistakes are not equal. A tab screen that forgets
+ * `tabbed` gains a strip of padding above the tab bar, which is cosmetic. A pushed or modal screen
+ * that forgets to ask for the inset puts its primary action under the gesture bar, which is what
+ * P8's drills found on the battle menu and on screen 7's Continue.
+ */
 export function Screen({
   children,
   scroll = false,
   style,
+  tabbed = false,
 }: {
   children: ReactNode;
   scroll?: boolean;
   style?: ViewStyle;
+  /** True only inside `(tabs)`, where the tab bar already occupies the inset. */
+  tabbed?: boolean;
 }) {
   const body = <View style={[styles.screenBody, style]}>{children}</View>;
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={styles.screen}
+      edges={tabbed ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom']}
+    >
       {scroll ? (
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           {body}

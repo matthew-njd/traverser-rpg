@@ -99,7 +99,7 @@ export default function Character() {
   };
 
   return (
-    <Screen>
+    <Screen tabbed>
       <View style={styles.header}>
         <Text style={styles.name}>{slice.traverserName || 'Traverser'}</Text>
         <Pressable

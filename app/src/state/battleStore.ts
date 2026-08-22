@@ -261,5 +261,18 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
   },
 }));
 
+/**
+ * Whether a fight is still **unresolved**, which is the only state a new battle must not overwrite.
+ *
+ * ↯ Not `snapshot !== null`. `settle` leaves the settled battle in the store so the outcome panel
+ * can keep rendering, so a null check treats a finished fight as an in-progress one — which is how
+ * P8 found every battle after the first showing the previous battle's outcome screen instead of
+ * starting.
+ */
+export function battleInProgress(): boolean {
+  const snapshot = useBattleStore.getState().snapshot;
+
+  return snapshot !== null && snapshot.state.outcome === null;
+}
 /** The state a screen renders, or null when no battle is open. */
 export const currentBattle = (store: BattleStore): BattleState | null => store.snapshot?.state ?? null;

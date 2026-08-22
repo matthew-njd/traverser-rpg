@@ -323,6 +323,12 @@ public static class SyncEndpoints
             .Where(b => b.PlayerId == player.Id && enemyIds.Contains(b.EnemyId))
             .ToDictionaryAsync(b => b.EnemyId, ct);
 
+        // Every id the seed can actually grant. A drop naming anything else is skipped rather than
+        // inserted, because a foreign-key violation here fails the whole sync and the client retries
+        // a 500 forever — one bad drop would wedge every later sync behind it.
+        var knownGear = (await db.GearDefs.AsNoTracking().Select(g => g.Id).ToListAsync(ct)).ToHashSet();
+        var knownItems = (await db.ItemDefs.AsNoTracking().Select(i => i.Id).ToListAsync(ct)).ToHashSet();
+
         foreach (var battle in inserted)
         {
             if (!bestiary.TryGetValue(battle.EnemyId, out var row))
@@ -351,6 +357,11 @@ public static class SyncEndpoints
             {
                 if (drop.Kind == "item")
                 {
+                    if (!knownItems.Contains(drop.DefId))
+                    {
+                        continue;
+                    }
+
                     db.PlayerItems.Add(new PlayerItem
                     {
                         PlayerId = player.Id,
@@ -359,6 +370,18 @@ public static class SyncEndpoints
                         Source = SourceFor(battle.EncounterKind),
                     });
 
+                    continue;
+                }
+
+                // ↯ **A drop naming a gear piece this seed does not have is skipped, not inserted.**
+                // T5 §10.1 has the client send a *tier* (`mortal`) because GDD 8's loot table is M3;
+                // T2 §4.1's example sends a `gear_def_id`. The two disagree, and inserting the tier
+                // raised a foreign-key violation that failed the whole sync — which, on a 500, the
+                // client retries forever, so one gear drop wedged every later sync behind it.
+                // Skipping keeps the battle row, the XP and the item drops flowing while GDD 8's
+                // table is still M3's work. See DECISIONS 2026-08-20.
+                if (!knownGear.Contains(drop.DefId))
+                {
                     continue;
                 }
 
