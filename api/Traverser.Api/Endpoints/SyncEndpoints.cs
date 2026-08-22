@@ -362,13 +362,23 @@ public static class SyncEndpoints
                         continue;
                     }
 
-                    db.PlayerItems.Add(new PlayerItem
+                    var item = new PlayerItem
                     {
                         PlayerId = player.Id,
                         ItemDefId = drop.DefId,
                         AcquiredAt = battle.EndedAt.ToUniversalTime(),
                         Source = SourceFor(battle.EncounterKind),
-                    });
+                    };
+
+                    // ↯ The device's id when it sent one, so its row and this one are the same
+                    // physical object and `items_consumed` can name it (T5 §10.3). Only reachable
+                    // for a newly-inserted battle, so a replay cannot re-insert the same id.
+                    if (drop.PlayerItemId is Guid itemId)
+                    {
+                        item.Id = itemId;
+                    }
+
+                    db.PlayerItems.Add(item);
 
                     continue;
                 }

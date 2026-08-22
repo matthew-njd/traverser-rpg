@@ -61,12 +61,19 @@ public sealed record BattleRequest(
 /// frozen at drop time by design, so re-deriving it server-side would be the bug rather than the
 /// check. Null for items, which carry no bonus.
 /// </param>
+/// <param name="PlayerItemId">
+/// ↯ **Item drops only, and minted on the device** (T5 §10.3, amended 2026-08-22). The client has
+/// already inserted this row locally, so the satchel holds the drop before the next sync — and
+/// <c>items_consumed</c> then names a row that exists on both tiers. Null falls back to a
+/// server-minted id, which is what an M2-era client sends.
+/// </param>
 public sealed record BattleDropRequest(
     string Kind,
     string DefId,
     int? LevelAtDrop = null,
     int? BonusPrimary = null,
-    int? BonusSecondary = null);
+    int? BonusSecondary = null,
+    Guid? PlayerItemId = null);
 
 /// <param name="ClientDeltaId">
 /// ↯ A UUIDv7 minted on-device when the delta was created and never regenerated on retry (T2 §5).

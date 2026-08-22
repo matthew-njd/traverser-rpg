@@ -5,6 +5,8 @@ import type { BattleContext, BattleEvent, BattleState } from '../../battle/state
 import type { Move } from '../../battle/types';
 import { type Labels, labelFor } from '../../content/labels';
 import { Button, Screen } from '../primitives';
+import { RevealCard } from '../RevealCard';
+import type { Reveal } from './reveal';
 import { colors, radius, space, tabular, type } from '../theme';
 import { ActionMenu, type ItemOption } from './ActionMenu';
 import { CombatLog } from './CombatLog';
@@ -41,6 +43,7 @@ export function BattleScreen({
   labels,
   events,
   items,
+  reveals = [],
   chevronsUnlocked,
   script = null,
   resolving = false,
@@ -60,6 +63,8 @@ export function BattleScreen({
   labels: Labels;
   events: readonly BattleEvent[];
   items: readonly ItemOption[];
+  /** GDD 13 §6.3 — what this fight dropped, already joined to its content. Empty for a loss. */
+  reveals?: readonly Reveal[];
   chevronsUnlocked: boolean;
   /**
    * GDD 10 §6.4's guided copy, and the actions it withholds. Null for every ordinary battle — the
@@ -151,6 +156,17 @@ export function BattleScreen({
       ) : over ? (
         <View style={styles.outcome}>
           <Text style={styles.outcomeLabel}>{OUTCOME_COPY[state.outcome ?? 'flee']}</Text>
+
+          {/* One Continue for the whole reveal, per §6.3 — not one tap per card. */}
+          {reveals.map((reveal) => (
+            <RevealCard
+              key={reveal.defId}
+              name={reveal.name}
+              grade={reveal.grade}
+              flavor={reveal.flavor}
+            />
+          ))}
+
           <Button label="Continue" onPress={onDone} />
         </View>
       ) : attack === undefined ? null : (

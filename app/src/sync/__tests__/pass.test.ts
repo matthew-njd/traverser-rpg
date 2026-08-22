@@ -19,6 +19,7 @@ import {
 import { readActivityDays, readPlayer } from '../mirror';
 import { type SyncPassResult, runForegroundSync } from '../pass';
 import {
+  PLAYER_ID,
   fakeProvider,
   registeredDatabase as freshDatabase,
   wireActivityDay,
@@ -617,5 +618,95 @@ describe('Vigor recovery', () => {
     await run(db, { api: null });
 
     expect(readPlayer(db)?.vigorCurrent).toBe(8);
+  });
+});
+
+/**
+ * The satchel reconcile (T2 §3, DECISIONS 2026-08-22). `writeInventory` was written, correct, and
+ * reachable only from registration and a restore, so every drop widened a silent drift. This is the
+ * call site, and the M3 plan §3.3 asked for it to be tried before any new API field.
+ */
+describe('reconciling inventory after a battle uploads', () => {
+  const queueBattle = (db: SqliteDatabase, clientOpId = 'battle-1') => {
+    enqueue(db, {
+      clientOpId,
+      kind: 'battle',
+      payload: {
+        clientBattleId: clientOpId,
+        itemsConsumed: [],
+        grantedItemIds: [],
+        drops: { items: [], gear: [], trinket: null },
+      },
+      createdAt: '2026-08-01T00:00:00.000Z',
+    });
+  };
+
+  const countingApi = (profiles: string[]) =>
+    fakeApi({
+      profile: async () => {
+        profiles.push('fetched');
+
+        return parseProfile(wireProfile(), 'response');
+      },
+    });
+
+  it('fetches the profile once, only when the pass carried a battle', async () => {
+    const db = registeredDatabase();
+    const profiles: string[] = [];
+
+    await run(db, { api: countingApi(profiles) });
+
+    expect(profiles).toEqual([]);
+
+    queueBattle(db);
+    await run(db, { api: countingApi(profiles) });
+
+    expect(profiles).toEqual(['fetched']);
+  });
+
+  it('replaces the satchel from the server list', async () => {
+    const db = registeredDatabase();
+
+    db.runSync(
+      'INSERT INTO player_item (id, player_id, item_def_id, acquired_at) VALUES (?, ?, ?, ?)',
+      ['stale-row', PLAYER_ID, 'item_stormveil', '2026-08-01T00:00:00.000Z'],
+    );
+
+    queueBattle(db);
+
+    await run(db);
+
+    const held = db.getAllSync<{ id: string }>('SELECT id FROM player_item');
+
+    // The profile fixture's satchel, not the local row — the mirror mirrors (T4 §5.2).
+    expect(held.map((row) => row.id)).not.toContain('stale-row');
+  });
+
+  /**
+   * ↯ The hazard the acknowledgement guards. `writeInventory` **replaces** both lists, so running
+   * it while a settled battle is still queued would delete the rows that battle granted locally and
+   * they would not come back until it uploaded — an item that appears, vanishes, then returns.
+   */
+  it('does not touch inventory while a battle is still queued', async () => {
+    const db = registeredDatabase();
+    const profiles: string[] = [];
+
+    queueBattle(db);
+
+    await run(db, {
+      api: fakeApi({
+        sync: async () => {
+          throw new ApiUnreachableError('no route to host');
+        },
+        profile: async () => {
+          profiles.push('fetched');
+
+          return parseProfile(wireProfile(), 'response');
+        },
+      }),
+    });
+
+    expect(profiles).toEqual([]);
+    expect(peek(db, 10, 'battle')).toHaveLength(1);
   });
 });

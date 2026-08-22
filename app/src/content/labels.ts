@@ -45,3 +45,35 @@ export function loadLabels(db: SqliteDatabase): Labels {
 export function labelFor(labels: Labels, id: string): string {
   return labels.get(id) ?? id;
 }
+
+/** What GDD 13 §6.3's Reveal Card shows beside a name: the tier or rarity, and the flavour line. */
+export interface RevealDetail {
+  readonly grade: string;
+  readonly flavor: string | null;
+}
+
+/**
+ * `item_def.rarity` / `gear_def.tier` and the flavour text, by manifest key.
+ *
+ * Separate from {@link loadLabels} rather than folded into it: every screen needs a name, and only
+ * the Reveal Card needs these two.
+ */
+export function loadRevealDetails(db: SqliteDatabase): ReadonlyMap<string, RevealDetail> {
+  const details = new Map<string, RevealDetail>();
+
+  for (const [table, gradeColumn] of [
+    ['item_def', 'rarity'],
+    ['gear_def', 'tier'],
+  ] as const) {
+    for (const row of readContentRows(db, table)) {
+      if (typeof row.id === 'string' && typeof row[gradeColumn] === 'string') {
+        details.set(row.id, {
+          grade: row[gradeColumn],
+          flavor: typeof row.flavor === 'string' ? row.flavor : null,
+        });
+      }
+    }
+  }
+
+  return details;
+}

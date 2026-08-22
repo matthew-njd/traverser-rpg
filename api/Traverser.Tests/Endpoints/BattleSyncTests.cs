@@ -51,6 +51,13 @@ public class BattleSyncTests(TraverserApiFixture api)
 
     private static object ItemDrop(string defId) => new { kind = "item", def_id = defId };
 
+    private static object ItemDrop(string defId, Guid playerItemId) => new
+    {
+        kind = "item",
+        def_id = defId,
+        player_item_id = playerItemId,
+    };
+
     private static object GearDrop(string defId, int level, int bonus) => new
     {
         kind = "gear",
@@ -366,6 +373,36 @@ public class BattleSyncTests(TraverserApiFixture api)
         Assert.Single(gear);
         Assert.Equal("gear_weapon_mortal", gear[0].GearDefId);
         Assert.Equal("tutorial", gear[0].Source);
+    }
+
+    /// <summary>
+    /// ↯ **The device's own <c>player_item.id</c>, used verbatim** (T5 §10.3, amended 2026-08-22).
+    /// The client inserted this row locally the moment the battle settled, so the satchel holds the
+    /// drop before this sync happened — and <c>items_consumed</c> can then name a row that exists on
+    /// both tiers. A server-minted id would leave the two disagreeing about the same object.
+    /// </summary>
+    [Fact]
+    public async Task An_item_drop_keeps_the_id_the_device_minted()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+        var itemId = Guid.CreateVersion7();
+        var battleId = Guid.CreateVersion7();
+
+        await SyncAsync(client, [Battle(battleId, drops: [ItemDrop("item_stormveil", itemId)])]);
+
+        var dropped = await ReadAsync(db =>
+            db.PlayerItems.Where(i => i.PlayerId == playerId && i.Source != ItemSource.Tutorial).ToList());
+
+        Assert.Single(dropped);
+        Assert.Equal(itemId, dropped[0].Id);
+
+        // The same payload again: step 2 returns no newly-inserted battle, so no drop is
+        // materialised and the id cannot collide with itself (T2 §4).
+        await SyncAsync(client, [Battle(battleId, drops: [ItemDrop("item_stormveil", itemId)])]);
+
+        Assert.Single(await ReadAsync(db =>
+            db.PlayerItems.Where(i => i.PlayerId == playerId && i.Source != ItemSource.Tutorial).ToList()));
     }
 
     /// <summary>An item drop naming nothing in the seed is skipped on the same grounds.</summary>

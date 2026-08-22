@@ -23,7 +23,13 @@ import { ApiStatusError, ApiUnreachableError, type TraverserApi } from './api';
 import { backfillActivity, needsHistoryRepair } from './history';
 import type { AllocationPayload, RestDayPayload, SettingsPayload } from './dto';
 import { type LevelUp, WireFormatError } from './dto';
-import { applySyncResponse, readBirthYear, readPlayer, writeProjection } from './mirror';
+import {
+  applySyncResponse,
+  readBirthYear,
+  readPlayer,
+  writeInventory,
+  writeProjection,
+} from './mirror';
 import { projectGains, projectState } from './projection';
 
 /**
@@ -307,6 +313,23 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
     // than from a returned list: step 2 answers a replayed battle exactly as it answers a new one,
     // and the id is already the idempotency key on both sides.
     acknowledge(db, pendingBattles.map((entry) => entry.clientOpId));
+
+    // ---- Step 12b. Reconcile the satchel and the gear rack after a battle reaches the server.
+    //
+    // The sync response carries no inventory, so the only authoritative list is the profile
+    // document (T2 §3). This is the missing **call site** DECISIONS 2026-08-22 identified —
+    // `writeInventory` was already written and correct, and reachable only from registration and a
+    // restore, so every drop widened a silent drift.
+    //
+    // Only after a pass that actually uploaded battles: the fetch is a whole extra round trip, and
+    // nothing else on this surface can change what the player owns.
+    //
+    // ↯ **The acknowledgement above is what makes this safe.** `writeInventory` *replaces* both
+    // lists, so running it while a settled battle is still queued would delete the local rows that
+    // battle granted and they would not come back until it uploaded.
+    if (pendingBattles.length > 0 && peek(db, 1, 'battle').length === 0) {
+      writeInventory(db, await api.profile());
+    }
 
     // ---- Step 12a. Repair a mirror that is missing its history.
     //

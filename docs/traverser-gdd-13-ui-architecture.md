@@ -280,16 +280,28 @@ Four colours are **scoped** — each has exactly one sanctioned use, and none is
 
 | Token | Hex | Sanctioned use, and nothing else |
 |---|---|---|
-| `verdigris` | `#5B8577` | **The super-effective signal** — §6.2's chevron and its callout. Also Mythic tier, from M3 |
+| `verdigris` | `#5B8577` | **The super-effective signal only** — §6.2's chevron and its callout |
 | `oxblood` | `#9A4436` | **Enemy health only** |
 | `madder` | `#BF6A55` | **The resisted signal only** — §6.2's chevron and its post-hit callout |
 | `marble` | `#E9E0CE` | Art plates |
+| `pewter` | `#8A8378` | **Rank 1** — common items, Mortal gear (§6.3's border) |
+| `moss` | `#6FA06B` | **Rank 2** — uncommon items, Heroic gear |
+| `lapis` | `#5B84B8` | **Rank 3** — rare items, Mythic gear |
+| `orchid` | `#A57FB8` | **Rank 4** — Divine gear, which items have no equivalent for |
 
 No screen hardcodes a colour outside this table.
 
 > **Amended 2026-08-18 (M2/P6).** `madder` is new. §6.2 specifies the resisted chevron as red and `oxblood` was the palette's only one, so the two rules collided at the first screen that needed both. Rather than widen `oxblood` — the scope note is the whole reason it still means "the enemy is in trouble" — the resisted signal gets its own pigment: lighter and less saturated, so it reads as a *hint* on a dark surface where `oxblood` reads as a bar. The pair is deliberately close enough to be the same family and far enough not to be mistaken for the same signal. Its scope is the **signal**, not one control: §6.2's two surfaces describe one fact, and colouring them differently would make the player learn the same rule twice.
 
 > **Amended again 2026-08-19 (M2/P8).** `verdigris` now also carries §6.2's **super-effective** signal, which that section specifies as green and the palette answers with its only green. Before this it was `gold`, which already means XP and a goal met — two meanings on one screen is how a colour stops carrying either. The pair is now symmetric: one scoped token per type-effectiveness signal, `verdigris` for super-effective and `madder` for resisted, each covering both the pre-selection chevron and the post-hit callout. Mythic tier keeps the token when gear lands at M3; a tier badge and a battle callout never share a screen.
+
+> ⚠️ **Amended 2026-08-22 (M3/P3). That last clause is false, and `verdigris` gives Mythic up.** §6.3's Reveal Card renders on the **battle outcome panel**, with the combat log and its callouts still on screen — so a tier border and a type callout share a screen every time a fight is won. §6.3 did not say where the card lived when the 08-19 note was written, so the assumption was reasonable and is simply no longer true.
+>
+> Rather than let one green mean two things on the one screen that shows both — the exact failure the 08-18 and 08-19 amendments were each written to prevent — the rank ladder below takes its own four, and `verdigris` narrows to the type signal alone. ↯ **`moss` is a green and `verdigris` is a teal, 45° apart in hue**, which is what lets both live on that panel; a fourth pigment was cheaper than a rule about when a colour changes meaning.
+
+**The rank ladder is one ladder, shared by gear tiers and item rarities.** Grey → green → blue → purple, the convention a player already knows, and under it a colour names a **rank** rather than a table: a rare item and a Mythic piece are the same step, because they are. Gear has a fourth step items have no equivalent for. All four clear 3:1 against `surfaceRaised` as a border.
+
+↯ **They are told apart by hue, not brightness** (1.16–1.27 contrast between adjacent steps), so a screen using them **must name the rank in text as well** — §6.3's card does. Two of the four also miss 4.5:1 as small text on `surfaceRaised` (`pewter` 4.40, `lapis` 4.27), so the ladder colours a border and never the label beside it.
 
 **Nothing chromatic is legible on `marble`.** Measured against `#E9E0CE`: `gold` 1.5:1, `accent` 2.3:1, `textDim` 2.4:1, `madder` 3.0:1, `verdigris` 3.2:1 — only `oxblood` (4.9:1) and the three dark surface tones clear 4.5:1. **Text over an art plate is therefore either near-black ink or it sits on its own dark chip.** This is a property of the plate rather than a preference, and it applies to every future overlay on one.
 

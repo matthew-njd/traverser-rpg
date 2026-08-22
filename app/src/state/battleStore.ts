@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import { readContentVersion } from '../content/bundle';
-import { type Labels, loadLabels } from '../content/labels';
+import { type Labels, type RevealDetail, loadLabels, loadRevealDetails } from '../content/labels';
 import { readPlayer } from '../sync/mirror';
 import type { SqliteDatabase } from '../db/types';
 import { transact } from '../db/transaction';
@@ -40,6 +40,8 @@ interface BattleStore {
   readonly snapshot: BattleSnapshot | null;
   readonly context: BattleContext | null;
   readonly labels: Labels | null;
+  /** GDD 13 §6.3’s per-key tier and flavour, loaded beside the labels and read only on victory. */
+  readonly revealDetails: ReadonlyMap<string, RevealDetail>;
   /** Every event this battle has emitted, oldest first. The screen renders a window of it. */
   readonly events: readonly BattleEvent[];
   readonly items: readonly ItemOption[];
@@ -75,6 +77,7 @@ const IDLE = {
   snapshot: null,
   context: null,
   labels: null,
+  revealDetails: new Map<string, RevealDetail>(),
   events: [],
   items: [],
   moves: [],
@@ -103,6 +106,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
   begin(db, input) {
     const encounter: Encounter = startEncounter(db, input);
     const labels = loadLabels(db);
+    const revealDetails = loadRevealDetails(db);
     const { attack, skills } = availableMoves(encounter.context.content, encounter.player.level);
 
     currentRng = input.rng ?? systemRng;
@@ -115,6 +119,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       snapshot: encounter.snapshot,
       context: encounter.context,
       labels,
+      revealDetails,
       events: [...encounter.events],
       items: itemOptionsFor(db, encounter.context, labels),
       moves: [attack, ...skills],
@@ -230,6 +235,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     const labels = loadLabels(db);
+    const revealDetails = loadRevealDetails(db);
     const context = buildContext(
       db,
       snapshot.state.enemyId,
@@ -245,6 +251,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       snapshot,
       context,
       labels,
+      revealDetails,
       // The event log does not survive the process — it is L3 session state (T4 §5.2) and the
       // combat log is a record of this session, not of the battle.
       events: [],

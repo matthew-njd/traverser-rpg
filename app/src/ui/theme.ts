@@ -55,6 +55,25 @@ export const colors = {
    */
   marble: '#E9E0CE',
 
+  /**
+   * GDD 13 §11 — the **rank ladder**, grey → green → blue → purple. Gear tiers and item rarities
+   * read off the same four, because under this convention a colour names a rank rather than a
+   * table: a green item and green gear are both uncommon (§6.3, DECISIONS 2026-08-22).
+   *
+   * ↯ **`moss` is not `verdigris`, and the 45° between them is the whole reason both can exist.**
+   * Verdigris is a teal carrying §6.2's super-effective signal, and the Reveal Card renders on the
+   * battle outcome panel with the combat log still visible — so the two do share a screen, which is
+   * exactly what §11's earlier "never share a screen" note assumed away.
+   *
+   * All four clear 3:1 against `surfaceRaised` as a border. They are told apart by **hue, not
+   * brightness** (1.16–1.27 between steps), so the grade is always named in text beside them —
+   * colour is never the only channel that carries the rank.
+   */
+  pewter: '#8A8378',
+  moss: '#6FA06B',
+  lapis: '#5B84B8',
+  orchid: '#A57FB8',
+
   /** Banners are informational, never alarming (GDD 10 §3.2 is explicit about tone). */
   notice: '#2A2620',
   noticeBorder: '#4A3F2E',

@@ -14,6 +14,7 @@ import {
 } from '../../../onboarding/tutorial';
 import { type BattleScript, BattleScreen } from '../BattleScreen';
 import { RESISTED, SUPER_EFFECTIVE } from '../log';
+import type { Reveal } from '../reveal';
 
 /**
  * M2 plan P6: **RNTL over the event queue with a stubbed engine.** The engine is already proven as
@@ -108,6 +109,7 @@ async function show(
     items?: readonly typeof SALVE[];
     script?: BattleScript;
     chevronsUnlocked?: boolean;
+    reveals?: readonly Reveal[];
     handlers?: Partial<Record<'onBegin' | 'onMove' | 'onItem' | 'onFlee' | 'onDone', jest.Mock>>;
   } = {},
 ) {
@@ -129,6 +131,7 @@ async function show(
       events={overrides.events ?? []}
       items={overrides.items ?? [SALVE]}
       chevronsUnlocked={overrides.chevronsUnlocked ?? true}
+      reveals={overrides.reveals ?? []}
       script={overrides.script ?? null}
       {...handlers}
     />,
@@ -442,6 +445,32 @@ describe('the fight as a whole', () => {
     await fireEvent.press(screen.getByText('Continue'));
 
     expect(handlers.onDone).toHaveBeenCalled();
+  });
+
+  /**
+   * GDD 13 §6.3 — the reveal lands on the outcome panel, under **one** Continue rather than one tap
+   * per card. Silence here is what M2 shipped, and it announced nothing for a real drop.
+   */
+  it('announces each drop on the outcome panel', async () => {
+    await show({
+      state: { phase: 'victory', outcome: 'win' },
+      reveals: [
+        { defId: 'item_stormveil', name: 'Stormveil', grade: 'uncommon', flavor: 'Bottled weather.' },
+        { defId: 'gear_weapon_mortal', name: "Traveler's Blade", grade: 'mortal', flavor: null },
+      ],
+    });
+
+    expect(screen.getByText('Stormveil')).toBeTruthy();
+    expect(screen.getByText('Bottled weather.')).toBeTruthy();
+    expect(screen.getByText("Traveler's Blade")).toBeTruthy();
+    expect(screen.getAllByText('Continue')).toHaveLength(1);
+  });
+
+  it('shows no card at all when the fight dropped nothing', async () => {
+    await show({ state: { phase: 'victory', outcome: 'win' } });
+
+    expect(screen.queryByText('mortal')).toBeNull();
+    expect(screen.getByText('Continue')).toBeTruthy();
   });
 
   it('renders the combat log, most recent last', async () => {

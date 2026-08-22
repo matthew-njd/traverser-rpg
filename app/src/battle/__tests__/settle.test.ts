@@ -75,6 +75,7 @@ describe('the payload', () => {
   it('flattens drops onto the wire as kind + def_id', () => {
     const wire = toWireBattle({
       ...battlePayload(wonBattle().state, META),
+      grantedItemIds: ['019fd954-0745-7748-9892-000000000001'],
       drops: {
         items: ['item_stormveil'],
         gear: [
@@ -90,7 +91,11 @@ describe('the payload', () => {
     });
 
     expect(wire.drops).toEqual([
-      { kind: 'item', def_id: 'item_stormveil' },
+      {
+        kind: 'item',
+        def_id: 'item_stormveil',
+        player_item_id: '019fd954-0745-7748-9892-000000000001',
+      },
       {
         kind: 'gear',
         def_id: 'gear_weapon_mortal',
@@ -152,5 +157,56 @@ describe('settling', () => {
     settleBattle(db, payload, PLAYER_ID, Date.now());
 
     expect(peek(db, 10, 'battle')).toHaveLength(1);
+  });
+});
+
+/**
+ * GDD 13 §6.3's other half: the satchel has to hold what the card announced, **before** the next
+ * sync. That is why the device mints the `player_item.id` and sends it (T5 §10.3, amended
+ * 2026-08-22) — an id the server minted cannot exist here yet, and the API is off by design.
+ */
+describe('granting a drop locally', () => {
+  const heldItems = (db: ReturnType<typeof registeredDatabase>) =>
+    db.getAllSync<{ id: string; item_def_id: string }>(
+      'SELECT id, item_def_id FROM player_item ORDER BY id',
+    );
+
+  const won = (items: readonly string[]) => ({
+    ...battlePayload(wonBattle().state, META),
+    drops: { items: [...items], gear: [], trinket: null },
+  });
+
+  it('adds exactly one satchel row per dropped item, under the id it sends', () => {
+    const db = registeredDatabase();
+
+    settleBattle(db, won(['item_stormveil']), PLAYER_ID, Date.now());
+
+    const held = heldItems(db);
+    const queued = JSON.parse(peek(db, 10, 'battle')[0]?.payload ?? '{}') as {
+      grantedItemIds: string[];
+    };
+
+    expect(held).toHaveLength(1);
+    expect(held[0]?.item_def_id).toBe('item_stormveil');
+    expect(queued.grantedItemIds).toEqual([held[0]?.id]);
+  });
+
+  it('mints a separate row for each of two of the same item', () => {
+    const db = registeredDatabase();
+
+    settleBattle(db, won(['item_stormveil', 'item_stormveil']), PLAYER_ID, Date.now());
+
+    const held = heldItems(db);
+
+    expect(held).toHaveLength(2);
+    expect(held[0]?.id).not.toBe(held[1]?.id);
+  });
+
+  it('grants nothing for a battle that dropped nothing', () => {
+    const db = registeredDatabase();
+
+    settleBattle(db, won([]), PLAYER_ID, Date.now());
+
+    expect(heldItems(db)).toEqual([]);
   });
 });

@@ -9,6 +9,7 @@ import { battleInProgress, useBattleStore } from '@/state/battleStore';
 import { usePlayerStore } from '@/state/playerStore';
 import type { EncounterKind } from '@/battle/types';
 import { BattleScreen } from '@/ui/battle/BattleScreen';
+import { revealsFor } from '@/ui/battle/reveal';
 import { Body, Button, Screen } from '@/ui/primitives';
 
 /**
@@ -90,6 +91,7 @@ export default function Battle() {
       labels={store.labels}
       events={store.events}
       items={store.items}
+      reveals={revealsFor(store.snapshot.state.drops, store.labels, store.revealDetails)}
       chevronsUnlocked={store.chevronsUnlocked}
       onBegin={() => store.dispatch(getDatabase(), { kind: 'begin' })}
       onMove={(moveId) => store.dispatch(getDatabase(), { kind: 'move', moveId })}

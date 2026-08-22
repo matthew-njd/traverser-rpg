@@ -336,7 +336,7 @@ export function writeProfile(db: SqliteDatabase, profile: PlayerProfile): void {
  * The equipped-slot index is unique, so the delete has to precede the inserts within the same
  * transaction — re-inserting the same weapon before clearing the old row trips it.
  */
-function writeInventory(db: SqliteDatabase, profile: PlayerProfile): void {
+export function writeInventory(db: SqliteDatabase, profile: PlayerProfile): void {
   const playerId = profile.player.playerId;
 
   db.runSync('DELETE FROM player_gear WHERE player_id = ?', [playerId]);

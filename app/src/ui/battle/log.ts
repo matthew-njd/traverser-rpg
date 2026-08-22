@@ -124,8 +124,8 @@ export function logLines(events: readonly BattleEvent[], labels: Labels): string
         break;
 
       case 'loot_rolled':
-        // Nothing renders a drop at M2: GDD 13 §6.3's Reveal Card is unbuilt, and an ordinary sync
-        // never refreshes the satchel (DECISIONS 2026-08-22). Silence is the honest answer.
+        // The log stays silent: GDD 13 §6.3's Reveal Card announces the drop on the outcome panel,
+        // and saying it twice in two registers is worse than saying it once well.
         flush();
         break;
 
