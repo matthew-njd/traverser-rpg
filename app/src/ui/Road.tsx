@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { GateState, RoadGate, RoadState, RoadZone } from '../progression/road';
 import { segmentFill } from '../progression/road';
+import { Button } from './primitives';
 import { colors, radius, space, tabular, type } from './theme';
 
 /**
@@ -13,9 +14,15 @@ import { colors, radius, space, tabular, type } from './theme';
  */
 export function Road({
   state,
+  exploring = null,
+  onExplore,
   onZoneLayout,
 }: {
   state: RoadState;
+  /** The zone whose Explore tap is still in flight, so its button reports itself. */
+  exploring?: string | null;
+  /** GDD 9 §4.3 — offered on an already-unlocked segment and nowhere else. */
+  onExplore?: (zoneId: string) => void;
   /** Reports each segment's y offset so the screen can scroll the Viewport to it (§4.3). */
   onZoneLayout?: (zoneId: string, y: number) => void;
 }) {
@@ -28,6 +35,8 @@ export function Road({
           next={state.zones[index + 1]}
           leagues={state.leagues}
           here={zone.zoneId === waymarkerZone(state)}
+          exploring={exploring === zone.zoneId}
+          onExplore={onExplore}
           onLayout={onZoneLayout}
         />
       ))}
@@ -55,12 +64,16 @@ function ZoneSegment({
   next,
   leagues,
   here,
+  exploring,
+  onExplore,
   onLayout,
 }: {
   zone: RoadZone;
   next: RoadZone | undefined;
   leagues: number;
   here: boolean;
+  exploring: boolean;
+  onExplore?: (zoneId: string) => void;
   onLayout?: (zoneId: string, y: number) => void;
 }) {
   const fill = segmentFill(zone, next, leagues);
@@ -97,6 +110,20 @@ function ZoneSegment({
       {zone.gates.map((gate) => (
         <GateNode key={gate.gateId} gate={gate} leagues={leagues} />
       ))}
+
+      {/*
+        §4.3 — Explore belongs to a segment the player has **already unlocked**, which is what makes
+        returning to Olympion for a Storm charm while levelling in Imperion a supported thing to do
+        rather than a workaround. A locked segment offers nothing to explore.
+      */}
+      {zone.unlocked && onExplore !== undefined ? (
+        <Button
+          variant="secondary"
+          label={exploring ? 'Searching the road…' : `Explore ${zone.displayName}`}
+          disabled={exploring}
+          onPress={() => onExplore(zone.zoneId)}
+        />
+      ) : null}
     </View>
   );
 }

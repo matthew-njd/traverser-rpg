@@ -1,11 +1,13 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getDatabase } from '@/db/open';
-import { type RoadState, readRoad } from '@/progression/road';
+import { deviceLocalDates } from '@/health/localDate';
+import { type PendingEncounter, type RoadState, readEncounters, readRoad } from '@/progression/road';
 import { syncNow } from '@/runtime';
-import { Button, Screen, Title } from '@/ui/primitives';
+import { requestExplore } from '@/sync/writes';
+import { Button, Card, Heading, Screen, Title } from '@/ui/primitives';
 import { Road, waymarkerZone } from '@/ui/Road';
 import { colors, space, tabular, type } from '@/ui/theme';
 
@@ -17,18 +19,48 @@ import { colors, space, tabular, type } from '@/ui/theme';
  * the authority and the repair path, the same role `GET /players/me` plays for the player block.
  *
  * The Viewport scrolls freely to any segment behind the Waymarker (§4.3); "Return to the Road"
- * snaps it back. Explore lands at M3/P8 with the rosters it needs.
+ * snaps it back. Explore (§4.3) is offered per unlocked segment, and the encounters sync has
+ * already granted are spendable from here whether or not the API is reachable (T2 §1.3).
  */
 export default function MapScreen() {
+  const router = useRouter();
   const [road, setRoad] = useState<RoadState | null>(null);
+  const [encounters, setEncounters] = useState<readonly PendingEncounter[]>([]);
+  const [exploring, setExploring] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const scroll = useRef<ScrollView>(null);
   const offsets = useRef(new Map<string, number>());
 
-  const reload = useCallback(() => setRoad(readRoad(getDatabase())), []);
+  const reload = useCallback(() => {
+    const db = getDatabase();
+
+    setRoad(readRoad(db));
+    setEncounters(readEncounters(db));
+  }, []);
 
   useFocusEffect(reload);
+
+  /**
+   * GDD 9 §4.3 — one tap, one roll from the shared daily pool.
+   *
+   * ↯ **The tap is durable before the sync is attempted, and the encounter is not.** The roll is
+   * the server's (T2 §4 step 8), so nothing can be shown until it answers — but the queued intent
+   * survives the app being killed, and the grant arrives on whichever sync gets through. Offline
+   * the button simply settles and the encounter appears later, which is the honest outcome.
+   */
+  const explore = (zoneId: string) => {
+    setExploring(zoneId);
+
+    requestExplore(getDatabase(), zoneId, deviceLocalDates.dateOf(Date.now()), Date.now());
+
+    void syncNow(Date.now(), { withNewWork: true })
+      .catch(() => undefined)
+      .finally(() => {
+        reload();
+        setExploring(null);
+      });
+  };
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -70,6 +102,34 @@ export default function MapScreen() {
             )}
           </View>
 
+          {/*
+            T2 §1.3 — sync delivers grants, not battles, so these are spendable with the API off.
+            Above the Road rather than inside a segment: an encounter earned by walking belongs to
+            no particular node, and burying it in the segment it names would hide it.
+          */}
+          {encounters.length === 0 ? null : (
+            <Card>
+              <Heading>
+                {encounters.length === 1
+                  ? 'Something waits on the road'
+                  : `${encounters.length} wait on the road`}
+              </Heading>
+
+              {encounters.map((encounter) => (
+                <Button
+                  key={encounter.grantId}
+                  label={encounter.displayName}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/battle',
+                      params: { enemyId: encounter.enemyId, grantId: encounter.grantId },
+                    })
+                  }
+                />
+              ))}
+            </Card>
+          )}
+
           <ScrollView
             ref={scroll}
             contentContainerStyle={styles.viewport}
@@ -85,6 +145,8 @@ export default function MapScreen() {
           >
             <Road
               state={road}
+              exploring={exploring}
+              onExplore={explore}
               onZoneLayout={(zoneId, y) => offsets.current.set(zoneId, y)}
             />
           </ScrollView>

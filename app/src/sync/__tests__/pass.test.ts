@@ -277,6 +277,60 @@ describe('the online pass', () => {
     ]);
   });
 
+  /**
+   * GDD 9 §4.3's tap rides the same batch. Acknowledged on a 2xx like a battle: the operation
+   * ledger is the server's idempotency key, so an answer means this tap has been ruled on either
+   * way — and left queued it would spend a second roll on the next pass.
+   */
+  it('uploads queued Explore taps and drops them once the server answers', async () => {
+    const db = registeredDatabase();
+    const seen: unknown[] = [];
+
+    enqueue(db, {
+      clientOpId: 'op-1',
+      kind: 'explore',
+      payload: { operationId: 'op-1', zoneId: 'olympion', activityDate: '2026-08-03' },
+      createdAt: '2026-08-03T15:00:00.000Z',
+    });
+
+    await run(db, {
+      api: fakeApi({
+        sync: async (_deltas, _version, _battles, _sessions, explores) => {
+          seen.push(explores);
+
+          return response();
+        },
+      }),
+    });
+
+    expect(seen[0]).toEqual([
+      { operationId: 'op-1', zoneId: 'olympion', activityDate: '2026-08-03' },
+    ]);
+    expect(peek(db, 10, 'explore')).toEqual([]);
+  });
+
+  /** Unreachable is not an answer — the tap stays queued and spends its roll on a later pass. */
+  it('keeps an Explore tap queued when the server never answered', async () => {
+    const db = registeredDatabase();
+
+    enqueue(db, {
+      clientOpId: 'op-2',
+      kind: 'explore',
+      payload: { operationId: 'op-2', zoneId: 'olympion', activityDate: '2026-08-03' },
+      createdAt: '2026-08-03T15:00:00.000Z',
+    });
+
+    await run(db, {
+      api: fakeApi({
+        sync: async () => {
+          throw new ApiUnreachableError('no route to host');
+        },
+      }),
+    });
+
+    expect(peek(db, 10, 'explore')).toHaveLength(1);
+  });
+
   it('applies the response and drains the queue', async () => {
     const db = registeredDatabase();
     const api = fakeApi();

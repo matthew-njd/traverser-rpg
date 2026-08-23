@@ -7,6 +7,7 @@ import {
   NO_STATS,
   allocateStatPoints,
   changeSettings,
+  requestExplore,
   tagRestDay,
 } from '../writes';
 import { registeredDatabase } from './fixtures';
@@ -202,5 +203,47 @@ describe('the Rest Day tag', () => {
     tagRestDay(db, '2026-12-25', NOW);
 
     expect(isRestTagged(db, '2026-12-25')).toBe(true);
+  });
+});
+
+/**
+ * GDD 9 §4.3's Explore tap — the one write on this surface with no optimistic local effect, because
+ * the roll it asks for is the server's (T2 §4 step 8).
+ */
+describe('the Explore tap', () => {
+  it('queues the tap under its own operation id', () => {
+    const db = registeredDatabase();
+
+    const payload = requestExplore(db, 'olympion', '2026-08-04', NOW);
+    const [entry] = peek(db, 10, 'explore');
+
+    expect(payload).toMatchObject({ zoneId: 'olympion', activityDate: '2026-08-04' });
+
+    // ↯ The operation id *is* the outbox key. A tap spends a roll, so a resend under a fresh id
+    // would spend a second one — the server's ledger can only stop that if the id never changes.
+    expect(entry?.clientOpId).toBe(payload.operationId);
+    expect(JSON.parse(entry?.payload ?? '{}')).toEqual(payload);
+  });
+
+  /**
+   * Nothing local moves. The mirror has no encounter to show until the server rules on the roll,
+   * and inventing one would mean taking it back when the day's cap turns out to be spent.
+   */
+  it('changes nothing in the mirror', () => {
+    const db = registeredDatabase();
+
+    requestExplore(db, 'olympion', '2026-08-04', NOW);
+
+    expect(db.getAllSync('SELECT grant_id FROM encounter_grant')).toEqual([]);
+  });
+
+  it('queues a second tap rather than folding it into the first', () => {
+    const db = registeredDatabase();
+
+    const first = requestExplore(db, 'olympion', '2026-08-04', NOW);
+    const second = requestExplore(db, 'valheon', '2026-08-04', NOW + 1_000);
+
+    expect(second.operationId).not.toBe(first.operationId);
+    expect(peek(db, 10, 'explore')).toHaveLength(2);
   });
 });

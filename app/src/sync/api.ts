@@ -3,6 +3,7 @@ import type { MintedDelta } from '../health/deltas';
 import {
   type ActivityDay,
   type AllocationPayload,
+  type ExplorePayload,
   type PlayerProfile,
   type Registration,
   type RestDayPayload,
@@ -77,6 +78,8 @@ export interface TraverserApi {
     battles?: readonly Record<string, unknown>[],
     /** T3 §6's sessions, re-sent whole every pass — the server sets rather than adds (T2 §6.3). */
     sessions?: readonly SyncSession[],
+    /** GDD 9 §4.3 taps queued while offline. Each spends one roll from the daily pool. */
+    explores?: readonly ExplorePayload[],
   ): Promise<SyncResponse>;
   /** tech-02 §3's one-shot repair path, and what a restore uses to prove its credentials. */
   profile(): Promise<PlayerProfile>;
@@ -167,11 +170,11 @@ export function createApi(options: ApiOptions): TraverserApi {
       return parseBundle(await request(options, '/content/bundle'));
     },
 
-    async sync(deltas, contentVersion, battles = [], sessions = []) {
+    async sync(deltas, contentVersion, battles = [], sessions = [], explores = []) {
       return parseSyncResponse(
         await request(options, '/sync', {
           method: 'POST',
-          body: JSON.stringify(toWireSyncRequest(deltas, contentVersion, battles, sessions)),
+          body: JSON.stringify(toWireSyncRequest(deltas, contentVersion, battles, sessions, explores)),
         }),
       );
     },

@@ -161,6 +161,53 @@ describe('settling', () => {
 });
 
 /**
+ * T2 §1.3 — sync delivers grants, and a battle is how one is spent.
+ *
+ * ↯ Server-side "spent" is **derived**: a `battle` row naming the grant, with a partial unique index
+ * making a double-spend structurally impossible. Nothing is sent for it, and the local row is
+ * deleted at settle rather than at battle start — a fight abandoned mid-way writes no battle row
+ * (T5 §8.1), and its encounter has to still be waiting when the player comes back.
+ */
+describe('spending an encounter grant', () => {
+  const grants = (db: ReturnType<typeof registeredDatabase>) =>
+    db.getAllSync<{ grant_id: string }>('SELECT grant_id FROM encounter_grant');
+
+  const offer = (db: ReturnType<typeof registeredDatabase>, grantId: string) =>
+    db.runSync(
+      'INSERT INTO encounter_grant (grant_id, player_id, zone_id, enemy_id, source, activity_date)' +
+        " VALUES (?, ?, 'olympion', 'enemy_harpy', 'travel', '2026-08-17')",
+      [grantId, PLAYER_ID],
+    );
+
+  it('clears the grant the battle named', () => {
+    const db = registeredDatabase();
+
+    offer(db, 'g1');
+    offer(db, 'g2');
+
+    settleBattle(
+      db,
+      battlePayload(wonBattle().state, { ...META, grantId: 'g1' }),
+      PLAYER_ID,
+      Date.now(),
+    );
+
+    expect(grants(db)).toEqual([{ grant_id: 'g2' }]);
+  });
+
+  /** A tutorial or a boss names no grant, and must not clear somebody else's. */
+  it('clears nothing when the battle named no grant', () => {
+    const db = registeredDatabase();
+
+    offer(db, 'g1');
+
+    settleBattle(db, battlePayload(wonBattle().state, META), PLAYER_ID, Date.now());
+
+    expect(grants(db)).toEqual([{ grant_id: 'g1' }]);
+  });
+});
+
+/**
  * GDD 13 §6.3's other half: the satchel has to hold what the card announced, **before** the next
  * sync. That is why the device mints the `player_item.id` and sends it (T5 §10.3, amended
  * 2026-08-22) — an id the server minted cannot exist here yet, and the API is off by design.

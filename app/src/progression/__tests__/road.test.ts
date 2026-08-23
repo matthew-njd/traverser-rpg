@@ -1,7 +1,7 @@
 import { seedEmbeddedContent } from '../../content/store';
 import type { SqliteDatabase } from '../../db/types';
 import { PLAYER_ID, registeredDatabase } from '../../sync/__tests__/fixtures';
-import { type RoadState, readRoad, segmentFill } from '../road';
+import { type RoadState, readEncounters, readRoad, segmentFill } from '../road';
 
 /**
  * GDD 9's Road, derived on the device (M3/P5 decision).
@@ -118,6 +118,57 @@ describe('zone segments', () => {
       'gate_cyclops',
       'gate_cerberus',
     ]);
+  });
+});
+
+/**
+ * T2 §1.3 — sync delivers grants, already resolved and already charged against the day's cap, so
+ * the device can spend them with the API switched off.
+ */
+describe('readEncounters', () => {
+  const offer = (db: SqliteDatabase, grantId: string, enemyId: string, source = 'travel') =>
+    db.runSync(
+      'INSERT INTO encounter_grant (grant_id, player_id, zone_id, enemy_id, source, activity_date)' +
+        " VALUES (?, ?, 'olympion', ?, ?, '2026-08-22')",
+      [grantId, PLAYER_ID, enemyId, source],
+    );
+
+  const withGrants = (setup: (db: SqliteDatabase) => void) => {
+    const db = registeredDatabase();
+
+    seedEmbeddedContent(db);
+    setup(db);
+
+    return readEncounters(db);
+  };
+
+  it('joins each grant to the enemy it named', () => {
+    const [encounter] = withGrants((db) => offer(db, 'g1', 'enemy_harpy', 'explore'));
+
+    expect(encounter).toMatchObject({
+      grantId: 'g1',
+      zoneId: 'olympion',
+      enemyId: 'enemy_harpy',
+      displayName: 'Harpy',
+      source: 'explore',
+    });
+  });
+
+  /** UUIDv7 sorts by mint time, so the encounter that has waited longest is offered first. */
+  it('offers the oldest grant first', () => {
+    const encounters = withGrants((db) => {
+      offer(db, '019fd954-0745-7748-9892-000000000002', 'enemy_satyr');
+      offer(db, '019fd954-0745-7748-9892-000000000001', 'enemy_harpy');
+    });
+
+    expect(encounters.map((encounter) => encounter.enemyId)).toEqual([
+      'enemy_harpy',
+      'enemy_satyr',
+    ]);
+  });
+
+  it('is empty when nothing is waiting', () => {
+    expect(withGrants(() => undefined)).toEqual([]);
   });
 });
 

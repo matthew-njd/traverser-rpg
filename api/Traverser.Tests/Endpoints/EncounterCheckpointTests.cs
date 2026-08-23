@@ -330,6 +330,29 @@ public class EncounterCheckpointTests(TraverserApiFixture api) : IDisposable
         Assert.Equal(0, GrantCount(replay));
     }
 
+    /// <summary>
+    /// ↯ **The tapped segment's roster, not the Waymarker's.** GDD 9 §4.3's whole reason for
+    /// Explore is returning to Olympion for a Storm charm *while levelling in Imperion* — drawing
+    /// from the frontier instead would make the button a slower way to fight what is already there.
+    /// </summary>
+    [Fact]
+    public async Task An_explore_tap_draws_from_the_segment_it_names_not_the_frontier()
+    {
+        var (_, client) = await PlayerAsync();
+
+        // Stand deep in Valheon: past its entry, with Cerberus beaten so the zone is actually open.
+        await SyncAsync(client, [Steps(218_000)]);
+        await SyncAsync(client, battles: [BossWin("enemy_cerberus")]);
+        await SyncAsync(client, [Steps(100_000)]);
+
+        var body = await SyncAsync(client, explores: [Explore(Guid.NewGuid(), "olympion")]);
+
+        Assert.Equal(["olympion"], Grants(body, "zone_id"));
+        Assert.All(
+            Grants(body, "enemy_id"),
+            enemyId => Assert.Contains(enemyId, new[] { "enemy_harpy", "enemy_satyr" }));
+    }
+
     /// <summary>GDD 9 §4.3 allows Explore only on an already-unlocked segment, re-checked here.</summary>
     [Fact]
     public async Task An_explore_tap_on_a_locked_zone_grants_nothing()

@@ -3,7 +3,7 @@ import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
 import { mintUuidV7 } from '../health/deltaId';
 import { maxVigorFor, restoreVigor } from '../progression/vigor';
-import type { AllocationPayload, RestDayPayload, SettingsPayload } from './dto';
+import type { AllocationPayload, ExplorePayload, RestDayPayload, SettingsPayload } from './dto';
 import { readPlayer, writeRestTag, writeSettings, writeVigor } from './mirror';
 
 /**
@@ -175,6 +175,39 @@ export function tagRestDay(
       payload,
       createdAt: new Date(now).toISOString(),
     });
+  });
+
+  return payload;
+}
+
+/**
+ * GDD 9 §4.3's Explore tap — a manual roll against a segment the player has already unlocked.
+ *
+ * ↯ **The one write on this surface with no optimistic local effect.** Every other write here
+ * changes the mirror first and replays second, because the player must see their own action. An
+ * Explore roll resolves *server-side* against the shared daily pool (T2 §4 step 8), and the client
+ * cannot know whether the cap has room without asking — so guessing an encounter into existence
+ * would mean taking it back. What is durable immediately is the intent: the queue entry survives
+ * the app being killed, and the grant lands on whichever sync reaches the server.
+ */
+export function requestExplore(
+  db: SqliteDatabase,
+  zoneId: string,
+  activityDate: string,
+  now: number,
+): ExplorePayload {
+  const payload: ExplorePayload = {
+    operationId: mintUuidV7(db, now),
+    zoneId,
+    activityDate,
+  };
+
+  enqueue(db, {
+    // The operation id *is* the outbox key, so a queued tap and its ledger entry cannot diverge.
+    clientOpId: payload.operationId,
+    kind: 'explore',
+    payload,
+    createdAt: new Date(now).toISOString(),
   });
 
   return payload;

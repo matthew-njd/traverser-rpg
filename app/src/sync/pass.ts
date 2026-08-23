@@ -22,7 +22,7 @@ import {
 import { ApiStatusError, ApiUnreachableError, type TraverserApi } from './api';
 import { backfillActivity, needsHistoryRepair } from './history';
 import type { AllocationPayload, RestDayPayload, SettingsPayload } from './dto';
-import { type LevelUp, type SyncSession, WireFormatError } from './dto';
+import { type ExplorePayload, type LevelUp, type SyncSession, WireFormatError } from './dto';
 import {
   applySyncResponse,
   readBirthYear,
@@ -343,6 +343,10 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
   // own `client_battle_id`, which is also the outbox key, so a replay drops them the same way.
   const pendingBattles = peek(db, MAX_BATCH, 'battle');
 
+  // GDD 9 §4.3's taps, queued while offline. Acknowledged like a battle: the operation ledger is
+  // the server's idempotency key, so a 2xx means this tap has been ruled on either way.
+  const pendingExplores = peek(db, MAX_BATCH, 'explore');
+
   try {
     // ---- Step 10 ----
     contentVersion = await api.contentVersion();
@@ -385,6 +389,7 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
       // cost is that a pass that never reaches the server can lose a session's encounter bonus, and
       // never any XP: that comes from the deltas, which are durable.
       sessions,
+      pendingExplores.map((entry) => JSON.parse(entry.payload) as ExplorePayload),
     );
 
     // ---- Step 12 ----
@@ -393,7 +398,10 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
     // A battle the server took is done with locally. Acknowledged unconditionally on a 2xx rather
     // than from a returned list: step 2 answers a replayed battle exactly as it answers a new one,
     // and the id is already the idempotency key on both sides.
-    acknowledge(db, pendingBattles.map((entry) => entry.clientOpId));
+    acknowledge(db, [
+      ...pendingBattles.map((entry) => entry.clientOpId),
+      ...pendingExplores.map((entry) => entry.clientOpId),
+    ]);
 
     // ---- Step 12b. Reconcile the satchel and the gear rack after a battle reaches the server.
     //
@@ -441,6 +449,7 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
       recordAttempt(db, [
         ...pending.map((entry) => entry.clientOpId),
         ...pendingBattles.map((entry) => entry.clientOpId),
+        ...pendingExplores.map((entry) => entry.clientOpId),
       ]);
     }
 

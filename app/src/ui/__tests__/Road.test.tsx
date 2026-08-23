@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import type { RoadGate, RoadState, RoadZone } from '../../progression/road';
 import { Road, waymarkerZone } from '../Road';
@@ -116,6 +116,50 @@ describe('the Road', () => {
 
     expect(screen.getByText(/you may walk on/)).toBeTruthy();
     expect(screen.getByText(/the road stops here/)).toBeTruthy();
+  });
+
+  /**
+   * GDD 9 §4.3 — Explore belongs to a segment the player has **already unlocked**. That is what
+   * makes returning to Olympion for a Storm charm while levelling in Imperion a supported thing to
+   * do rather than a workaround, and it is why a locked segment offers nothing.
+   */
+  it('offers Explore on an unlocked segment and nowhere else', async () => {
+    const onExplore = jest.fn();
+
+    await render(
+      <Road
+        state={state({
+          zones: [
+            zone({ gates: [] }),
+            zone({ zoneId: 'valheon', displayName: 'Valheon', unlocked: false, gates: [] }),
+          ],
+        })}
+        onExplore={onExplore}
+      />,
+    );
+
+    expect(screen.getByText('Explore Olympion')).toBeTruthy();
+    expect(screen.queryByText('Explore Valheon')).toBeNull();
+
+    await fireEvent.press(screen.getByText('Explore Olympion'));
+
+    expect(onExplore).toHaveBeenCalledWith('olympion');
+  });
+
+  /**
+   * ↯ The roll is the server's (T2 §4 step 8), so the button cannot report an outcome — only that
+   * the tap is away. A second press while the first is in flight would spend a second roll.
+   */
+  it('shuts the button while its tap is in flight', async () => {
+    const onExplore = jest.fn();
+
+    await render(
+      <Road state={state({ zones: [zone({ gates: [] })] })} exploring="olympion" onExplore={onExplore} />,
+    );
+
+    await fireEvent.press(screen.getByText('Searching the road…'));
+
+    expect(onExplore).not.toHaveBeenCalled();
   });
 
   /**

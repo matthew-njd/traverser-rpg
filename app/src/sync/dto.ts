@@ -110,17 +110,41 @@ export function toWireSession(session: SyncSession): Json {
   };
 }
 
+/**
+ * GDD 9 §4.3's Explore tap, queued while offline (T2 §1.3).
+ *
+ * ↯ The operation id is minted once and never regenerated. A tap **spends a roll** from the daily
+ * pool, so a resend with a fresh id would spend a second one — the server's operation ledger is
+ * what stops that, and it can only stop it if the id stays the same.
+ */
+export interface ExplorePayload {
+  readonly operationId: string;
+  readonly zoneId: string;
+  /** The player's own local calendar date, whose cap the roll is charged against (T2 §2). */
+  readonly activityDate: string;
+}
+
+export function toWireExplore(payload: ExplorePayload): Json {
+  return {
+    operation_id: payload.operationId,
+    zone_id: payload.zoneId,
+    activity_date: payload.activityDate,
+  };
+}
+
 export function toWireSyncRequest(
   deltas: readonly MintedDelta[],
   contentVersion: number,
   battles: readonly Json[] = [],
   sessions: readonly SyncSession[] = [],
+  explores: readonly ExplorePayload[] = [],
 ): Json {
   return {
     deltas: deltas.map(toWireDelta),
     content_version: contentVersion,
     battles,
     sessions: sessions.map(toWireSession),
+    explores: explores.map(toWireExplore),
   };
 }
 

@@ -59,6 +59,7 @@ describe('outbound', () => {
       // way, but a stable shape keeps the payload diffable against the spec.
       battles: [],
       sessions: [],
+      explores: [],
     });
   });
 });

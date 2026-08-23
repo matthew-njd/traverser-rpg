@@ -68,6 +68,7 @@ describe('requests', () => {
       content_version: 0,
       battles: [],
       sessions: [],
+      explores: [],
       deltas: [
         {
           client_delta_id: 'd1',

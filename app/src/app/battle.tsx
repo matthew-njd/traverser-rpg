@@ -20,7 +20,7 @@ import { Body, Button, Screen } from '@/ui/primitives';
  * exit that discards a fight the outbox has not recorded.
  */
 export default function Battle() {
-  const params = useLocalSearchParams<{ enemyId?: string; kind?: string }>();
+  const params = useLocalSearchParams<{ enemyId?: string; kind?: string; grantId?: string }>();
   const router = useRouter();
   const store = useBattleStore();
   const traverserName = usePlayerStore((state) => state.traverserName) || 'Traverser';
@@ -41,6 +41,10 @@ export default function Battle() {
       useBattleStore.getState().begin(getDatabase(), {
         enemyId,
         encounterKind: kind,
+        // The grant this fight spends (T2 §1.3). Carried through to the payload, where the server
+        // derives 'spent' from a battle row naming it — the partial unique index on
+        // `battle.grant_id` is what makes a double-spend structurally impossible.
+        grantId: params.grantId ?? null,
         // Minted at battle start and never re-derived, so a resumed fight keeps its id (T2 §5).
         clientBattleId: mintUuidV7(getDatabase(), now),
         startedAt: new Date(now).toISOString(),
@@ -48,7 +52,7 @@ export default function Battle() {
     } catch (error) {
       setFailed(error instanceof Error ? error.message : 'That encounter could not be opened.');
     }
-  }, [enemyId, kind]);
+  }, [enemyId, kind, params.grantId]);
 
   // ↯ A battle can be entered by boot's redirect (`app/index.tsx`) rather than by a push, and a
   // redirect leaves no history to pop — `back()` is a silent no-op there, stranding the player on

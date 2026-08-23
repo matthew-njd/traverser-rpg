@@ -163,6 +163,14 @@ export function settleBattle(
     // without offering the same item twice (T4 §5.3).
     recordBattle(db, { playerId, enemyId: battle.enemyId, won: battle.outcome === 'win' });
 
+    // ↯ **A grant is spent by the battle that names it, and only once.** Server-side "spent" is
+    // derived — a `battle` row referencing the grant — so nothing needs to be sent. Locally the row
+    // is deleted here rather than at battle *start*: a fight abandoned mid-way writes no battle row
+    // (T5 §8.1), and its encounter must still be waiting when the player comes back.
+    if (battle.grantId !== null) {
+      db.runSync('DELETE FROM encounter_grant WHERE grant_id = ?', [battle.grantId]);
+    }
+
     // Last, and in the same transaction: no window in which a battle is both settled and resumable.
     clearSnapshot(db);
   });

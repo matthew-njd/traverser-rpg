@@ -170,3 +170,39 @@ export function segmentFill(zone: RoadZone, next: RoadZone | undefined, leagues:
 
   return Math.min((leagues - from) / (end - from), 1);
 }
+
+/**
+ * An encounter waiting to be fought (T2 §1.3). Already resolved and already charged against the
+ * day's cap server-side, so it is spendable with the API switched off.
+ */
+export interface PendingEncounter {
+  readonly grantId: string;
+  readonly zoneId: string;
+  readonly enemyId: string;
+  readonly displayName: string;
+  readonly source: string;
+}
+
+/** Oldest first — a UUIDv7 sorts by mint time, so the encounter waiting longest is offered first. */
+export function readEncounters(db: SqliteDatabase): PendingEncounter[] {
+  return db
+    .getAllSync<{
+      grant_id: string;
+      zone_id: string;
+      enemy_id: string;
+      display_name: string | null;
+      source: string;
+    }>(
+      `SELECT g.grant_id, g.zone_id, g.enemy_id, g.source, e.display_name
+       FROM encounter_grant g
+       LEFT JOIN enemy e ON e.id = g.enemy_id
+       ORDER BY g.grant_id`,
+    )
+    .map((row) => ({
+      grantId: row.grant_id,
+      zoneId: row.zone_id,
+      enemyId: row.enemy_id,
+      displayName: row.display_name ?? row.enemy_id,
+      source: row.source,
+    }));
+}
