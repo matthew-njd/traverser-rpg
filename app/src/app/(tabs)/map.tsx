@@ -1,28 +1,104 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Body, Screen, Title } from '@/ui/primitives';
-import { colors, space, type } from '@/ui/theme';
+import { getDatabase } from '@/db/open';
+import { type RoadState, readRoad } from '@/progression/road';
+import { syncNow } from '@/runtime';
+import { Button, Screen, Title } from '@/ui/primitives';
+import { Road, waymarkerZone } from '@/ui/Road';
+import { colors, space, tabular, type } from '@/ui/theme';
 
 /**
- * GDD 13 §4 — the Map, stubbed.
+ * GDD 9 §4 — the Road.
  *
- * A stub rather than nothing, so the 3-tab bar (GDD 13 §2.1) is built once here rather than
- * retrofitted at M3 with the road, the Waymarker and the gate nodes.
+ * Reads the mirror, never the network: every input to `readRoad` is already local, so the tab opens
+ * with no round trip and works with the API switched off (tech-02 §1.2). `GET /players/me/map` is
+ * the authority and the repair path, the same role `GET /players/me` plays for the player block.
+ *
+ * The Viewport scrolls freely to any segment behind the Waymarker (§4.3); "Return to the Road"
+ * snaps it back. Explore lands at M3/P8 with the rosters it needs.
  */
-export default function Map() {
+export default function MapScreen() {
+  const [road, setRoad] = useState<RoadState | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const scroll = useRef<ScrollView>(null);
+  const offsets = useRef(new Map<string, number>());
+
+  const reload = useCallback(() => setRoad(readRoad(getDatabase())), []);
+
+  useFocusEffect(reload);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+
+    try {
+      await syncNow();
+    } catch {
+      // Offline is the ordinary outcome, and the Road is derived from what is already durable.
+    } finally {
+      reload();
+      setRefreshing(false);
+    }
+  }, [reload]);
+
+  const returnToTheRoad = () => {
+    const zoneId = road === null ? null : waymarkerZone(road);
+    const y = zoneId === null ? undefined : offsets.current.get(zoneId);
+
+    // ↯ Not `scrollTo(0)`. The Waymarker is usually *not* at the top — by Imperion the player's
+    // frontier is two segments down, and snapping to the origin is the opposite of returning.
+    scroll.current?.scrollTo({ y: y ?? 0, animated: true });
+  };
+
   return (
     <Screen tabbed>
       <Title>The Road</Title>
 
-      <View style={styles.centre}>
-        <Text style={styles.glyph}>⋮</Text>
-        <Body dim>The road is being drawn. Walk on — your leagues are counting.</Body>
-      </View>
+      {road === null ? null : (
+        <>
+          <View style={styles.counter}>
+            <Text style={styles.leagues}>{road.leagues.toLocaleString()} Leagues</Text>
+
+            {/* §4.4's "653 / 900 Leagues to Jörmungandr's Gate", once there is a gate ahead. */}
+            {road.nextGate === null ? null : (
+              <Text style={styles.toNext}>
+                {road.leagues.toLocaleString()} / {road.nextGate.leagueThreshold.toLocaleString()} to{' '}
+                {road.nextGate.displayName}
+              </Text>
+            )}
+          </View>
+
+          <ScrollView
+            ref={scroll}
+            contentContainerStyle={styles.viewport}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => void refresh()}
+                tintColor={colors.accent}
+                colors={[colors.accent]}
+                progressBackgroundColor={colors.surface}
+              />
+            }
+          >
+            <Road
+              state={road}
+              onZoneLayout={(zoneId, y) => offsets.current.set(zoneId, y)}
+            />
+          </ScrollView>
+
+          <Button label="Return to the Road" onPress={returnToTheRoad} />
+        </>
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.md },
-  glyph: { ...type.display, color: colors.border, fontSize: 56 },
+  counter: { gap: space.xs, paddingBottom: space.sm },
+  leagues: { ...type.display, ...tabular, color: colors.accent },
+  toNext: { ...type.small, ...tabular, color: colors.textDim },
+  viewport: { gap: space.md, paddingBottom: space.md },
 });
