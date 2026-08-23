@@ -1,3 +1,5 @@
+using Traverser.Api.Data;
+
 namespace Traverser.Api.Contracts;
 
 // tech-02 §2 — snake_case on the wire, so these property names map 1:1 onto tech-01's column names
@@ -118,3 +120,60 @@ public sealed record PlayerSettingsResponse(
     string MusicVolume,
     string SfxVolume,
     int? BirthYear);
+
+/// <summary>
+/// <c>GET /api/v1/players/me/map</c> — GDD 9's Road, derived on every read.
+/// <para>
+/// ↯ **Nothing here is stored** (tech-01 §4). Gate state is a function of <c>lifetime_steps</c>,
+/// <c>zone_gate</c> and <c>player_bestiary</c>, computed fresh each call. The only durable input is
+/// <c>player_zone_progress</c>, which records entry to a zone and nothing about its gates — so a
+/// rebalance that moves a threshold moves every player's map with it, and there is no stored state
+/// to migrate.
+/// </para>
+/// </summary>
+/// <param name="Leagues">The Waymarker. <c>lifetime_steps / 1000</c> (GDD 9 §2.1).</param>
+public sealed record MapResponse(
+    long Leagues,
+    IReadOnlyList<MapZoneResponse> Zones,
+    IReadOnlyList<MapGateResponse> Gates);
+
+/// <param name="EntryThresholdLeagues">
+/// The League threshold of the gate that unlocks this zone; 0 for <c>olympion</c>, which no gate
+/// unlocks. What GDD 9 §4.1's per-segment progress fill is scaled against.
+/// </param>
+/// <param name="Unlocked">
+/// Entry recorded in <c>player_zone_progress</c> — the dual gate's outcome, not distance alone.
+/// </param>
+/// <param name="IsReleased">
+/// False for <c>egypt_tbd</c>, which is GDD 9 §4.2's "coming soon" terminus. Data rather than a
+/// hardcoded special case, so releasing the zone is a seed change.
+/// </param>
+public sealed record MapZoneResponse(
+    string ZoneId,
+    string DisplayName,
+    int Ordinal,
+    long EntryThresholdLeagues,
+    bool Unlocked,
+    bool IsReleased);
+
+/// <param name="IsHardGate">
+/// False for a mid-boss, which GDD 9 §4.2 makes a recommended checkpoint the player walks past.
+/// A final-boss gate stops the Road until it is defeated.
+/// </param>
+public sealed record MapGateResponse(
+    string GateId,
+    string ZoneId,
+    string EnemyId,
+    GateKind GateKind,
+    int LeagueThreshold,
+    bool IsHardGate,
+    string? UnlocksZoneId,
+    MapGateState State);
+
+/// <summary>GDD 9 §4.2's three node states, in the order a gate passes through them.</summary>
+public enum MapGateState
+{
+    Locked,
+    Available,
+    Defeated,
+}

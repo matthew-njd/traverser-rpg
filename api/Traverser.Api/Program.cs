@@ -191,6 +191,7 @@ var secured = app.MapGroup("/api/v1").RequireAuthorization();
 open.MapRegistration();
 
 secured.MapPlayerReads();
+secured.MapRoadReads();
 secured.MapContentEndpoints();
 secured.MapSync();
 secured.MapProgression();
