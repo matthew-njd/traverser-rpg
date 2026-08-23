@@ -8,6 +8,7 @@ using Sentry.Extensibility;
 using Traverser.Api.Auth;
 using Traverser.Api.Data;
 using Traverser.Api.Endpoints;
+using Traverser.Api.Progression;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -94,6 +95,10 @@ builder.Services.AddDbContext<TraverserDbContext>(options => options
     // a store default on a key column is exactly what EF warns about, and exactly what a
     // single-row table wants.
     .ConfigureWarnings(w => w.Ignore(RelationalEventId.ModelValidationKeyDefaultValueWarning)));
+
+// T2 §4 step 8's rolls. Registered rather than newed up so the API tests can make every roll
+// land — a 25% chance and a 5/day cap cannot both be proven against a real PRNG.
+builder.Services.AddSingleton<IRandomSource, SharedRandomSource>();
 
 var app = builder.Build();
 

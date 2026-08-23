@@ -67,6 +67,7 @@ describe('requests', () => {
     expect(JSON.parse(init.body as string)).toEqual({
       content_version: 0,
       battles: [],
+      sessions: [],
       deltas: [
         {
           client_delta_id: 'd1',

@@ -90,6 +90,8 @@ export function wireSyncResponse(overrides: Record<string, unknown> = {}): Recor
     activity_days: [],
     accepted_delta_ids: [],
     duplicate_delta_ids: [],
+    encounter_grants: [],
+    unlocked_zone_ids: [],
     ...overrides,
   };
 }

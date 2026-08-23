@@ -6,7 +6,7 @@ import { adoptBundle } from '../content/store';
 import { acknowledge, parked, peek, recordAttempt } from '../db/outbox';
 import { readWatermark } from '../db/watermarks';
 import type { SqliteDatabase } from '../db/types';
-import { type MintedDelta, commitHealthRead } from '../health/deltas';
+import { type MintedDelta, type ResolvedSession, commitHealthRead } from '../health/deltas';
 import { ageFromBirthYear, thresholdsForAge } from '../health/derive';
 import { applyVigorRecovery } from '../progression/vigor';
 import type { LocalDateResolver } from '../health/localDate';
@@ -22,7 +22,7 @@ import {
 import { ApiStatusError, ApiUnreachableError, type TraverserApi } from './api';
 import { backfillActivity, needsHistoryRepair } from './history';
 import type { AllocationPayload, RestDayPayload, SettingsPayload } from './dto';
-import { type LevelUp, WireFormatError } from './dto';
+import { type LevelUp, type SyncSession, WireFormatError } from './dto';
 import {
   applySyncResponse,
   readBirthYear,
@@ -120,10 +120,35 @@ export interface SyncPassDeps {
   readonly onHealth?: (health: HealthPassResult) => void;
 }
 
+/**
+ * The sessions the device derived, addressed to the day their encounter bonus is charged against
+ * (T2 §4 step 8).
+ *
+ * The day the session **started**, even for one that crosses midnight — fixtures §11.5 keeps such a
+ * session whole while splitting its minutes across two day rollups, and a bonus can only be charged
+ * to one of them.
+ */
+function toSyncSessions(
+  sessions: readonly ResolvedSession[],
+  dates: LocalDateResolver,
+): SyncSession[] {
+  return sessions.map((session) => ({
+    sessionId: session.sessionId,
+    startedAt: new Date(session.startedAt).toISOString(),
+    endedAt: session.open ? null : new Date(session.endedAt).toISOString(),
+    activityDate: dates.dateOf(session.startedAt),
+    tier1Minutes: session.tier1Minutes,
+    tier2Minutes: session.tier2Minutes,
+    tier3Minutes: session.tier3Minutes,
+  }));
+}
+
 /** Steps 2–8. Platform calls reject rather than resolving empty (§8.3), so all are wrapped. */
-async function consumeHealth(
-  deps: SyncPassDeps,
-): Promise<{ health: HealthPassResult; minted: readonly MintedDelta[] }> {
+async function consumeHealth(deps: SyncPassDeps): Promise<{
+  health: HealthPassResult;
+  minted: readonly MintedDelta[];
+  sessions: readonly SyncSession[];
+}> {
   const { db, provider, dates, now } = deps;
 
   let availability: SdkAvailability = 'unavailable';
@@ -134,7 +159,11 @@ async function consumeHealth(
     availability = await provider.availability();
 
     if (availability !== 'available') {
-      return { health: { availability, permissions, ageMissing, error: null }, minted: [] };
+      return {
+        health: { availability, permissions, ageMissing, error: null },
+        minted: [],
+        sessions: [],
+      };
     }
 
     await provider.initialize();
@@ -152,7 +181,11 @@ async function consumeHealth(
     };
 
     if (!reading.steps && !reading.heartRate) {
-      return { health: { availability, permissions, ageMissing, error: null }, minted: [] };
+      return {
+        health: { availability, permissions, ageMissing, error: null },
+        minted: [],
+        sessions: [],
+      };
     }
 
     // Age 0 is unreachable: `reading.heartRate` is false whenever `birthYear` is null.
@@ -163,9 +196,13 @@ async function consumeHealth(
     const snapshot = await provider.read(window, thresholds, dates, reading);
 
     // Steps 6–8. `commitHealthRead` is the transaction boundary: queue, then marks, then watermark.
-    const { deltas } = commitHealthRead(db, snapshot, dates, now);
+    const { deltas, sessions } = commitHealthRead(db, snapshot, dates, now);
 
-    return { health: { availability, permissions, ageMissing, error: null }, minted: deltas };
+    return {
+      health: { availability, permissions, ageMissing, error: null },
+      minted: deltas,
+      sessions: toSyncSessions(sessions, dates),
+    };
   } catch (error) {
     // A health failure does not fail the pass — it becomes banner state and the sync continues,
     // because the outbox may hold deltas from an earlier pass that this one can still deliver.
@@ -177,6 +214,7 @@ async function consumeHealth(
         error: error instanceof HealthError ? error.reason : 'unknown',
       },
       minted: [],
+      sessions: [],
     };
   }
 }
@@ -272,7 +310,7 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
 async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
   const { db, api } = deps;
 
-  const { health, minted } = await consumeHealth(deps);
+  const { health, minted, sessions } = await consumeHealth(deps);
 
   // Before the network, deliberately — a re-granted permission clears its banner now rather than
   // when the server eventually answers or times out.
@@ -340,6 +378,13 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
       pending.map((entry) => JSON.parse(entry.payload) as MintedDelta),
       heldVersion(),
       pendingBattles.map((entry) => toWireBattle(JSON.parse(entry.payload) as SettledBattle)),
+
+      // ↯ Sessions ride the live read rather than the outbox. They are *set, not added* server-side,
+      // so a resend must carry the session's current totals — and an outbox entry keyed by
+      // `client_op_id` would replay a stale copy instead of being replaced by the newer one. The
+      // cost is that a pass that never reaches the server can lose a session's encounter bonus, and
+      // never any XP: that comes from the deltas, which are durable.
+      sessions,
     );
 
     // ---- Step 12 ----

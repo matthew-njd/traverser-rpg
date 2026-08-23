@@ -19,7 +19,46 @@ public sealed record SyncRequest(
     /// Completed battles with their client-rolled drops (T2 §4.1). Optional so an M1-era client, and
     /// every sync that fought nothing, keeps sending exactly what it sent before.
     /// </summary>
-    IReadOnlyList<BattleRequest>? Battles = null);
+    IReadOnlyList<BattleRequest>? Battles = null,
+    /// <summary>
+    /// HR sessions as the device derived them (T3 §6). Step 8's session bonus is the only reader,
+    /// and until M3/P5 there was none — which is why nothing uploaded them.
+    /// </summary>
+    IReadOnlyList<HrSessionRequest>? Sessions = null,
+    /// <summary>
+    /// GDD 9 §4.3's Explore taps, queued while offline (T2 §1.3). Each consumes one roll from the
+    /// same daily pool as travel and the session bonus.
+    /// </summary>
+    IReadOnlyList<ExploreRequest>? Explores = null);
+
+/// <param name="ExternalSessionId">
+/// ↯ <c>hr:{started_at epoch seconds}</c>, frozen by the device's ledger (T3 §6.1). Tier minutes are
+/// **set, not added** on re-observation (T2 §6.3), which only works while a growing session keeps
+/// the same key — so a late-arriving sample that shifts the start must not mint a second id.
+/// </param>
+/// <param name="ActivityDate">
+/// The local date this session's bonus rolls are charged against, supplied by the client like every
+/// other date on this surface (§2). A session carries instants, and the server does not own the
+/// player's midnight — so it cannot derive which day's cap the bonus spends from.
+/// </param>
+public sealed record HrSessionRequest(
+    string ExternalSessionId,
+    DateTime StartedAt,
+    DateTime? EndedAt,
+    DateOnly ActivityDate,
+    int Tier1Minutes,
+    int Tier2Minutes,
+    int Tier3Minutes);
+
+/// <param name="OperationId">
+/// Client-minted and never regenerated. An Explore tap spends a roll, so a replayed request that
+/// slipped through would spend a second one — the operation ledger is what stops that.
+/// </param>
+/// <param name="ZoneId">
+/// The segment the player was looking at, which GDD 9 §4.3 requires to be one they have already
+/// unlocked. The server re-checks that rather than trusting the tap.
+/// </param>
+public sealed record ExploreRequest(Guid OperationId, string ZoneId, DateOnly ActivityDate);
 
 /// <param name="ClientBattleId">
 /// ↯ Minted at battle start and never re-derived (T2 §5, T5 §8). **This is the entire idempotency
@@ -113,7 +152,22 @@ public sealed record SyncResponse(
     IReadOnlyList<LevelUpResponse> LevelUps,
     IReadOnlyList<ActivityDayResponse> ActivityDays,
     IReadOnlyList<Guid> AcceptedDeltaIds,
-    IReadOnlyList<Guid> DuplicateDeltaIds);
+    IReadOnlyList<Guid> DuplicateDeltaIds,
+    /// <summary>
+    /// Encounters this sync issued (T2 §1.3). The zone and enemy are already resolved and the grant
+    /// is already charged against the day's cap, so the client spends it whenever — online or not.
+    /// </summary>
+    IReadOnlyList<EncounterGrantResponse> EncounterGrants,
+    /// <summary>Zones this sync unlocked, from step 7's dual gate (GDD 9 §3).</summary>
+    IReadOnlyList<string> UnlockedZoneIds);
+
+/// <param name="Source">Which of GDD 9 §5.1's three sources produced it. All share one daily pool.</param>
+public sealed record EncounterGrantResponse(
+    Guid GrantId,
+    string ZoneId,
+    string EnemyId,
+    EncounterGrantSource Source,
+    DateOnly ActivityDate);
 
 /// <param name="Level">The level reached, not the one left behind.</param>
 public sealed record LevelUpResponse(int Level, int StatPointsAwarded);

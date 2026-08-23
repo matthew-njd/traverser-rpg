@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 using Traverser.Api.Data;
+using Traverser.Api.Progression;
 
 // ↯ Namespace is `Endpoints`, not `Api`. A `Traverser.Tests.Api` namespace shadows `Traverser.Api`
 // for every file under `Traverser.Tests`, so `Seed/SeedIntegrityTests.cs`'s existing relative
@@ -87,17 +88,30 @@ public sealed class TraverserApiFixture : WebApplicationFactory<Program>, IAsync
         await _postgres.DisposeAsync();
     }
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
-        builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(
-            new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:Traverser"] = _postgres.GetConnectionString(),
+    /// <summary>
+    /// The server's only source of randomness, made scriptable (T2 §4 step 8).
+    /// <para>
+    /// ↯ Shared by every test in the collection, which is safe only because xunit runs a collection
+    /// sequentially. It <b>fails every chance check by default</b>, so a test that says nothing
+    /// about encounters gets none — the alternative is 220 Leagues of steps in a setup line
+    /// silently issuing grants that some later assertion counts.
+    /// </para>
+    /// </summary>
+    public ScriptedRandomSource Random { get; } = new();
 
-                // Explicit rather than inherited. An empty DSN disables capture (tech-06 §4.1), and
-                // the alternative is a test run quietly shipping its own failures to the real
-                // project's issue stream.
-                ["Sentry:Dsn"] = string.Empty,
-            }));
+    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+        builder
+            .ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:Traverser"] = _postgres.GetConnectionString(),
+
+                    // Explicit rather than inherited. An empty DSN disables capture (tech-06 §4.1),
+                    // and the alternative is a test run quietly shipping its own failures to the
+                    // real project's issue stream.
+                    ["Sentry:Dsn"] = string.Empty,
+                }))
+            .ConfigureServices(services => services.AddSingleton<IRandomSource>(Random));
 
     /// <summary>A scope onto the same database the API is using, for asserting on stored rows.</summary>
     public AsyncServiceScope NewScope() => Services.CreateAsyncScope();
@@ -134,6 +148,32 @@ public sealed class TraverserApiFixture : WebApplicationFactory<Program>, IAsync
 
         return client;
     }
+}
+
+/// <summary>
+/// A hand-driven <see cref="IRandomSource"/>. <c>1.0</c> when nothing is scripted, which is above
+/// every probability in the game and so declines every roll.
+/// </summary>
+public sealed class ScriptedRandomSource : IRandomSource
+{
+    private double _next = 1.0;
+
+    /// <summary>The value every subsequent <see cref="NextDouble"/> returns.</summary>
+    public void Always(double value) => _next = value;
+
+    /// <summary>Back to declining everything. Call it in any test that scripted a value.</summary>
+    public void Reset()
+    {
+        _next = 1.0;
+        Pick = 0;
+    }
+
+    /// <summary>Which member of a roster <see cref="Next"/> draws, modulo its size.</summary>
+    public int Pick { get; set; }
+
+    public double NextDouble() => _next;
+
+    public int Next(int exclusiveUpper) => Pick % exclusiveUpper;
 }
 
 /// <summary>

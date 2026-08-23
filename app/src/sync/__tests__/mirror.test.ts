@@ -63,6 +63,41 @@ describe('applying a sync response', () => {
     expect(readActivityDay(db, '2026-08-02')?.steps).toBe(9500);
   });
 
+  /**
+   * ↯ **Sync reports a grant exactly once.** The server has already charged it against the day's
+   * cap, so a response applied without storing it is an encounter the player walked for and will
+   * never be offered — which is why this lands in the same transaction as the acknowledgement.
+   */
+  it('stores the encounter grants a sync issued, and ignores a repeat', () => {
+    const db = registeredDatabase();
+    const grant = {
+      grant_id: 'g1',
+      zone_id: 'olympion',
+      enemy_id: 'enemy_harpy',
+      source: 'travel',
+      activity_date: '2026-08-03',
+    };
+
+    applySyncResponse(db, response({ encounter_grants: [grant] }));
+    applySyncResponse(db, response({ encounter_grants: [grant] }));
+
+    expect(
+      db.getAllSync<{ grant_id: string; enemy_id: string }>(
+        'SELECT grant_id, enemy_id FROM encounter_grant',
+      ),
+    ).toEqual([{ grant_id: 'g1', enemy_id: 'enemy_harpy' }]);
+  });
+
+  it('opens the zones step 7 unlocked', () => {
+    const db = registeredDatabase();
+
+    applySyncResponse(db, response({ unlocked_zone_ids: ['valheon'] }));
+
+    expect(
+      db.getAllSync<{ zone_id: string }>('SELECT zone_id FROM player_zone_progress'),
+    ).toEqual([{ zone_id: 'valheon' }]);
+  });
+
   it('stores the streak block', () => {
     const db = registeredDatabase();
 

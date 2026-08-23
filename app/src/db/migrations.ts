@@ -414,6 +414,25 @@ const V7_VIGOR_ANCHOR: readonly string[] = [
   'ALTER TABLE activity_day ADD COLUMN rest_tagged_at TEXT',
 ];
 
+/**
+ * Version 8 — the encounter grants sync issues (T2 §1.3, GDD 9 §5).
+ *
+ * ↯ **Durable because sync reports each grant exactly once.** The server charges it against the
+ * day's cap the moment it is issued, so a grant this device fails to store is an encounter the
+ * player walked for and can never be handed again. "Spent" stays derived server-side — a battle
+ * row naming the grant — so nothing here records it.
+ */
+const V8_ENCOUNTER_GRANT: readonly string[] = [
+  `CREATE TABLE encounter_grant (
+     grant_id      TEXT PRIMARY KEY NOT NULL,
+     player_id     TEXT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+     zone_id       TEXT NOT NULL,
+     enemy_id      TEXT NOT NULL,
+     source        TEXT NOT NULL,
+     activity_date TEXT NOT NULL
+   )`,
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
@@ -422,6 +441,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 5, statements: [...V5_BATTLE] },
   { version: 6, statements: [...V6_GEAR] },
   { version: 7, statements: [...V7_VIGOR_ANCHOR] },
+  { version: 8, statements: [...V8_ENCOUNTER_GRANT] },
 ];
 
 /** The version a fully-migrated database reports. */

@@ -82,12 +82,46 @@ export function toWireDelta(delta: MintedDelta): Json {
   };
 }
 
+/**
+ * An HR session as the server stores it (T3 §6). `sessionId` is the frozen `hr:{epoch}` key, and
+ * `activityDate` is the local date its encounter bonus is charged against — the client's to decide,
+ * like every other date on this surface (T2 §2).
+ */
+export interface SyncSession {
+  readonly sessionId: string;
+  readonly startedAt: string;
+  readonly endedAt: string | null;
+  readonly activityDate: string;
+  readonly tier1Minutes: number;
+  readonly tier2Minutes: number;
+  readonly tier3Minutes: number;
+}
+
+/** Minutes are sent as totals, not increments — the server sets rather than adds (T2 §6.3). */
+export function toWireSession(session: SyncSession): Json {
+  return {
+    external_session_id: session.sessionId,
+    started_at: session.startedAt,
+    ended_at: session.endedAt,
+    activity_date: session.activityDate,
+    tier1_minutes: session.tier1Minutes,
+    tier2_minutes: session.tier2Minutes,
+    tier3_minutes: session.tier3Minutes,
+  };
+}
+
 export function toWireSyncRequest(
   deltas: readonly MintedDelta[],
   contentVersion: number,
   battles: readonly Json[] = [],
+  sessions: readonly SyncSession[] = [],
 ): Json {
-  return { deltas: deltas.map(toWireDelta), content_version: contentVersion, battles };
+  return {
+    deltas: deltas.map(toWireDelta),
+    content_version: contentVersion,
+    battles,
+    sessions: sessions.map(toWireSession),
+  };
 }
 
 // ---- Inbound ----------------------------------------------------------------------------------
@@ -160,6 +194,23 @@ export interface SyncResponse {
    */
   readonly acceptedDeltaIds: readonly string[];
   readonly duplicateDeltaIds: readonly string[];
+  /**
+   * Encounters this sync issued (T2 §1.3). Already resolved and already charged against the day's
+   * cap, so the device spends them whenever — and a grant dropped here is an encounter the player
+   * earned and will never be offered again, since sync reports each one exactly once.
+   */
+  readonly encounterGrants: readonly EncounterGrant[];
+  /** Zones step 7's dual gate opened on this sync (GDD 9 §3). News, not the full set. */
+  readonly unlockedZoneIds: readonly string[];
+}
+
+/** @param source Which of GDD 9 §5.1's three sources produced it. All share one daily pool. */
+export interface EncounterGrant {
+  readonly grantId: string;
+  readonly zoneId: string;
+  readonly enemyId: string;
+  readonly source: string;
+  readonly activityDate: string;
 }
 
 export function parsePlayerState(value: unknown, at = 'player'): PlayerState {
@@ -244,6 +295,21 @@ export function parseSyncResponse(value: unknown): SyncResponse {
     ),
     duplicateDeltaIds: array(body.duplicate_delta_ids, 'duplicate_delta_ids').map((id, index) =>
       text(id, `duplicate_delta_ids[${index}]`),
+    ),
+    encounterGrants: array(body.encounter_grants, 'encounter_grants').map((entry, index) => {
+      const at = `encounter_grants[${index}]`;
+      const grant = object(entry, at);
+
+      return {
+        grantId: text(grant.grant_id, `${at}.grant_id`),
+        zoneId: text(grant.zone_id, `${at}.zone_id`),
+        enemyId: text(grant.enemy_id, `${at}.enemy_id`),
+        source: text(grant.source, `${at}.source`),
+        activityDate: text(grant.activity_date, `${at}.activity_date`),
+      };
+    }),
+    unlockedZoneIds: array(body.unlocked_zone_ids, 'unlocked_zone_ids').map((id, index) =>
+      text(id, `unlocked_zone_ids[${index}]`),
     ),
   };
 }

@@ -1,11 +1,11 @@
 {
-  "server_time": "2026-08-22T18:18:51.9432963Z",
+  "server_time": "2026-08-23T00:13:20.7678807Z",
   "content_version": 2,
   "player": {
-    "player_id": "fcbd1b53-ae07-4608-a5b8-eadbb2e0658f",
+    "player_id": "d1ce1880-d789-433a-a086-2279d4661d3f",
     "traverser_name": "WireProbe",
     "timezone": "America/New_York",
-    "created_at": "2026-08-22T18:18:51.366255Z",
+    "created_at": "2026-08-23T00:13:20.66128Z",
     "level": 4,
     "xp_current": 85,
     "xp_to_next": 429,
@@ -18,7 +18,7 @@
     "alloc_aegis": 0,
     "alloc_stride": 0,
     "vigor_current": 20,
-    "vigor_anchor_at": "2026-08-22T18:18:51.164051Z",
+    "vigor_anchor_at": "2026-08-23T00:13:20.658502Z",
     "lifetime_steps": 8000,
     "daily_step_goal": 7000,
     "tutorial_completed_at": null
@@ -45,7 +45,17 @@
     }
   ],
   "accepted_delta_ids": [
-    "351a66ab-7dd0-4a71-a3e2-adb397cb0ef8"
+    "e80e16b7-cb0e-4b0f-9e12-e961a0f7ec95"
   ],
-  "duplicate_delta_ids": []
+  "duplicate_delta_ids": [],
+  "encounter_grants": [
+    {
+      "grant_id": "01a02bf6-f7f1-7953-9a53-78ebf5239367",
+      "zone_id": "olympion",
+      "enemy_id": "enemy_satyr",
+      "source": "explore",
+      "activity_date": "2026-08-06"
+    }
+  ],
+  "unlocked_zone_ids": []
 }

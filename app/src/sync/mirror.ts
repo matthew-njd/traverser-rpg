@@ -262,6 +262,34 @@ export function applySyncResponse(db: SqliteDatabase, response: SyncResponse): v
       writeActivityDay(db, response.player.playerId, day);
     }
 
+    for (const zoneId of response.unlockedZoneIds) {
+      db.runSync(
+        `INSERT INTO player_zone_progress (player_id, zone_id, unlocked_at)
+         VALUES (?, ?, ?)
+         ON CONFLICT (player_id, zone_id) DO NOTHING`,
+        [response.player.playerId, zoneId, response.serverTime],
+      );
+    }
+
+    // Stored in the same transaction that acknowledges the deltas below. The grant is already
+    // charged against the day's cap server-side and sync will not report it a second time, so
+    // committing the acknowledgement without it would spend an encounter the player never saw.
+    for (const grant of response.encounterGrants) {
+      db.runSync(
+        `INSERT INTO encounter_grant (grant_id, player_id, zone_id, enemy_id, source, activity_date)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT (grant_id) DO NOTHING`,
+        [
+          grant.grantId,
+          response.player.playerId,
+          grant.zoneId,
+          grant.enemyId,
+          grant.source,
+          grant.activityDate,
+        ],
+      );
+    }
+
     acknowledge(db, [...response.acceptedDeltaIds, ...response.duplicateDeltaIds]);
   });
 }

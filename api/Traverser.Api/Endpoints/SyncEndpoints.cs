@@ -39,6 +39,7 @@ public static class SyncEndpoints
         SyncRequest request,
         CurrentPlayer current,
         TraverserDbContext db,
+        IRandomSource rng,
         CancellationToken ct)
     {
         if (request.Deltas is null)
@@ -104,10 +105,17 @@ public static class SyncEndpoints
 
         touchedDates.Sort();
 
+        // Hoisted out of the block below because steps 8's grants charge against day rows too, and a
+        // sync that only carries an Explore tap never enters it.
+        var days = new Dictionary<DateOnly, ActivityDay>();
+        var stepsBefore = player.LifetimeSteps;
+
         if (newDeltas.Count > 0 || newBattles.Count > 0)
         {
             // ---- Steps 3 & 4. Roll up, and derive XP against the post-merge cumulative ----------
-            var (xpByDelta, days) = await MergeAndDeriveXpAsync(db, player, newDeltas, touchedDates, ct);
+            var (xpByDelta, merged) = await MergeAndDeriveXpAsync(db, player, newDeltas, touchedDates, ct);
+
+            days = merged;
 
             // The per-delta XP is written back onto the ledger rows themselves so a day's total can
             // always be traced to the contributions that produced it (tech-01's sync_delta).
@@ -150,8 +158,20 @@ public static class SyncEndpoints
             // Leagues themselves are lifetime_steps / 1000, derived on read and never stored.
             player.LifetimeSteps += newDeltas.Sum(d => (long)d.StepsDelta);
 
+            // Flushed before step 7 rather than folded into the one save below: step 7 reads
+            // `player_bestiary`, and the row step 2 just added for a boss's first defeat is what
+            // opens the gate. Left unsaved, the dual gate misses its own trigger by one sync.
             await db.SaveChangesAsync(ct);
         }
+
+        // ---- Step 7. Gate evaluation ------------------------------------------------------------
+        var (unlockedZoneIds, zonesOpen) = await EvaluateGatesAsync(db, player, ct);
+
+        // ---- Step 8. Encounter checkpoints ------------------------------------------------------
+        var grants = await IssueEncountersAsync(
+            db, player, request, stepsBefore, newDeltas, days, zonesOpen, rng, ct);
+
+        await db.SaveChangesAsync(ct);
 
         var profile = await PlayerProfile.LoadAsync(db, player.Id, ct)
             ?? throw new InvalidOperationException($"Profile for {player.Id} vanished mid-sync.");
@@ -180,7 +200,9 @@ public static class SyncEndpoints
             AcceptedDeltaIds: [.. newDeltas.Select(d => d.ClientDeltaId)],
             // Intra-batch duplicates are folded in here rather than reported separately: to the
             // client both mean the same thing — stop resending this.
-            DuplicateDeltaIds: duplicateIds));
+            DuplicateDeltaIds: duplicateIds,
+            EncounterGrants: grants,
+            UnlockedZoneIds: unlockedZoneIds));
     }
 
     /// <summary>
@@ -440,6 +462,307 @@ public static class SyncEndpoints
                 .Where(i => i.PlayerId == player.Id && consumed.Contains(i.Id))
                 .ExecuteDeleteAsync(ct);
         }
+    }
+
+    /// <summary>
+    /// T2 §4 step 7 — recompute gate state from the new Waymarker and open whatever the dual gate
+    /// now allows. Gate state itself is never stored (tech-01 §4); the only durable consequence is a
+    /// <c>player_zone_progress</c> row, and only a final-boss gate has one.
+    /// <para>
+    /// Mid-boss gates are absent from the query on purpose: they are soft, they unlock nothing, and
+    /// GDD 9 §4.2 has the player walk straight past an undefeated Cyclops.
+    /// </para>
+    /// </summary>
+    /// <returns>The zones this sync opened, and every zone the player now holds.</returns>
+    private static async Task<(List<string> Unlocked, HashSet<string> Open)> EvaluateGatesAsync(
+        TraverserDbContext db,
+        Player player,
+        CancellationToken ct)
+    {
+        var leagues = player.LifetimeSteps / EncounterCheckpoints.StepsPerLeague;
+
+        var open = (await db.PlayerZoneProgress
+            .AsNoTracking()
+            .Where(p => p.PlayerId == player.Id)
+            .Select(p => p.ZoneId)
+            .ToListAsync(ct)).ToHashSet();
+
+        var reachable = await db.ZoneGates
+            .AsNoTracking()
+            .Where(g => g.UnlocksZoneId != null && g.LeagueThreshold <= leagues)
+            .Join(db.Zones, g => g.UnlocksZoneId, z => z.Id, (g, z) => new { g.EnemyId, Zone = z })
+            // `egypt_tbd` seeds unreleased (GDD 9 §3.1). Its gate still exists so the Map can draw a
+            // locked terminus, but opening it would hand the player a zone with no content in it.
+            .Where(x => x.Zone.IsReleased && !open.Contains(x.Zone.Id))
+            .ToListAsync(ct);
+
+        var unlocked = new List<string>();
+
+        if (reachable.Count == 0)
+        {
+            return (unlocked, open);
+        }
+
+        var gateEnemies = reachable.Select(x => x.EnemyId).ToList();
+
+        var defeated = (await db.PlayerBestiary
+            .AsNoTracking()
+            .Where(b => b.PlayerId == player.Id && b.DefeatCount > 0 && gateEnemies.Contains(b.EnemyId))
+            .Select(b => b.EnemyId)
+            .ToListAsync(ct)).ToHashSet();
+
+        foreach (var candidate in reachable.Where(x => defeated.Contains(x.EnemyId)))
+        {
+            db.PlayerZoneProgress.Add(new PlayerZoneProgress
+            {
+                PlayerId = player.Id,
+                ZoneId = candidate.Zone.Id,
+                UnlockedAt = DateTime.UtcNow,
+            });
+
+            open.Add(candidate.Zone.Id);
+            unlocked.Add(candidate.Zone.Id);
+        }
+
+        return (unlocked, open);
+    }
+
+    /// <summary>
+    /// T2 §4 step 8 — GDD 9 §5's three sources against one daily pool.
+    /// <para>
+    /// ↯ Nothing here reads <c>request.Deltas</c>. Travel rolls come from the *change in*
+    /// <c>lifetime_steps</c> that step 6 just applied, so a replayed batch — which merged nothing —
+    /// crosses no Leagues and issues no grants. That is the same replay property steps 1 and 2 rest
+    /// on, arrived at from the other end.
+    /// </para>
+    /// </summary>
+    private static async Task<List<EncounterGrantResponse>> IssueEncountersAsync(
+        TraverserDbContext db,
+        Player player,
+        SyncRequest request,
+        long stepsBefore,
+        IReadOnlyList<SyncDeltaRequest> newDeltas,
+        Dictionary<DateOnly, ActivityDay> days,
+        HashSet<string> zonesOpen,
+        IRandomSource rng,
+        CancellationToken ct)
+    {
+        var sessions = await UpsertSessionsAsync(db, player, request.Sessions ?? [], ct);
+        var explores = request.Explores ?? [];
+        var travelRolls = EncounterCheckpoints.TravelRolls(stepsBefore, player.LifetimeSteps);
+
+        var grants = new List<EncounterGrantResponse>();
+
+        if (travelRolls == 0 && sessions.Count == 0 && explores.Count == 0)
+        {
+            return grants;
+        }
+
+        var zones = await db.Zones.AsNoTracking().OrderByDescending(z => z.Ordinal).ToListAsync(ct);
+
+        // A zone's entry threshold is the League threshold of the gate that unlocks it; `olympion`
+        // is unlocked by no gate and starts at 0.
+        var entryThreshold = await db.ZoneGates
+            .AsNoTracking()
+            .Where(g => g.UnlocksZoneId != null)
+            .ToDictionaryAsync(g => g.UnlocksZoneId!, g => (long)g.LeagueThreshold, ct);
+
+        var wildByZone = (await db.Enemies
+                .AsNoTracking()
+                .Where(e => e.Role == EnemyRole.Wild && e.ZoneId != null)
+                .Select(e => new { e.Id, ZoneId = e.ZoneId! })
+                .ToListAsync(ct))
+            .GroupBy(e => e.ZoneId)
+            .ToDictionary(g => g.Key, g => g.Select(e => e.Id).ToList());
+
+        // GDD 9 §5.1 — "the zone segment that League falls within", narrowed to segments the player
+        // has actually opened. Ordinal descending, so the furthest one whose entry is behind the
+        // League wins and an unopened Valheon simply leaves the roll in Olympion.
+        string? SegmentFor(long league) => zones
+            .FirstOrDefault(z => zonesOpen.Contains(z.Id) && entryThreshold.GetValueOrDefault(z.Id, 0L) <= league)
+            ?.Id;
+
+        async Task<ActivityDay> DayAsync(DateOnly date)
+        {
+            if (days.TryGetValue(date, out var known))
+            {
+                return known;
+            }
+
+            var day = await db.ActivityDays
+                .FirstOrDefaultAsync(a => a.PlayerId == player.Id && a.ActivityDate == date, ct);
+
+            if (day is null)
+            {
+                day = new ActivityDay
+                {
+                    PlayerId = player.Id,
+                    ActivityDate = date,
+                    StepGoalSnapshot = player.DailyStepGoal,
+                };
+
+                db.ActivityDays.Add(day);
+            }
+
+            days[date] = day;
+
+            return day;
+        }
+
+        // Issues iff the day has room. The return value is what the session counter advances on, so
+        // a capped-out roll is not recorded as granted.
+        bool Issue(ActivityDay day, long league, EncounterGrantSource source, string? zoneId = null)
+        {
+            if (day.EncountersUsed >= EncounterCheckpoints.DailyCap)
+            {
+                return false;
+            }
+
+            zoneId ??= SegmentFor(league);
+
+            if (zoneId is null || !wildByZone.TryGetValue(zoneId, out var roster) || roster.Count == 0)
+            {
+                return false;
+            }
+
+            // GDD 5–7 give the wild rosters no selection weights, so the draw is uniform
+            // (DECISIONS 2026-08-22).
+            var grant = new EncounterGrant
+            {
+                PlayerId = player.Id,
+                ZoneId = zoneId,
+                EnemyId = roster[rng.Next(roster.Count)],
+                Source = source,
+                ActivityDate = day.ActivityDate,
+                IssuedAt = DateTime.UtcNow,
+            };
+
+            db.EncounterGrants.Add(grant);
+            day.EncountersUsed += 1;
+            grants.Add(new EncounterGrantResponse(
+                grant.Id, grant.ZoneId, grant.EnemyId, source, day.ActivityDate));
+
+            return true;
+        }
+
+        // ---- Forward travel ---------------------------------------------------------------------
+        if (travelRolls > 0 && newDeltas.Any(d => d.StepsDelta > 0))
+        {
+            // The day the crossing landed on, which is the client's own date and not the server's.
+            var travelDay = await DayAsync(newDeltas.Where(d => d.StepsDelta > 0).Max(d => d.ActivityDate));
+            var leaguesBefore = stepsBefore / EncounterCheckpoints.StepsPerLeague;
+
+            for (var crossed = 1; crossed <= travelRolls; crossed += 1)
+            {
+                if (rng.NextDouble() < EncounterCheckpoints.TravelChance)
+                {
+                    Issue(travelDay, leaguesBefore + crossed, EncounterGrantSource.Travel);
+                }
+            }
+        }
+
+        var leaguesNow = player.LifetimeSteps / EncounterCheckpoints.StepsPerLeague;
+
+        // ---- Workout session bonus --------------------------------------------------------------
+        foreach (var (session, sent) in sessions)
+        {
+            // "Tier 1 or above" (GDD 9 §5.1) — all three tiers count toward the 15-minute step.
+            var owed = EncounterCheckpoints.SessionRolls(
+                sent.Tier1Minutes + sent.Tier2Minutes + sent.Tier3Minutes,
+                session.EncounterRollsGranted);
+
+            if (owed == 0)
+            {
+                continue;
+            }
+
+            var day = await DayAsync(sent.ActivityDate);
+
+            for (var i = 0; i < owed; i += 1)
+            {
+                // Guaranteed, not rolled — §5.1 calls this the reward for a structured workout.
+                if (!Issue(day, leaguesNow, EncounterGrantSource.Workout))
+                {
+                    break;
+                }
+
+                session.EncounterRollsGranted += 1;
+            }
+        }
+
+        // ---- Explore ----------------------------------------------------------------------------
+        foreach (var explore in explores)
+        {
+            var first = await db.Database.ExecuteSqlAsync(
+                $"""
+                 INSERT INTO client_operation (player_id, operation_id, endpoint)
+                 VALUES ({player.Id}, {explore.OperationId}, {"POST /sync (explore)"})
+                 ON CONFLICT (player_id, operation_id) DO NOTHING
+                 """,
+                ct);
+
+            // Zero rows means this tap already spent its roll. Silent, like every other replay here.
+            // GDD 9 §4.3 allows Explore only on a segment already unlocked, re-checked rather than
+            // trusted — the tap names the zone.
+            if (first == 1 && zonesOpen.Contains(explore.ZoneId))
+            {
+                Issue(await DayAsync(explore.ActivityDate), leaguesNow, EncounterGrantSource.Explore, explore.ZoneId);
+            }
+        }
+
+        return grants;
+    }
+
+    /// <summary>
+    /// T2 §6.3 — a session's tier minutes are <b>set, not added</b>, because the device re-sends the
+    /// same growing session every pass. Keyed on <c>external_session_id</c>, which T3 §6.1 freezes at
+    /// the session's start for exactly this reason.
+    /// </summary>
+    private static async Task<List<(HrSession Row, HrSessionRequest Sent)>> UpsertSessionsAsync(
+        TraverserDbContext db,
+        Player player,
+        IReadOnlyList<HrSessionRequest> sent,
+        CancellationToken ct)
+    {
+        if (sent.Count == 0)
+        {
+            return [];
+        }
+
+        var seen = new HashSet<string>();
+        var unique = sent.Where(s => seen.Add(s.ExternalSessionId)).ToList();
+        var keys = unique.Select(s => s.ExternalSessionId).ToList();
+
+        var existing = await db.HrSessions
+            .Where(h => h.PlayerId == player.Id && keys.Contains(h.ExternalSessionId!))
+            .ToDictionaryAsync(h => h.ExternalSessionId!, ct);
+
+        var resolved = new List<(HrSession, HrSessionRequest)>();
+
+        foreach (var session in unique)
+        {
+            if (!existing.TryGetValue(session.ExternalSessionId, out var row))
+            {
+                row = new HrSession
+                {
+                    PlayerId = player.Id,
+                    ExternalSessionId = session.ExternalSessionId,
+                    StartedAt = session.StartedAt.ToUniversalTime(),
+                };
+
+                db.HrSessions.Add(row);
+                existing[session.ExternalSessionId] = row;
+            }
+
+            row.EndedAt = session.EndedAt?.ToUniversalTime();
+            row.Tier1Minutes = session.Tier1Minutes;
+            row.Tier2Minutes = session.Tier2Minutes;
+            row.Tier3Minutes = session.Tier3Minutes;
+
+            resolved.Add((row, session));
+        }
+
+        return resolved;
     }
 
     /// <summary>GDD 1 §2.3 — wins only, at the level the battle was fought at. Losses award 0.</summary>

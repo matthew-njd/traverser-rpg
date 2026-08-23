@@ -50,6 +50,31 @@ const walked = (steps: number): HealthSnapshot => ({
   readSources: READ_BOTH,
 });
 
+/** One Tier 2 session, long enough to owe GDD 9 §5.1's bonus rolls. */
+const worked = (minutes: number): HealthSnapshot => {
+  const startedAt = NOW - minutes * 60_000;
+
+  return {
+    dailySteps: new Map(),
+    sessions: [
+      {
+        startedAt,
+        endedAt: NOW,
+        minutes: Array.from({ length: minutes }, (_, index) => ({
+          startsAt: startedAt + index * 60_000,
+          tier: 2 as const,
+        })),
+        tier1Minutes: 0,
+        tier2Minutes: minutes,
+        tier3Minutes: 0,
+        open: false,
+      },
+    ],
+    consumedThrough: NOW,
+    readSources: READ_BOTH,
+  };
+};
+
 const response = (overrides: Record<string, unknown> = {}): SyncResponse =>
   parseSyncResponse(wireSyncResponse(overrides));
 
@@ -218,6 +243,40 @@ describe('the offline pass', () => {
 });
 
 describe('the online pass', () => {
+  /**
+   * ↯ **The sessions used to be derived and thrown away.** `commitHealthRead` has returned them
+   * since M1 and `pass.ts` destructured only `deltas`, so `hr_session` was never populated and T2
+   * §4 step 8's workout bonus had no input at all (M3 plan §6). Uploading them is what makes GDD 9
+   * §5.1's second encounter source exist.
+   */
+  it('uploads the sessions it derived', async () => {
+    const seen: unknown[] = [];
+
+    await run(registeredDatabase(), {
+      provider: fakeProvider({ read: async () => worked(40) }),
+      api: fakeApi({
+        sync: async (_deltas, _version, _battles, sessions) => {
+          seen.push(sessions);
+
+          return response();
+        },
+      }),
+    });
+
+    expect(seen[0]).toEqual([
+      {
+        sessionId: `hr:${(NOW - 40 * 60_000) / 1000}`,
+        startedAt: new Date(NOW - 40 * 60_000).toISOString(),
+        endedAt: new Date(NOW).toISOString(),
+        // The device's local date, at the fixture's -4 offset — never the UTC instant's.
+        activityDate: dates.dateOf(NOW - 40 * 60_000),
+        tier1Minutes: 0,
+        tier2Minutes: 40,
+        tier3Minutes: 0,
+      },
+    ]);
+  });
+
   it('applies the response and drains the queue', async () => {
     const db = registeredDatabase();
     const api = fakeApi();

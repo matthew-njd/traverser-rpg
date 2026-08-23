@@ -69,6 +69,22 @@ describe('parsing recorded responses', () => {
       streakCreditMethod: null,
     });
   });
+
+  /**
+   * The same response carried an Explore tap, so step 8's grant shape is recorded rather than
+   * imagined. The enemy is drawn at random from the zone's wild roster and is deliberately not
+   * asserted — everything around it is fixed.
+   */
+  it('reads an encounter grant off a real sync', () => {
+    const grant = parseSyncResponse(syncAccepted).encounterGrants[0];
+
+    expect(grant).toMatchObject({
+      zoneId: 'olympion',
+      source: 'explore',
+      activityDate: '2026-08-06',
+    });
+    expect(grant?.enemyId).toMatch(/^enemy_/);
+  });
 });
 
 /**

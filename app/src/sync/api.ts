@@ -8,6 +8,7 @@ import {
   type RestDayPayload,
   type SettingsPayload,
   type SyncResponse,
+  type SyncSession,
   parseActivityDays,
   parseContentVersion,
   parseProfile,
@@ -74,6 +75,8 @@ export interface TraverserApi {
     deltas: readonly MintedDelta[],
     contentVersion: number,
     battles?: readonly Record<string, unknown>[],
+    /** T3 §6's sessions, re-sent whole every pass — the server sets rather than adds (T2 §6.3). */
+    sessions?: readonly SyncSession[],
   ): Promise<SyncResponse>;
   /** tech-02 §3's one-shot repair path, and what a restore uses to prove its credentials. */
   profile(): Promise<PlayerProfile>;
@@ -164,11 +167,11 @@ export function createApi(options: ApiOptions): TraverserApi {
       return parseBundle(await request(options, '/content/bundle'));
     },
 
-    async sync(deltas, contentVersion, battles = []) {
+    async sync(deltas, contentVersion, battles = [], sessions = []) {
       return parseSyncResponse(
         await request(options, '/sync', {
           method: 'POST',
-          body: JSON.stringify(toWireSyncRequest(deltas, contentVersion, battles)),
+          body: JSON.stringify(toWireSyncRequest(deltas, contentVersion, battles, sessions)),
         }),
       );
     },
