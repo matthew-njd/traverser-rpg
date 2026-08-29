@@ -29,6 +29,13 @@ As established in Section 5: enemy Divine moves never apply a TypeMultiplier aga
 
 ## 3. Enemy Roster
 
+> **Amended 2026-08-29 (M3/P9 balance pass — GDD 2 §7, DECISIONS 2026-08-29).** All four stat
+> scaling tables retuned; see GDD 5 §3's amendment for the full rationale. Vigor is now
+> high-base/low-rate so turn counts stay flat with level, and offense rates no longer outgrow the
+> player's defenses. Resolve, Aegis and Stride are unchanged for every enemy. Turn counts quoted
+> in the Combat Design Notes below predate the pass where they disagree with the tables; the
+> tables are normative.
+
 ### 3.1 Strix — Wild Encounter
 
 | Field | Value |
@@ -43,10 +50,10 @@ As established in Section 5: enemy Divine moves never apply a TypeMultiplier aga
 
 | Stat | Formula | L20 | L30 | L40 | L50 | L60 |
 |---|---|---|---|---|---|---|
-| Vigor | `10 + 2.6L` | 62 | 88 | 114 | 140 | 166 |
-| Might | `6 + 0.5L` | 16 | 21 | 26 | 31 | 36 |
+| Vigor | `26 + 0.65L` | 39 | 45 | 52 | 58 | 65 |
+| Might | `6 + 0.35L` | 13 | 16 | 20 | 23 | 27 |
 | Resolve | `6 + 0.5L` | 16 | 21 | 26 | 31 | 36 |
-| Favor | `8 + 0.9L` | 26 | 35 | 44 | 53 | 62 |
+| Favor | `8 + 0.45L` | 17 | 21 | 26 | 30 | 35 |
 | Aegis | `6 + 0.5L` | 16 | 21 | 26 | 31 | 36 |
 | Stride | `9 + 0.8L` | 25 | 33 | 41 | 49 | 57 |
 
@@ -85,10 +92,10 @@ Strix's vulnerabilities (Storm, War) were both unlocked in the first ten levels 
 
 | Stat | Formula | L20 | L30 | L40 | L50 | L60 |
 |---|---|---|---|---|---|---|
-| Vigor | `10 + 2.7L` | 64 | 91 | 118 | 145 | 172 |
-| Might | `9 + 0.85L` | 26 | 34 | 43 | 51 | 60 |
+| Vigor | `24 + 0.5L` | 34 | 39 | 44 | 49 | 54 |
+| Might | `7 + 0.25L` | 12 | 14 | 17 | 19 | 22 |
 | Resolve | `8 + 0.7L` | 22 | 29 | 36 | 43 | 50 |
-| Favor | `6 + 0.6L` | 18 | 24 | 30 | 36 | 42 |
+| Favor | `5 + 0.35L` | 12 | 15 | 19 | 22 | 26 |
 | Aegis | `7 + 0.6L` | 19 | 25 | 31 | 37 | 43 |
 | Stride | `6 + 0.55L` | 17 | 22 | 28 | 33 | 39 |
 
@@ -128,10 +135,10 @@ Lemures is the tankiest wild encounter in the game and the third enemy sharing U
 
 | Stat | Formula | L20 | L30 | L40 | L50 | L60 |
 |---|---|---|---|---|---|---|
-| Vigor | `20 + 2.5L` | 70 | 95 | 120 | 145 | 170 |
-| Might | `10 + 0.85L` | 27 | 35 | 44 | 52 | 61 |
-| Resolve | `9 + 0.7L` | 23 | 30 | 37 | 44 | 51 |
-| Favor | `11 + 0.75L` | 26 | 33 | 41 | 48 | 56 |
+| Vigor | `42 + 0.85L` | 59 | 67 | 76 | 84 | 93 |
+| Might | `9 + 0.4L` | 17 | 21 | 25 | 29 | 33 |
+| Resolve | `9 + 0.55L` | 20 | 25 | 31 | 36 | 42 |
+| Favor | `10 + 0.4L` | 18 | 22 | 26 | 30 | 34 |
 | Aegis | `9 + 0.65L` | 22 | 28 | 35 | 41 | 48 |
 | Stride | `10 + 0.7L` | 24 | 31 | 38 | 45 | 52 |
 
@@ -196,10 +203,10 @@ Specific drop pool: **Clearsight** (Wisdom Surge Charm — Common), **Undertow**
 
 | Stat | Formula | L20 | L30 | L40 | L50 | L60 |
 |---|---|---|---|---|---|---|
-| Vigor | `22 + 2.2L` | 66 | 88 | 110 | 132 | 154 |
-| Might | `11 + 0.9L` | 29 | 38 | 47 | 56 | 65 |
+| Vigor | `54 + 1.1L` | 76 | 87 | 98 | 109 | 120 |
+| Might | `10 + 0.45L` | 19 | 23 | 28 | 32 | 37 |
 | Resolve | `8 + 0.55L` | 19 | 24 | 30 | 35 | 41 |
-| Favor | `13 + 0.95L` | 32 | 41 | 51 | 60 | 70 |
+| Favor | `12 + 0.45L` | 21 | 25 | 30 | 34 | 39 |
 | Aegis | `9 + 0.6L` | 21 | 27 | 33 | 39 | 45 |
 | Stride | `7 + 0.32L` | 13 | 16 | 19 | 23 | 26 |
 

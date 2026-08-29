@@ -126,6 +126,29 @@ Damage = floor( ( (Power × AttackStat) / (DefenseStat × 8) ) × TypeMultiplier
 
 **Balance check (why ÷8, not ÷2):** an earlier pass of this formula used a ÷2 divisor, which produced a Basic Attack dealing exactly 20 damage against a base Level 1 Vigor pool of 20 — a guaranteed one-hit KO before the player had allocated a single stat point, and the ratio barely improved by Level 10 even with stats invested. That undercut both the "2–5 turn battles" pacing goal and the point of the type chart, since a fight decided on the first hit leaves no room for weakness/resistance play to matter. The ÷8 divisor above was chosen to put a Level 1 mirror-match at roughly 4 hits to KO, which should be revisited once Section 3 assigns real move Power values.
 
+> **Amended 2026-08-29 (M3/P9 balance pass — the playtest §9's Vigor-rates flag asked for).** The
+> formula is unchanged. What the playtest broke was the enemy stat tables in Sections 5–7: enemies
+> gained ~5.5–5.75 free stat points per level against the player's allocated 3, so fight length and
+> fight cost grew without bound (measured on hardware at L16: one Satyr cost ~75% of the day's
+> Vigor bar; modeled at L30+: mid-bosses cost over 200% — unwinnable). All twelve rosters were
+> retuned against two **normative fight-cost invariants**, which any future roster or rebalance
+> must satisfy:
+>
+> - **Reference build (ungeared, type-neutral):** per level, +1.0 Vigor, +0.75 Might, +0.5
+>   Resolve, +0.5 Aegis, +0.25 flex, using the strongest unlocked Physical skill. The floor
+>   experience — typed and geared builds do better.
+> - **I1 — fight length:** a wild encounter falls in 2–5 expected rounds at every level it can be
+>   met; a mid-boss in 3–9; a zone boss in 4–11.
+> - **I2 — fight cost:** a wild win costs at most **30% of the reference player's Vigor pool**
+>   (45% through L6, where the pool is smallest), so the daily cap of 5 (Section 9 §5) is
+>   affordable on one daily bar plus recovery. A mid-boss costs at most 75%, a zone boss at most
+>   85% — hard, but winnable ungeared without items.
+>
+> The invariants are enforced by a model executed in Node against the shipped content
+> (`app/src/battle/__tests__/balance.test.ts`), so a future content change that breaks them fails
+> the suite. The Vigor recovery rates in §6 are deliberately unchanged — retune fights first,
+> re-playtest, and only then touch regen (§9's flag stays the record of that decision).
+
 ---
 
 ## 8. Cross-Section Flags
@@ -144,4 +167,6 @@ Damage = floor( ( (Power × AttackStat) / (DefenseStat × 8) ) × TypeMultiplier
 - **4-Skill loadout cap:** ~~a reasonable, familiar default, but not sourced from the planning doc — confirm before Section 3 locks in move design around it.~~ **CLOSED — confirmed as final by Section 3.**
 - **Crit chance/multiplier (6.25% / 1.5x)** and the **damage formula's ÷8 divisor**: ~~first-pass values with no real movepool to test against yet; expect a rebalance pass once Section 3's move list exists.~~ **CLOSED — validated, no rebalance needed.** Sections 5–7 ran extensive Python-verified balance modeling (turn-count simulations, full fight-arc simulations for every boss) against the real Section 3 movepool and real enemy stats across all three zones. The ÷8 divisor and crit values held up under every scenario tested — neutral fights consistently land in the intended "wrong tool" range (7–19+ turns), SE fights consistently land in the 2–8 turn target window, and no one-shot or unwinnable-fight cases turned up. No formula change is needed going into Section 8 or beyond.
 - **Daily encounter cap:** ~~isn't assigned to a specific section — worth deciding whether it belongs here, in Onboarding (Section 10), or Overworld Map (Section 9).~~ **CLOSED — housed and resolved in Section 9 §5.** Hard cap of 5 wild encounters per calendar day, reset at local midnight, fed by passive forward-travel checkpoints, workout-session bonus rolls, and manual Explore.
-- **Vigor recovery rates** (1%/10min passive regen, 25% floor on defeat) are a first design pass aimed at satisfying the "rest days matter, losses aren't punishing" brief — worth playtesting now that encounter frequency is fixed (daily cap of 5, Section 9 §5).
+- **Vigor recovery rates** (1%/10min passive regen, 25% floor on defeat) are a first design pass aimed at satisfying the "rest days matter, losses aren't punishing" brief — ~~worth playtesting now that encounter frequency is fixed (daily cap of 5, Section 9 §5).~~ **PLAYTESTED 2026-08-29 (M3/P9) — rates kept, rosters retuned instead.** The playtest showed the rates were not the defect: fights cost 40–240% of the bar because enemy stats outscaled the player's (Sections 5–7, amended). With rosters retuned to §7's fight-cost invariants, a wild fight costs ≤30% and the existing rates plausibly suffice. Re-evaluate the rates only if the next on-device pass still feels starved.
+
+> **Correction 2026-08-29 to the ÷8 close-out above.** "No one-shot or unwinnable-fight cases turned up" did not survive contact with hardware or with the fixtures work: test-fixtures §10.9 documents real one-shots for a Favor-specialized build (a build the original modeling never ran), and the M3/P9 playtest found ordinary fights unwinnable at L16+ under the original rosters (DECISIONS 2026-08-29). The ÷8 divisor and crit values themselves stand — both defects lived in the enemy stat tables, not the formula.

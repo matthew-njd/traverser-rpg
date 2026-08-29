@@ -21,6 +21,13 @@ Enemy level equals the Traverser's current level at the time of the encounter, i
 
 ## 3. Enemy Roster
 
+> **Amended 2026-08-29 (M3/P9 balance pass — GDD 2 §7, DECISIONS 2026-08-29).** All four stat
+> scaling tables retuned; see GDD 5 §3's amendment for the full rationale. Vigor is now
+> high-base/low-rate so turn counts stay flat with level, and offense rates no longer outgrow the
+> player's defenses. Resolve, Aegis and Stride are unchanged for every enemy. Turn counts quoted
+> in the Combat Design Notes below predate the pass where they disagree with the tables; the
+> tables are normative.
+
 ### 3.1 Draugr — Wild Encounter
 
 | Field | Value |
@@ -35,10 +42,10 @@ Enemy level equals the Traverser's current level at the time of the encounter, i
 
 | Stat | Formula | L5 | L10 | L15 | L20 | L30 |
 |---|---|---|---|---|---|---|
-| Vigor | `8 + 2.5L` | 20 | 33 | 45 | 58 | 83 |
-| Might | `8 + 0.75L` | 11 | 15 | 19 | 23 | 30 |
+| Vigor | `24 + 0.5L` | 26 | 29 | 31 | 34 | 39 |
+| Might | `7 + 0.25L` | 8 | 9 | 10 | 12 | 14 |
 | Resolve | `7 + 0.6L` | 10 | 13 | 16 | 19 | 25 |
-| Favor | `5 + 0.5L` | 7 | 10 | 12 | 15 | 20 |
+| Favor | `5 + 0.35L` | 6 | 8 | 10 | 12 | 15 |
 | Aegis | `6 + 0.5L` | 8 | 11 | 13 | 16 | 21 |
 | Stride | `5 + 0.5L` | 7 | 10 | 12 | 15 | 20 |
 
@@ -83,10 +90,10 @@ Pale Ash is thematically matched to Draugr's Underworld typing and useful for th
 
 | Stat | Formula | L5 | L10 | L15 | L20 | L30 |
 |---|---|---|---|---|---|---|
-| Vigor | `6 + 2L` | 16 | 26 | 36 | 46 | 66 |
+| Vigor | `22 + 0.55L` | 24 | 27 | 30 | 33 | 38 |
 | Might | `5 + 0.3L` | 6 | 8 | 9 | 11 | 14 |
 | Resolve | `5 + 0.3L` | 6 | 8 | 9 | 11 | 14 |
-| Favor | `9 + 0.9L` | 13 | 18 | 22 | 27 | 36 |
+| Favor | `9 + 0.5L` | 11 | 14 | 16 | 19 | 24 |
 | Aegis | `6 + 0.5L` | 8 | 11 | 13 | 16 | 21 |
 | Stride | `11 + L` | 16 | 21 | 26 | 31 | 41 |
 
@@ -138,10 +145,10 @@ Stormveil is both thematically matched and tactically useful: a Storm Surge Char
 
 | Stat | Formula | L5 | L10 | L15 | L20 | L30 |
 |---|---|---|---|---|---|---|
-| Vigor | `22 + 4L` | 42 | 62 | 82 | 102 | 142 |
-| Might | `10 + 0.8L` | 14 | 18 | 22 | 26 | 34 |
+| Vigor | `48 + 1.1L` | 53 | 59 | 64 | 70 | 81 |
+| Might | `10 + 0.45L` | 12 | 14 | 16 | 19 | 23 |
 | Resolve | `8 + 0.6L` | 11 | 14 | 17 | 20 | 26 |
-| Favor | `9 + 0.6L` | 12 | 15 | 18 | 21 | 27 |
+| Favor | `9 + 0.4L` | 11 | 13 | 15 | 17 | 21 |
 | Aegis | `7 + 0.5L` | 9 | 12 | 14 | 17 | 22 |
 | Stride | `8 + 0.6L` | 11 | 14 | 17 | 20 | 26 |
 
@@ -210,10 +217,10 @@ Specific drop pool: **Stormveil** (Storm Surge Charm — Common), **Battlebrand*
 
 | Stat | Formula | L5 | L10 | L15 | L20 | L30 |
 |---|---|---|---|---|---|---|
-| Vigor | `18 + 4L` | 38 | 58 | 78 | 98 | 138 |
-| Might | `8 + 0.6L` | 11 | 14 | 17 | 20 | 26 |
+| Vigor | `55 + 1.3L` | 61 | 68 | 74 | 81 | 94 |
+| Might | `8 + 0.4L` | 10 | 12 | 14 | 16 | 20 |
 | Resolve | `5 + 0.3L` | 6 | 8 | 9 | 11 | 14 |
-| Favor | `10 + 0.8L` | 14 | 18 | 22 | 26 | 34 |
+| Favor | `10 + 0.5L` | 12 | 15 | 17 | 20 | 25 |
 | Aegis | `8 + 0.6L` | 11 | 14 | 17 | 20 | 26 |
 | Stride | `5 + 0.25L` | 6 | 7 | 8 | 10 | 12 |
 

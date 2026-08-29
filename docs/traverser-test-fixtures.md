@@ -93,44 +93,49 @@ Mortal `round(0.05L)+1` · Heroic `round(0.10L)+2` · Mythic `round(0.17L)+3` ·
 
 Enemy level always equals player level at encounter time. All stats: `floor(base + rate × L)`.
 
+> **Amended 2026-08-29 (M3/P9 balance pass).** All 36 rows regenerated from the retuned
+> `enemy_stat_scaling` coefficients (DECISIONS 2026-08-29, GDD 2 §7 amendment). Machine-verified by
+> executing `floor(base + rate × L)` in Node against the seed's coefficient table, per the fixtures
+> convention. Resolve, Aegis and Stride are unchanged for every enemy §10 references.
+
 | Enemy | Type | Level | Vigor | Might | Resolve | Favor | Aegis | Stride |
 |---|---|---|---|---|---|---|---|---|
-| Harpy | Storm | 5 | 23 | 6 | 6 | 10 | 7 | 15 |
-| Harpy | Storm | 15 | 53 | 8 | 8 | 18 | 12 | 25 |
-| Harpy | Storm | 30 | 98 | 12 | 12 | 29 | 20 | 40 |
-| Satyr | Trickery | 5 | 20 | 8 | 8 | 10 | 8 | 11 |
-| Satyr | Trickery | 15 | 45 | 13 | 13 | 18 | 13 | 19 |
-| Satyr | Trickery | 30 | 83 | 21 | 21 | 29 | 21 | 30 |
-| Cyclops | War | 10 | 60 | 20 | 15 | 12 | 12 | 7 |
-| Cyclops | War | 15 | 82 | 25 | 19 | 14 | 14 | 8 |
-| Cyclops | War | 30 | 150 | 40 | 30 | 22 | 22 | 12 |
-| Cerberus | Underworld | 15 | 102 | 20 | 14 | 19 | 15 | 8 |
-| Cerberus | Underworld | 20 | 130 | 24 | 17 | 23 | 18 | 10 |
-| Cerberus | Underworld | 30 | 185 | 31 | 22 | 30 | 23 | 12 |
-| Draugr | Underworld | 15 | 45 | 19 | 16 | 12 | 13 | 12 |
-| Draugr | Underworld | 25 | 70 | 26 | 22 | 17 | 18 | 17 |
-| Draugr | Underworld | 35 | 95 | 34 | 28 | 22 | 23 | 22 |
-| Valkyrie | Storm | 15 | 36 | 9 | 9 | 22 | 13 | 26 |
-| Valkyrie | Storm | 25 | 56 | 12 | 12 | 31 | 18 | 36 |
-| Valkyrie | Storm | 35 | 76 | 15 | 15 | 40 | 23 | 46 |
-| Fenrir | War | 20 | 102 | 26 | 20 | 21 | 17 | 20 |
-| Fenrir | War | 25 | 122 | 30 | 23 | 24 | 19 | 23 |
-| Fenrir | War | 35 | 162 | 38 | 29 | 30 | 24 | 29 |
-| Jörmungandr | Sea | 28 | 130 | 24 | 13 | 32 | 24 | 12 |
-| Jörmungandr | Sea | 31 | 142 | 26 | 14 | 34 | 26 | 12 |
-| Jörmungandr | Sea | 40 | 178 | 32 | 17 | 42 | 32 | 15 |
-| Strix | Trickery | 33 | 95 | 22 | 22 | 37 | 22 | 35 |
-| Strix | Trickery | 45 | 127 | 28 | 28 | 48 | 28 | 45 |
-| Strix | Trickery | 60 | 166 | 36 | 36 | 62 | 36 | 57 |
-| Lemures | Underworld | 33 | 99 | 37 | 31 | 25 | 26 | 24 |
-| Lemures | Underworld | 45 | 131 | 47 | 39 | 33 | 34 | 30 |
-| Lemures | Underworld | 60 | 172 | 60 | 50 | 42 | 43 | 39 |
-| Griffin | Wisdom | 44 | 130 | 47 | 39 | 44 | 37 | 40 |
-| Griffin | Wisdom | 50 | 145 | 52 | 44 | 48 | 41 | 45 |
-| Griffin | Wisdom | 60 | 170 | 61 | 51 | 56 | 48 | 52 |
-| Cacus | Storm | 54 | 140 | 59 | 37 | 64 | 41 | 24 |
-| Cacus | Storm | 57 | 147 | 62 | 39 | 67 | 43 | 25 |
-| Cacus | Storm | 60 | 154 | 65 | 41 | 70 | 45 | 26 |
+| Harpy | Storm | 5 | 26 | 6 | 6 | 9 | 7 | 15 |
+| Harpy | Storm | 15 | 34 | 8 | 8 | 13 | 12 | 25 |
+| Harpy | Storm | 30 | 46 | 12 | 12 | 20 | 20 | 40 |
+| Satyr | Trickery | 5 | 23 | 7 | 8 | 8 | 8 | 11 |
+| Satyr | Trickery | 15 | 29 | 11 | 13 | 12 | 13 | 19 |
+| Satyr | Trickery | 30 | 39 | 16 | 21 | 18 | 21 | 30 |
+| Cyclops | War | 10 | 45 | 12 | 13 | 10 | 12 | 7 |
+| Cyclops | War | 15 | 49 | 14 | 15 | 12 | 14 | 8 |
+| Cyclops | War | 30 | 63 | 19 | 23 | 17 | 22 | 12 |
+| Cerberus | Underworld | 15 | 61 | 13 | 14 | 13 | 15 | 8 |
+| Cerberus | Underworld | 20 | 67 | 15 | 17 | 15 | 18 | 10 |
+| Cerberus | Underworld | 30 | 77 | 18 | 22 | 18 | 23 | 12 |
+| Draugr | Underworld | 15 | 31 | 10 | 16 | 10 | 13 | 12 |
+| Draugr | Underworld | 25 | 36 | 13 | 22 | 13 | 18 | 17 |
+| Draugr | Underworld | 35 | 41 | 15 | 28 | 17 | 23 | 22 |
+| Valkyrie | Storm | 15 | 30 | 9 | 9 | 16 | 13 | 26 |
+| Valkyrie | Storm | 25 | 35 | 12 | 12 | 21 | 18 | 36 |
+| Valkyrie | Storm | 35 | 41 | 15 | 15 | 26 | 23 | 46 |
+| Fenrir | War | 20 | 70 | 19 | 20 | 17 | 17 | 20 |
+| Fenrir | War | 25 | 75 | 21 | 23 | 19 | 19 | 23 |
+| Fenrir | War | 35 | 86 | 25 | 29 | 23 | 24 | 29 |
+| Jörmungandr | Sea | 28 | 91 | 19 | 13 | 24 | 24 | 12 |
+| Jörmungandr | Sea | 31 | 95 | 20 | 14 | 25 | 26 | 12 |
+| Jörmungandr | Sea | 40 | 107 | 24 | 17 | 30 | 32 | 15 |
+| Strix | Trickery | 33 | 47 | 17 | 22 | 22 | 22 | 35 |
+| Strix | Trickery | 45 | 55 | 21 | 28 | 28 | 28 | 45 |
+| Strix | Trickery | 60 | 65 | 27 | 36 | 35 | 36 | 57 |
+| Lemures | Underworld | 33 | 40 | 15 | 31 | 16 | 26 | 24 |
+| Lemures | Underworld | 45 | 46 | 18 | 39 | 20 | 34 | 30 |
+| Lemures | Underworld | 60 | 54 | 22 | 50 | 26 | 43 | 39 |
+| Griffin | Wisdom | 44 | 79 | 26 | 33 | 27 | 37 | 40 |
+| Griffin | Wisdom | 50 | 84 | 29 | 36 | 30 | 41 | 45 |
+| Griffin | Wisdom | 60 | 93 | 33 | 42 | 34 | 48 | 52 |
+| Cacus | Storm | 54 | 113 | 34 | 37 | 36 | 41 | 24 |
+| Cacus | Storm | 57 | 116 | 35 | 39 | 37 | 43 | 25 |
+| Cacus | Storm | 60 | 120 | 37 | 41 | 39 | 45 | 26 |
 
 ## 7. Streak Milestone Ladder (Section 11 §5)
 
@@ -242,12 +247,12 @@ Warlord's Advance P65 → base **16** (War → Underworld = 2.0). Sage's Verdict
 
 ### 10.6 Enemy-side crit — Cerberus L15 Death Breath (Underworld Divine, P60)
 
-Cerberus Favor 19 (§6) vs. a player Aegis 10. **TypeMultiplier is always 1.0 when the enemy attacks**, regardless of either side's type.
+Cerberus Favor 13 (§6, amended 2026-08-29) vs. a player Aegis 10. **TypeMultiplier is always 1.0 when the enemy attacks**, regardless of either side's type.
 
 | Case | base | Expected |
 |---|---|---|
-| No crit | 14 | **14** |
-| Crit | 14 | **21** |
+| No crit | 9 | **9** |
+| Crit | 9 | **13** |
 
 ### 10.7 Turn order
 
@@ -262,23 +267,27 @@ Cerberus Favor 19 (§6) vs. a player Aegis 10. **TypeMultiplier is always 1.0 wh
 
 The integration oracle the tutorial cannot be, since the tutorial has no randomness in it at all. The draw sequence is stated explicitly rather than as a PRNG seed, so the fixture is implementation-independent.
 
-**Player L15** (reference Might build, 42 points allocated as Vigor +16 / Might +18 / Resolve +8, plus a Mortal Weapon +2 Might): Vigor 36, Might 30, Resolve 18, Favor 10, Aegis 10, Stride 10.
-**Harpy L15** (§6): Vigor 53, Might 8, Resolve 8, Favor 18, Aegis 12, Stride 25 → **Harpy acts first every round; no tie draw is ever taken.**
+> **Amended 2026-08-29 (M3/P9 balance pass).** Recomputed against §6's retuned Harpy. The 18-draw
+> sequence, the round count and every narrative beat are unchanged — only Harpy's Vigor (53 → 34)
+> and Favor (18 → 13) moved, so only the damage and Vigor-after columns differ.
 
-Move bases: Iron Advance **28** · Thunderer's Wrath **6** (Storm → Storm = 1.0) · Gust Strike **9** · Buffet **1**.
+**Player L15** (reference Might build, 42 points allocated as Vigor +16 / Might +18 / Resolve +8, plus a Mortal Weapon +2 Might): Vigor 36, Might 30, Resolve 18, Favor 10, Aegis 10, Stride 10.
+**Harpy L15** (§6): Vigor 34, Might 8, Resolve 8, Favor 13, Aegis 12, Stride 25 → **Harpy acts first every round; no tie draw is ever taken.**
+
+Move bases: Iron Advance **28** · Thunderer's Wrath **6** (Storm → Storm = 1.0) · Gust Strike **6** · Buffet **1**.
 
 Draws, in T5 §4.1 order: `0.42, 0.80, 0.50, 0.99, 0.00, 0.85, 0.03, 0.95, 0.50, 0.50, 0.10, 0.02, 0.50, 0.50, 0.99, 0.20, 0.50, 0.60` — **18 total, all consumed.**
 
 | Round | Actor | Move | Crit | Roll | Damage | Vigor after |
 |---|---|---|---|---|---|---|
-| 1 | Harpy | Gust Strike | no | 1.00 | 9 | player 36 → **27** |
-| 1 | Player | Iron Advance | no | 0.90 | 25 | Harpy 53 → **28** |
-| 2 | Harpy | Buffet | **yes** | 1.09 | 1 | player 27 → **26** |
-| 2 | Player | Thunderer's Wrath | no | 1.00 | 6 | Harpy 28 → **22** |
-| 3 | Harpy | Gust Strike | **yes** | 1.00 | 13 | player 26 → **13** |
-| 3 | Player | Iron Advance | no | 1.098 | 30 | Harpy 22 → **0** |
+| 1 | Harpy | Gust Strike | no | 1.00 | 6 | player 36 → **30** |
+| 1 | Player | Iron Advance | no | 0.90 | 25 | Harpy 34 → **9** |
+| 2 | Harpy | Buffet | **yes** | 1.09 | 1 | player 30 → **29** |
+| 2 | Player | Thunderer's Wrath | no | 1.00 | 6 | Harpy 9 → **3** |
+| 3 | Harpy | Gust Strike | **yes** | 1.00 | 9 | player 29 → **20** |
+| 3 | Player | Iron Advance | no | 1.098 | 30 | Harpy 3 → **0** |
 
-**Outcome: win in 3 rounds, player at 13/36 Vigor.** Round 2 is load-bearing — a crit on a base of 1 still yields 1, exercising both the clamp and crit-on-a-small-base. Round 2's Thunderer's Wrath (6 damage vs. Iron Advance's 25+) is the "wrong tool" case: Storm into a Storm enemy is neutral, and this build has no Favor.
+**Outcome: win in 3 rounds, player at 20/36 Vigor.** Round 2 is load-bearing — a crit on a base of 1 still yields 1, exercising both the clamp and crit-on-a-small-base. Round 2's Thunderer's Wrath (6 damage vs. Iron Advance's 25+) is the "wrong tool" case: Storm into a Storm enemy is neutral, and this build has no Favor.
 
 Loot: item die `0.20 < 0.35` → **drops**; gear die `0.50 < 0.20` → **no gear**; pool draw `0.60 × 2` → index 1 → **`item_stormveil`** (Harpy pool: Traveler's Salve, Stormveil — equal weight, GDD 5 §3.1).
 Battle XP is **45** (`15 + 15×2`) and is applied **server-side** (T2 §2 step 4) — the engine reports the outcome only.
@@ -287,19 +296,25 @@ Battle XP is **45** (`15 + 15×2`) and is applied **server-side** (T2 §2 step 4
 
 GDD 3 Open Questions and GDD 4 §8 both close their ceiling questions with "never approaches a one-shot, even against the squishiest wild encounters." **That is false for a Favor-specialized build.** Verified against real roster stats, Surge + SE (×3.0), no crit, roll 1.0, using the best SE move unlocked at that level:
 
+> **Amended 2026-08-29 (M3/P9 balance pass).** Vigor column regenerated from the retuned §6 table
+> (the ×3.0 column is unchanged — every Aegis it divides by was kept). The pass **widens** this:
+> Cerberus and Griffin now one-shot too, because boss Vigor came down with fight length. Recorded
+> as accepted in DECISIONS 2026-08-29 — a Favor specialist spending a Surge charm on a natural SE
+> matchup deleting a boss is a payoff, and the build pays for it everywhere else it goes.
+
 | Enemy | Lv | Max-Favor base | ×3.0 | Vigor | One-shot? |
 |---|---|---|---|---|---|
 | Satyr (wild) | 6 | 22 | 66 | 23 | **yes** |
-| Satyr (wild) | 15 | 32 | 96 | 45 | **yes** |
-| Cyclops (mid-boss) | 10 | 25 | 75 | 60 | **yes** |
-| Cyclops (mid-boss) | 15 | 30 | 90 | 82 | **yes** |
-| Cerberus (boss) | 15 | 28 | 84 | 102 | no |
-| Griffin (boss) | 50 | 35 | 105 | 145 | no |
-| Cacus (boss) | 60 | 38 | 114 | 154 | no |
+| Satyr (wild) | 15 | 32 | 96 | 29 | **yes** |
+| Cyclops (mid-boss) | 10 | 25 | 75 | 45 | **yes** |
+| Cyclops (mid-boss) | 15 | 30 | 90 | 49 | **yes** |
+| Cerberus (boss) | 15 | 28 | 84 | 61 | **yes** |
+| Griffin (boss) | 50 | 35 | 105 | 84 | **yes** |
+| Cacus (boss) | 60 | 38 | 114 | 120 | no |
 
-At the absolute ×4.95 ceiling (×3.0 + crit + roll 1.10), **every enemy in the game one-shots, bosses included** — Cacus L60 takes 188 against 154 Vigor.
+At the absolute ×4.95 ceiling (×3.0 + crit + roll 1.10), **every enemy in the game one-shots, bosses included** — Cacus L60 takes 188 against 120 Vigor.
 
-A **balanced** build (points split evenly) matches the GDD's published turn counts closely — Cyclops L15 in 5 SE hits, Cerberus L15 in 6 — which is why the original balance modelling did not surface this. The gap is build specialization, not the formula.
+A **balanced** build (points split evenly) matched the pre-pass GDD's published turn counts closely — which is why the original balance modelling did not surface this. The gap is build specialization, not the formula.
 
 **This is a balance observation, not an engine defect, and T5 changes nothing.** The formula is locked and implemented as specified. It is also partly self-limiting: a 100%-Favor build sits at Vigor 20 for the whole game and dies to almost anything. Tests assert the bounded-damage property in §10.4, **not** a survival property, because the survival property is not true.
 

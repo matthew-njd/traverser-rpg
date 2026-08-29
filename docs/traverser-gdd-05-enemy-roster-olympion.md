@@ -26,6 +26,15 @@ This keeps encounters relevant at any point in the game and ensures Battle XP (`
 
 ## 3. Enemy Roster
 
+> **Amended 2026-08-29 (M3/P9 balance pass — GDD 2 §7, DECISIONS 2026-08-29).** All four stat
+> scaling tables retuned from the first on-device playtest, which GDD 2 §147 requested: the
+> original coefficients gave enemies ~5.5–5.75 free stat points per level against the player's
+> allocated 3, so fight length and fight cost grew without bound (a Cyclops at L16 cost more than
+> twice the player's entire Vigor pool). Vigor is now high-base/low-rate so turn counts stay flat,
+> and offense rates no longer outgrow the player's defenses. Resolve, Aegis and Stride are
+> unchanged for every enemy. Turn counts quoted in the Combat Design Notes below predate the pass
+> where they disagree with the tables; the tables are normative.
+
 ### 3.1 Harpy — Wild Encounter
 
 | Field | Value |
@@ -40,10 +49,10 @@ This keeps encounters relevant at any point in the game and ensures Battle XP (`
 
 | Stat | Formula | L5 | L10 | L15 | L20 | L30 |
 |---|---|---|---|---|---|---|
-| Vigor | `8 + 3L` | 23 | 38 | 53 | 68 | 98 |
+| Vigor | `22 + 0.8L` | 26 | 30 | 34 | 38 | 46 |
 | Might | `5 + 0.25L` | 6 | 7 | 8 | 10 | 12 |
 | Resolve | `5 + 0.25L` | 6 | 7 | 8 | 10 | 12 |
-| Favor | `7 + 0.75L` | 10 | 14 | 18 | 22 | 29 |
+| Favor | `7 + 0.45L` | 9 | 11 | 13 | 16 | 20 |
 | Aegis | `5 + 0.5L` | 7 | 10 | 12 | 15 | 20 |
 | Stride | `10 + L` | 15 | 20 | 25 | 30 | 40 |
 
@@ -86,10 +95,10 @@ The player has no Super Effective options against Harpy until Sea unlocks at Lev
 
 | Stat | Formula | L5 | L10 | L15 | L20 | L30 |
 |---|---|---|---|---|---|---|
-| Vigor | `8 + 2.5L` | 20 | 33 | 45 | 58 | 83 |
-| Might | `6 + 0.5L` | 8 | 11 | 13 | 16 | 21 |
+| Vigor | `20 + 0.65L` | 23 | 26 | 29 | 33 | 39 |
+| Might | `6 + 0.35L` | 7 | 9 | 11 | 13 | 16 |
 | Resolve | `6 + 0.5L` | 8 | 11 | 13 | 16 | 21 |
-| Favor | `7 + 0.75L` | 10 | 14 | 18 | 22 | 29 |
+| Favor | `6 + 0.4L` | 8 | 10 | 12 | 14 | 18 |
 | Aegis | `6 + 0.5L` | 8 | 11 | 13 | 16 | 21 |
 | Stride | `8 + 0.75L` | 11 | 15 | 19 | 23 | 30 |
 
@@ -135,10 +144,10 @@ Satyr drops Shadowblur (Trickery Surge Charm) and Battlebrand (War Surge Charm) 
 
 | Stat | Formula | L5 | L10 | L15 | L20 | L30 |
 |---|---|---|---|---|---|---|
-| Vigor | `15 + 4.5L` | 37 | 60 | 82 | 105 | 150 |
-| Might | `10 + L` | 15 | 20 | 25 | 30 | 40 |
-| Resolve | `8 + 0.75L` | 11 | 15 | 19 | 23 | 30 |
-| Favor | `7 + 0.5L` | 9 | 12 | 14 | 17 | 22 |
+| Vigor | `36 + 0.9L` | 40 | 45 | 49 | 54 | 63 |
+| Might | `9 + 0.35L` | 10 | 12 | 14 | 16 | 19 |
+| Resolve | `8 + 0.5L` | 10 | 13 | 15 | 18 | 23 |
+| Favor | `7 + 0.35L` | 8 | 10 | 12 | 14 | 17 |
 | Aegis | `7 + 0.5L` | 9 | 12 | 14 | 17 | 22 |
 | Stride | `5 + 0.25L` | 6 | 7 | 8 | 10 | 12 |
 
@@ -188,10 +197,10 @@ Specific drop pool: **Stormveil** (Storm Surge Charm — Common), **Battlebrand*
 
 | Stat | Formula | L5 | L10 | L15 | L20 | L30 |
 |---|---|---|---|---|---|---|
-| Vigor | `20 + 5.5L` | 47 | 75 | 102 | 130 | 185 |
-| Might | `9 + 0.75L` | 12 | 16 | 20 | 24 | 31 |
+| Vigor | `46 + 1.05L` | 51 | 56 | 61 | 67 | 77 |
+| Might | `8 + 0.35L` | 9 | 11 | 13 | 15 | 18 |
 | Resolve | `7 + 0.5L` | 9 | 12 | 14 | 17 | 22 |
-| Favor | `8 + 0.75L` | 11 | 15 | 19 | 23 | 30 |
+| Favor | `8 + 0.35L` | 9 | 11 | 13 | 15 | 18 |
 | Aegis | `8 + 0.5L` | 10 | 13 | 15 | 18 | 23 |
 | Stride | `5 + 0.25L` | 6 | 7 | 8 | 10 | 12 |
 

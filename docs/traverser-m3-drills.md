@@ -1,0 +1,409 @@
+# M3 device drills
+
+**Run:** P9, on the Pixel 9. **Status:** in progress — drills 1–5 pass, next: drill 6 (needs a date `drill-reset.sh` never touched).
+
+> **Vigor first, before anything else.** Every refill on 2026-08-29 was lost because it landed while a battle was open or snapshotted (note 13). The order that works, with no shortcuts: settle or flee any open fight → close to the Map tab → run `./infra/drill-reset.sh` → foreground → **check the bar inside the first fight before playing it**. If it is not full, stop and settle again rather than fighting on.
+>
+> **Resuming.** Drill 5 restarts at **5.2** — the first pass drew gear (`mortal`), not an item, so the satchel half is untested. Keep 5.1's PASS: the baseline is **0**. Win until a Reveal Card reads `common`, ~35% per win. Refill Vigor between every fight, and expect to spend most of the day's five encounters.
+
+**Purpose:** verify the eleven exit criteria in `traverser-m3-plan.md` §5. Every one is device-only, or needs a server the test suite does not have.
+
+Fill in the **Result** column as you go. Record a failure as a defect, not as a retry.
+
+Run this from the sheet, not from memory. Reconciling one real row by hand has found a shipped defect in each of the last two milestones — drill 9 is not optional.
+
+**↯ These drills are written against the build, not against the spec.** M2's drill 3 asserted a Reveal Card no packet had built (`traverser-m2-plan.md` §7.1), so it tested the plan rather than the app. Every expected value below was read out of the code that ships.
+
+---
+
+## Before you start
+
+### The order is deliberate
+
+**The tutorial drill runs last, not first.** M2 opened with a fresh install because its criteria were about onboarding. M3's are about the Road, the gates and the daily cap, and every one of those needs a profile with real history behind it — a fresh install has 0 Leagues and no bestiary, so it can prove nothing about a gate. Drills 1–9 run on your existing `Emdir` profile. Drill 10 wipes it and re-runs the tutorial under the new battle layout.
+
+> **Warning:** Drill 10 needs a fresh install, and uninstalling destroys the only copy of `player_id` and the bearer token on the device (T4 §6.5). Export your identity **before drill 10**, and do not skip it — without the file, no client can claim the profile you spent drills 1–9 building.
+
+### Checks
+
+1. Confirm the API answers from the phone. Open `https://workshop.tail465912.ts.net/api/v1/content/version` in the phone's browser. A `401` is the correct answer: it proves routing and TLS work. A timeout means Tailscale is down on one of the two devices.
+2. Confirm the API and the database are running on the PC.
+3. **Confirm the API is the M3 build.** The sync contract gained `sessions`, `explores`, `encounter_grants` and `unlocked_zone_ids` at P5, and an M2-era container will 400 or silently drop every Explore tap.
+
+```
+docker compose -f infra/docker-compose.yml up -d --build api
+```
+
+### Building to the device
+
+```
+npm start
+```
+
+Then, in a second terminal:
+
+```
+npx expo run:android
+```
+
+No uninstall. The client schema migrates **v7 → v8** at first launch, adding `encounter_grant`; the migration is additive and runs before any screen reads. There is no new EF migration — P5 and P6 added no columns server-side.
+
+### Walking the drills that need steps
+
+**↯ The app does not need to be open, or the phone plugged in, for steps to count.** Health Connect records them at the OS level, and the sync pass reads a **72-hour window** back from now (T3 §4.1). So:
+
+1. Unplug, leave the app closed, and walk with the phone in your pocket.
+2. Come back, plug in, launch, and foreground.
+3. The whole walk lands in one pass — steps, XP, Leagues, and a travel roll for every League crossed.
+
+Encounters are rolled **at sync time**, not while you walk, so a long walk delivers all of its encounters at once when you return. That is the design, not a backlog.
+
+A dev build fetches its JS from Metro over `adb reverse`, so it stops working the moment the cable comes out. If you want the app usable while away from the desk — worth it for drill 6, which spans a day — build the release variant once and leave it on the phone:
+
+```
+npx expo run:android --variant release
+```
+
+That bundles the JS into the APK, so it runs standalone with no Metro and no cable. It has to be rebuilt after any code change, so it is only worth doing for the drills that span hours.
+
+### Seeding distance you cannot walk
+
+Three drills need a Waymarker past a gate. Cerberus is at 220 Leagues, which is 220,000 steps, so it is set in the database rather than walked. This is a drill technique, not a code path: the client takes `lifetime_steps` from the sync response's player block like any other value.
+
+```sql
+update player set lifetime_steps = 218000 where id = '019fd954-0745-7748-9892-ce6f2e600c04';
+```
+
+Foreground the app afterwards to pull it down. **Write down your real `lifetime_steps` first** and set it back when the sheet is done, or your history is a fiction from here on.
+
+**↯ Restore value — `lifetime_steps` = 121,288**, read from the server at 2026-08-24, before drill 3 seeds over it. Put it back when the sheet is done:
+
+```sql
+update player set lifetime_steps = 121288 where id = '019fd954-0745-7748-9892-ce6f2e600c04';
+```
+
+### Seeding Vigor you cannot wait for
+
+Drills 5, 8 and 10 need several fights in a row, and both the Vigor rates and the daily cap forbid that. One wild win costs most of a bar (note 10), regen returns about one point every 20 minutes, and the cap stops the day at five encounters.
+
+**↯ The device owns Vigor, so a server-side seed loses every race.** The mirror holds the live value and `SyncEndpoints.cs:439` takes `vigor_after` from the last battle to end — so a battle settled or queued after the seed overwrites it, and the phone never sees the refill. Observed at drill 5: a reset at 00:14:29 was gone by 00:16:49, replaced by a flee carrying the device's own 7.
+
+So prefer the in-app path, which cannot be raced: **Character → Tag today as a Rest Day** restores to 100% immediately (GDD 2 §6). It is limited to one per local day, and it is drill 6.3's subject — note the date you spend it on so drill 6 uses a clean one.
+
+Fall back to the script only when the Rest Day is already spent, and only in a quiet moment: finish or abandon any open battle, foreground once, confirm the bar reads full **on screen**, and start fighting only then.
+
+```
+./infra/drill-reset.sh            # today, in the player's own timezone
+./infra/drill-reset.sh 2026-08-28 # or name the local date
+```
+
+It refills Vigor to the current max, re-anchors, and zeroes that day's `encounters_used`. Foreground the app afterwards to pull it all down.
+
+**↯ The date is the player's, never the server's.** The API container runs UTC, so a bare `current_date` misses the row for the whole evening in Toronto — the seam T2 §2 exists for. Drill 9 compares these dates by hand; get it wrong there and a correct row reads as a mismatch.
+
+Two costs, both deliberate:
+
+- **Do not run it during drill 6**, which exists to verify recovery. Seeding Vigor there tests the seed.
+- **Zeroing the cap breaks drill 9 for that date.** Reconcile a date the script never touched.
+
+## Drills
+
+### 1. Walking starts a fight, with no debug card
+
+Covers exit criteria 1 and 11 (M2's criterion 3 under real encounters).
+
+**↯ A quiet walk is not evidence of a bug.** GDD 9 §5.1 gives each newly-crossed League — every 1,000 steps — **one 25% roll**. Nothing accumulates and nothing is owed, so a walk that produces no encounter is a normal outcome, not a failed drill.
+
+| Steps walked | Rolls | Chance of no encounter |
+| ------------ | ----- | ---------------------- |
+| 1,000        | 1     | 75%                    |
+| 4,000        | 4     | 32%                    |
+| 8,000        | 8     | 10%                    |
+
+Step 1.3 asks for 4,000 steps, and **about one run in three will legitimately show nothing**. Keep walking rather than debugging.
+
+What _would_ be a defect: past 8,000 steps, with Leagues visibly rising on the Map and still no encounter card ever appearing. At that point tell me, and I will check `encounter_grant` on the server — whether rolls are being made at all is a different question from whether they are landing.
+
+| #   | Step                                                                  | Expected                                                                                                                                                                                                                                    | Result |
+| --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 1.1 | Open Settings                                                         | No **Debug encounters** card, in any build. It is deleted, not hidden                                                                                                                                                                       | PASS   |
+| 1.2 | On the Map tab, note your Leagues **and** the waiting-encounter count | Both numbers, written down. ↯ This is the baseline and it must be taken **before** the walk — opening the app is itself a sync, so there is no later moment to take it                                                                      | 102    |
+| 1.3 | Background or exit the app, walk at least 4,000 steps, come back      | Nothing to watch while walking: a dev build needs Metro over the cable, and steps accrue in Health Connect regardless                                                                                                                       | PASS   |
+| 1.4 | Foreground, then read the Map                                         | Leagues up by about 4. Steps and XP up on Character                                                                                                                                                                                         | PASS   |
+| 1.5 | Re-count the waiting encounters                                       | Higher than 1.2, and the new card names its enemy. With a backlog present the test is the count **rising**, not a card appearing from nothing. See note (d) if it does not                                                                  | PASS   |
+| 1.6 | Tap an enemy's name                                                   | The battle opens against that enemy. ↯ **No level is shown, for you or the enemy — that is correct.** Enemy level always equals yours (GDD 10 §6.1), so the number carries nothing. Checked in drill 9 against `battle.enemy_level` instead | PASS   |
+| 1.7 | Win it, then return to the Map                                        | The count drops by exactly one. That encounter was spent                                                                                                                                                                                    | PASS   |
+| 1.8 | Foreground again                                                      | The count does not go back up. A spent grant is not re-offered                                                                                                                                                                              | PASS   |
+
+> **(d) Before calling this a failure, separate three things.** The count can fail to rise for reasons that are not defects, and they are told apart server-side, so tell me and I will query rather than guessing:
+>
+> 1. **The steps never reached the server.** The client credits Leagues optimistically (T4 §8.4), so the Map can show a rise the server has not seen. Check `player.lifetime_steps`, not the screen.
+> 2. **The day's cap was already spent.** Five per local date across all three sources. `activity_day.encounters_used` is the counter, and travel rolls are skipped entirely once it reads 5.
+> 3. **The rolls were made and lost.** 4 Leagues at 25% is a 32% chance of nothing — see the table above.
+>
+> Only the third is chance, and only a defect looks like none of the three.
+
+### 2. Explore, and the daily cap
+
+Covers exit criteria 2 and 5.
+
+Explore is **guaranteed** where travel is a 25% roll (GDD 9 §5.1), so it is the only practical way to reach the 5/day cap inside a drill. Five taps fill the pool; the sixth is the test.
+
+| #   | Step                                               | Expected                                                                                                        | Result |
+| --- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------ |
+| 2.1 | Map tab, find the Olympion segment                 | A button reading `Explore Olympion` inside the segment card                                                     | PASS   |
+| 2.2 | Tap it                                             | It reads `Searching the road…` while the tap is away, then settles                                              | PASS   |
+| 2.3 | Look above the Road                                | An encounter card, naming a **Harpy** or a **Satyr** — Olympion's wild roster and nothing else                  | PASS   |
+| 2.4 | Tap Explore until you have five encounters waiting | The card counts up: `2 wait on the road`, `3 wait…`, to 5                                                       | PASS   |
+| 2.5 | Tap Explore a sixth time                           | **Nothing new appears.** The count stays at 5. This is the cap holding, and the app says nothing — see note (a) | PASS   |
+| 2.6 | Walk another 1,000 steps and foreground            | Steps, XP and Leagues all rise. Only encounters stopped                                                         | PASS   |
+| 2.7 | Fight one of the five, then Explore again          | Still nothing. Spending an encounter does not return its roll to the day's pool                                 | PASS   |
+
+> **(a) Known rough edge, decide after the drill.** Nothing on screen distinguishes "the cap is spent" from "the tap did not reach the server". The tap is durable either way and the roll is never lost, so this is a copy gap rather than a defect — but write it in the notes with what you expected to see.
+
+**Confirmed server-side, 2026-08-24.** The ledger shows the cap and the idempotency working as two independent things:
+
+| Measure                                  | Value                   |
+| ---------------------------------------- | ----------------------- |
+| Grants issued on 2026-08-24              | 5 — 1 travel, 4 explore |
+| `activity_day.encounters_used`           | 5                       |
+| Explore operations in `client_operation` | **6**                   |
+
+Six taps, four grants. Taps 5 and 6 were written to the ledger, checked against the cap, and issued nothing. The operation is recorded so a replay can never spend twice; the cap refuses separately. Steps rose to 7,180 and XP to 557 across the same period with `encounters_used` pinned at 5, which is 2.6.
+
+### 3. The dual gate
+
+Covers exit criterion 3.
+
+Run the SQL under **Seeding distance you cannot walk** first, setting `lifetime_steps = 218000`.
+
+| #   | Step                                      | Expected                                                                                                                    | Result                                                                                                                                                                                                                                                                                           |
+| --- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 3.1 | Foreground, then open the Map             | `218 Leagues`, and `218 / 220 to Cerberus`                                                                                  | PASS                                                                                                                                                                                                                                                                                             |
+| 3.2 | Read the Cerberus node                    | `○` grey, `2 Leagues away · the road stops here`                                                                            | PASS                                                                                                                                                                                                                                                                                             |
+| 3.3 | Read the Valheon segment                  | Dimmed, tagged `Locked`, and **no** `Explore Valheon` button                                                                | PASS                                                                                                                                                                                                                                                                                             |
+| 3.4 | Set `lifetime_steps = 220000`, foreground | `220 Leagues`. Cerberus turns `◈` bronze, `ready to face · the road stops here`                                             | PASS                                                                                                                                                                                                                                                                                             |
+| 3.5 | Check Valheon again                       | **Still `Locked`.** Distance alone opens the gate, never the zone — this is the half that is easy to get wrong              | PASS                                                                                                                                                                                                                                                                                             |
+| 3.6 | Set `lifetime_steps = 400000`, foreground | `400 Leagues`. Valheon still `Locked`, the Waymarker stays in Olympion, and **Fenrir reads `locked`** despite 400 ≥ his 380 | **Defect found and fixed** — Fenrir read `ready to face` in a shut zone (DECISIONS 2026-08-24). Zone and Waymarker parts PASS. The Fenrir half is covered by tests on both tiers and re-checked on hardware at **10.16a**, since this device can no longer be returned to a Valheon-locked state |
+| 3.7 | Fight Cerberus and win — see note (b)     | The battle resolves                                                                                                         | PASS                                                                                                                                                                                                                                                                                             |
+| 3.8 | Foreground, then open the Map             | **Valheon loses its `Locked` tag and gains `Explore Valheon`.** The Cerberus badge does **not** change — see note (b)       | PASS on the zone. Badge still `ready to face`, which note (b) now explains                                                                                                                                                                                                                       |
+| 3.9 | Tap `Explore Valheon`                     | The encounter names a **Draugr** or a **Valkyrie**, never a Harpy — the segment's roster, not the Waymarker's               | PASS                                                                                                                                                                                                                                                                                             |
+
+> **(b) There is no way to start a boss fight yet, and that is expected.** Boss encounters are M4's — the Road draws the node, and tapping it does nothing. To move the gate, insert the bestiary row the gate reads:
+>
+> ```sql
+> insert into player_bestiary (player_id, enemy_id, first_seen_at, encounter_count, defeat_count)
+> values ('019fd954-0745-7748-9892-ce6f2e600c04', 'enemy_cerberus', now(), 1, 1)
+> on conflict (player_id, enemy_id) do update set defeat_count = 1;
+> ```
+>
+> Then foreground. Step 7 re-evaluates the gate and inserts `player_zone_progress` for Valheon, which reaches the device in the sync response and opens the segment.
+>
+> ↯ **The Cerberus node will still read `ready to face`, and that is the workaround's limit rather than a defect.** The Road is derived on the device from the device's `player_bestiary`, and that table is the one map input no repair path carries down (DECISIONS 2026-08-22, M3/P7) — so a defeat inserted server-side can never reach the badge, and boss fights are M4. Judge 3.8 on the **zone**: `player_zone_progress` gaining `valheon`, the `Locked` tag going, and the Explore button appearing. Those are what criterion 3 claims.
+
+### 4. The Road renders and scrolls
+
+Covers exit criterion 4. **This drill is the only verification the Road's layout has.** RNTL cannot see layout, so no test in the suite asserts a single pixel of it.
+
+| #   | Step                                                     | Expected                                                                                                                                                                                                                                                                           | Result |
+| --- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 4.1 | Open the Map tab                                         | Four segments, in order: `Olympion`, `Valheon`, `Imperion`, `The Road Ahead`                                                                                                                                                                                                       | PASS   |
+| 4.2 | Read `The Road Ahead`                                    | Tagged `Coming soon`, not `Locked`. They are different sentences and must not read alike                                                                                                                                                                                           | PASS   |
+| 4.3 | Compare the segment widths                               | Roughly equal. Olympion is **not** a sliver beside Imperion — §4.1's whole point                                                                                                                                                                                                   | PASS   |
+| 4.4 | Read the fills against 400 Leagues                       | Olympion pinned full (its 0–220 range is behind you); Valheon about a quarter along its 220–900 range. Scaled against the Road's 0–2,900 instead, Valheon would read ~14% and Olympion ~8% — that difference is §4.1's whole point                                                 | PASS   |
+| 4.5 | Find the Waymarker `◆`                                   | One `◆` only, in **Valheon**, sitting at that segment's fill edge — about a quarter across, matching 4.4. It is in Valheon because Cerberus is beaten and the zone is open, not because you walked 400 Leagues: unbeaten, it would still sit at Olympion's far end at any distance | PASS   |
+| 4.6 | Scroll down to Imperion, then tap **Return to the Road** | Snaps back to the Waymarker's segment, not to the top of the list                                                                                                                                                                                                                  | PASS   |
+| 4.7 | Read every gate node                                     | Six of them, each with a glyph **and** words. Nothing tells its state by colour alone                                                                                                                                                                                              | PASS   |
+| 4.8 | Pull down on the Road                                    | Syncs. Nothing flickers or reorders                                                                                                                                                                                                                                                | PASS   |
+| 4.9 | Turn the API off, force-stop, reopen the Map             | The Road renders in full, from the mirror. This is the whole reason it is derived on the device                                                                                                                                                                                    | PASS   |
+
+### 5. The Reveal Card and the satchel
+
+Covers exit criterion 6. This is M2's criterion 4 with the half that was invisible then.
+
+**↯ The satchel is the battle item menu, not the Inventory tab.** `app/src/app/(tabs)/inventory.tsx` is still a stub — it renders `Nothing to carry yet` for every player, whatever they hold, and never reads `player_item`. The satchel lives at `ActionMenu.tsx:109`, behind **Items** in a fight. Reading the Inventory tab proves nothing here.
+
+**↯ A win rolls item and gear separately, and only the item reaches the satchel.** `drop_rate` gives a wild win a **35%** item roll and an independent **20%** gear roll, so a win can drop both, either or neither. Gear goes to the rack and never appears under **Items** — a first pass of this drill read a gear drop as a satchel failure. Tell them apart by the Reveal Card's grade line: an item reads `common` (`item_def.rarity`), gear reads `mortal`, `heroic`, `divine` or `mythic` (`gear_def.tier`). Both come through the same card (`reveal.ts:14`).
+
+At 35% a run of four wins misses the item about one time in six. That is variance, not a defect. Refill Vigor between every fight — one wild win costs most of the bar (note 10).
+
+| #   | Step                                                                      | Expected                                                                                                                               | Result                                                                                  |
+| --- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 5.1 | Start any encounter, open the item menu, note the Salve count, flee       | The baseline. Zero is a fine one, and a cleaner one than three                                                                         | PASS — baseline is now **0**, the three tutorial Salves having been spent on 2026-08-27 |
+| 5.2 | Win wild encounters until the Reveal Card shows a **`common`** grade line | The item roll, ~35% per win. A `mortal` card is gear — a real drop, but not this drill's                                               | PASS                                                                                    |
+| 5.3 | Read the victory panel                                                    | `The road remembers this.` **and** the Reveal Card naming the item                                                                     | PASS                                                                                    |
+| 5.4 | Read the card's border and its grade line                                 | A grey border with `common` beneath the name. The word is there as well as the colour                                                  | PASS                                                                                    |
+| 5.5 | Tap Continue, start the next encounter, open the item menu                | One more row than 5.1, named for the item. It is there **now**, before any sync — the P3 fix                                           | PASS                                                                                    |
+| 5.6 | Flee, force-stop before foregrounding, reopen, check again                | Still there. The local grant is durable, not optimistic                                                                                | PASS                                                                                    |
+| 5.7 | Foreground to sync, then check once more                                  | Still exactly one more than 5.1. `writeInventory` replaces the satchel wholesale, so an id the server never recorded would vanish here | PASS                                                                                    |
+
+### 6. Vigor recovers three ways
+
+Covers exit criterion 7.
+
+Regen is 1% of max per 10 minutes (fixtures §9), so a full bar takes about 16 hours. Do not sit and watch it — note the value, go away, come back.
+
+| #   | Step                                                           | Expected                                                                                     | Result |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------ |
+| 6.1 | Fight until your Vigor is well down, note it and the time      | —                                                                                            |        |
+| 6.2 | Come back an hour later and foreground                         | Up by about 6 points on a 100 max. **Never** past max                                        |        |
+| 6.3 | Note the value, then foreground five times in a row            | It rises once, not five times. The anchor advances by what it granted, not to `now`          |        |
+| 6.4 | Leave it overnight, open the app after local midnight          | Full. The daily reset is not the same mechanism as regen                                     |        |
+| 6.5 | Fight down again, then Character → **Tag today as a Rest Day** | Vigor goes to full **immediately**, with no network round trip                               |        |
+| 6.6 | Read the confirmation                                          | `Rest tagged. Emdir's strength returns — the road isn't going anywhere.`                     |        |
+| 6.7 | Look for a cost                                                | No cap, no cooldown, no "are you sure", no count of rest days used. Nothing here is punitive |        |
+| 6.8 | Tap it again                                                   | The button reads `✓ Rest Day tagged` and is disabled for today                               |        |
+
+### 7. A battle reaches the server without a foreground event
+
+Covers exit criterion 8. This is the M2 gap: settling a fight while the app is already in the foreground had nothing to trigger a sync.
+
+| #   | Step                                                          | Expected                                                                                           | Result |
+| --- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------ |
+| 7.1 | With the app open and staying open, win a battle              | —                                                                                                  |        |
+| 7.2 | Do not background the app. Wait a few seconds, then tell me   | The `battle` row is on the server already                                                          |        |
+| 7.3 | Win a second battle immediately after the first, same session | Both rows arrive. The second is not swallowed by the first pass still running                      |        |
+| 7.4 | Turn the API off, win a battle, turn it on, foreground        | It arrives. Nothing was lost while the server was down                                             |        |
+| 7.5 | Open Settings                                                 | No **Stuck uploads** card. It appears only after five refusals, and being offline is not a refusal |        |
+
+### 8. A turn is legible, and every skill is one tap
+
+Covers exit criteria 9 and 10, and M2's criterion 3 under the new layout.
+
+| #    | Step                                          | Expected                                                                                                      | Result |
+| ---- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------ |
+| 8.1  | Start a wild encounter and read the screen    | Enemy panel, your name, your Vigor, `Round 1` at the log's right, then the action grid                        |        |
+| 8.2  | Count the actions                             | Seven: four skill slots, the Attack circle centred among them, and the Items and Flee bars                    |        |
+| 8.3  | Tap Attack                                    | Log lines appear **one at a time**, not all at once. Roughly 450ms apart                                      |        |
+| 8.4  | Watch the Vigor bars during that turn         | They sweep to the new value over about 400ms. They do not jump                                                |        |
+| 8.5  | Try to tap again while the log is catching up | Refused. The next turn cannot start before you have read the last one                                         |        |
+| 8.6  | Tap a filled skill slot                       | The move fires. **One tap** — there is no Skill submenu any more                                              |        |
+| 8.7  | Find a locked slot and tap it                 | It shows `Lv 4` (or 6, 10, 16) and explains itself. It does not vanish and is not silently dead               |        |
+| 8.8  | Spend a skill to zero and look at it          | `0 left`, and tapping says `… is spent for this fight.` **A spent slot and a locked one must not read alike** |        |
+| 8.9  | Long-press a typed move                       | The hint reads _move type_ vs. _enemy type_, never one type alone                                             |        |
+| 8.10 | Tap Items with an empty satchel               | `Your satchel is empty.` — a sentence, not an empty list                                                      |        |
+| 8.11 | Check the four slot positions across fights   | Each skill is always in the same slot. A fixed position is what makes muscle memory possible                  |        |
+
+### 9. Reconciling one row by hand
+
+**↯ Do not skip this drill.** It found M1's only shipped defect and one of M2's. Nothing on a review checklist would have caught either, and the screens looked right at the time.
+
+Take one completed wild encounter that dropped an item. Write down what the screen showed. Then query and compare.
+
+```sql
+-- Replace PLAYER_ID with the value from Settings → Identity export.
+-- ↯ No `vigor_after` here. The payload's value sets `player.vigor_current`; tech-01 never gave
+-- the battle row a column for it, so the Vigor claim below is checked against `player`.
+select client_battle_id, grant_id, enemy_id, enemy_level, outcome, xp_awarded, ended_at
+from battle where player_id = 'PLAYER_ID' order by ended_at desc limit 3;
+
+-- ↯ The column is `id`. `grant_id` is its name on the wire and on `battle`, not in its own table.
+select id, zone_id, enemy_id, source, activity_date, issued_at
+from encounter_grant where player_id = 'PLAYER_ID' order by issued_at desc limit 10;
+
+select activity_date, steps, tier1_minutes, tier2_minutes, tier3_minutes, xp_awarded, encounters_used
+from activity_day where player_id = 'PLAYER_ID' order by activity_date desc limit 3;
+
+select external_session_id, started_at, ended_at, tier1_minutes, encounter_rolls_granted
+from hr_session where player_id = 'PLAYER_ID' order by started_at desc limit 5;
+
+select zone_id, unlocked_at from player_zone_progress where player_id = 'PLAYER_ID';
+select item_def_id, source, acquired_at from player_item where player_id = 'PLAYER_ID';
+select enemy_id, encounter_count, defeat_count from player_bestiary where player_id = 'PLAYER_ID';
+```
+
+Check each claim by arithmetic, not by eye. Two are already confirmed off the drill-1 data, recorded here so they are not re-derived from memory later.
+
+| Claim                                                                                       | How to check                                                                                                                                                | Result                                                                                                  |
+| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Every battle started from an encounter has a `grant_id`, and **no two share one**           | `select grant_id, count(*) from battle where grant_id is not null group by grant_id having count(*) > 1` returns nothing                                    | **PASS** — 2026-08-24. 8 grants issued, 6 spent (5 flees, 1 win), 6 distinct `grant_id`s, no duplicates |
+| `activity_day.encounters_used` equals the grants issued for that date                       | Count the `encounter_grant` rows for the date. They must match exactly, and never exceed 5                                                                  | **PASS** — 2026-08-24. Three dates checked: 08-22 `4`/4, 08-23 `3`/3, 08-24 `1`/1. Exact, none over 5   |
+| `hr_session.encounter_rolls_granted` is 0, 1 or 2 — never more, whatever the session length | Read the rows. The CHECK enforces ≤ 2, so a 3 would be an error rather than a row                                                                           |                                                                                                         |
+| A session's `tier1_minutes` was **set** by the last sync, not accumulated across syncs      | Compare against the day's tier minutes. A session cannot hold more minutes than its own day                                                                 |                                                                                                         |
+| The battle's `xp_awarded` is `15 + level × 2` on a win, and `0` on a loss                   | Compute it                                                                                                                                                  |                                                                                                         |
+| `activity_day.xp_awarded` includes that battle XP **and** the day's step and tier XP        | Step XP is the day's cumulative total divided by 20 and floored **once**, not per delta. This is exactly where M1's defect was                              |                                                                                                         |
+| `player.vigor_current` matches the number the **most recent** battle's screen showed        | `select vigor_current, vigor_anchor_at from player where id = 'PLAYER_ID'`. Only the latest fight is checkable — the battle row does not keep its own Vigor |                                                                                                         |
+| A spent grant's row **survives** in `encounter_grant` on the server                         | Expected. Server-side "spent" is derived from a `battle` row naming it; only the device deletes its copy. Unspent = grants minus battles that reference one |                                                                                                         |
+| One `player_item` row per drop, and the tutorial Salves still carry `source = 'tutorial'`   | Count the rows                                                                                                                                              |                                                                                                         |
+| `player_zone_progress` holds `olympion` and only what a defeated final boss opened          | Read the rows against `player_bestiary`                                                                                                                     |                                                                                                         |
+
+### 10. The tutorial, under the new layout
+
+Covers exit criterion 11 (M2's criteria 1, 2 and 7). **Runs last, and needs a fresh install.**
+
+> Export your identity first — Settings → Identity export, saved to Google Drive. Then:
+>
+> ```
+> adb uninstall com.oldroads.traverser
+> npx expo run:android
+> ```
+
+The tutorial bypasses crits, variance and the type chart (GDD 10 §6.1), so every value here is exact. A number off by one is a defect, not variance.
+
+| #      | Step                                                                                                               | Expected                                                                                                                                                                                                                                                                                                                                                                      | Result |
+| ------ | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 10.1   | Launch after install                                                                                               | Splash, then onboarding 1. Spectral from the first frame, no fallback flash                                                                                                                                                                                                                                                                                                   |        |
+| 10.2   | Complete screens 1–4                                                                                               | Registration succeeds. Screen 5 follows naming, not the hub                                                                                                                                                                                                                                                                                                                   |        |
+| 10.3   | Read screen 5                                                                                                      | Traveler's Blade, `Equipped · +1 Might`. Traveler's Salve, `×3`                                                                                                                                                                                                                                                                                                               |        |
+| 10.4   | Tap Continue, then Begin                                                                                           | Waystone Wisp named. No type tag, no level anywhere                                                                                                                                                                                                                                                                                                                           |        |
+| 10.5   | Read the action grid                                                                                               | **Four locked slots reading `Lv 4`, `Lv 6`, `Lv 10`, `Lv 16`** — the new layout's first real test                                                                                                                                                                                                                                                                             |        |
+| 10.6   | Tap a locked slot                                                                                                  | `No Skills unlocked yet — they arrive as you level.` It explains itself rather than doing nothing                                                                                                                                                                                                                                                                             |        |
+| 10.7   | Read the Vigor bars                                                                                                | The enemy shows a percentage. You show `20 / 20`                                                                                                                                                                                                                                                                                                                              |        |
+| 10.8   | Round 1: tap Attack                                                                                                | Wisp `15 → 9`. You `20 → 16`. Log reads `Basic Attack — 6 damage.`, one line at a time                                                                                                                                                                                                                                                                                        |        |
+| 10.9   | Tap Flee                                                                                                           | Greyed. Tapping shows the cannot-flee line                                                                                                                                                                                                                                                                                                                                    |        |
+| 10.10  | Round 2: tap Attack                                                                                                | Wisp `9 → 3`. You `16 → 12`                                                                                                                                                                                                                                                                                                                                                   |        |
+| 10.11  | Round 3: tap Attack                                                                                                | Refused, with `Not this round — the Salve is what you need.`                                                                                                                                                                                                                                                                                                                  |        |
+| 10.12  | Round 3: Items, then Traveler's Salve                                                                              | Heals `+4` to 16, then the Wisp's hit takes you to 12. The satchel now shows 2                                                                                                                                                                                                                                                                                                |        |
+| 10.13  | Round 4: tap Attack                                                                                                | The Wisp reaches 0. Four rounds, ending at `12 / 20`                                                                                                                                                                                                                                                                                                                          |        |
+| 10.14  | Read screen 7                                                                                                      | `The road remembers this. Onward.` and `+17 XP`                                                                                                                                                                                                                                                                                                                               |        |
+| 10.15  | Tap Begin your journey                                                                                             | Lands on the map tab                                                                                                                                                                                                                                                                                                                                                          |        |
+| 10.16  | Read the Road on a brand-new profile                                                                               | `0 Leagues`, `0 / 90 to Cyclops`. Olympion unlocked and explorable; everything else `Locked`                                                                                                                                                                                                                                                                                  |        |
+| 10.16a | **Drill 3.6's hardware check, deferred to here.** Set the _new_ profile's `lifetime_steps = 400000` and foreground | Fenrir reads `locked`, not `ready to face`, and the counter reads `400 / 900 to Jörmungandr`. ↯ This can only be checked on a device with no Valheon row: `player_zone_progress` reconciles **additively** (`ON CONFLICT DO NOTHING`, never a delete), so once a device has unlocked Valheon no server-side rollback takes it back. Put `lifetime_steps` back to 0 afterwards |        |
+| 10.17  | Open the Character tab                                                                                             | Might reads 11, not 10                                                                                                                                                                                                                                                                                                                                                        |        |
+| 10.18  | Settings → **Restore a different identity**, paste the export                                                      | Your `Emdir` history comes back: Leagues, level, satchel and activity log                                                                                                                                                                                                                                                                                                     |        |
+| 10.19  | Open the Map after the restore                                                                                     | The Road redraws from the restored profile. ↯ **Expect defeated gates to read `available` again** — see note (c)                                                                                                                                                                                                                                                              |        |
+
+> **(c) Known and recorded, not a defect to raise here.** `player_bestiary` is the one map input no repair path restores — the profile document does not carry it (DECISIONS 2026-08-22, M3/P7). So a restored device shows a beaten boss as `available` until it is beaten again. **The zone stays unlocked**, because `player_zone_progress` _is_ reconciled, so the cost is a wrong badge and never a lost zone. Confirm that distinction holds: Valheon must still be explorable at 10.19 even though Cerberus reads `available`.
+
+---
+
+## Recording the outcome
+
+Record the result here when the sheet is complete. A failed drill goes to `DECISIONS.md` as a defect with its fix, not as a note.
+
+| Exit criterion                                                          | Pass? | Notes                                                                                                                    |
+| ----------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------ |
+| 1. Walking a thousand steps can start a real encounter, no debug card   | PASS  | Drill 1. Debug card gone. 121 Leagues walked; travel grants issued and spent, six distinct grant ids across six battles. |
+| 2. The cap holds at 5, and steps, XP and Leagues accrue past it         | PASS  | Drill 2. Six Explore taps, four grants, encounters_used pinned at 5. Steps and XP kept rising past the cap.              |
+| 3. A final-boss gate blocks the next zone, and unlocks it when defeated | PASS  | Drill 3. Valheon stayed shut at 400 Leagues until Cerberus fell, then opened. Two defects found and fixed — see below.   |
+| 4. The Road renders three segments correctly; the Viewport scrolls      | PASS  | Drill 4, all nine steps. Fills scaled per zone, Waymarker in Valheon, Return to the Road snaps back, renders API-off.    |
+| 5. Explore starts an encounter against an earlier zone's roster         | PASS  | Drills 2 and 3.9. Olympion taps drew Harpy/Satyr; with Valheon open, Explore Valheon drew that segment's roster.         |
+| 6. The Reveal Card shows, and the item is in the satchel next screen    |       |                                                                                                                          |
+| 7. Vigor recovers by regen, by daily reset, and by a Rest Day           |       |                                                                                                                          |
+| 8. A battle settled in the foreground reaches the server                |       |                                                                                                                          |
+| 9. A turn is legible — no single-frame resolution                       |       |                                                                                                                          |
+| 10. Every equipped skill is one tap; a locked or empty slot says why    |       |                                                                                                                          |
+| 11. M2's eight criteria still pass                                      |       |                                                                                                                          |
+
+---
+
+## Notes
+
+Write anything you notice here as you see it, not afterwards. Do not sort it or judge whether it is worth doing — that comes after the drills, when the whole list is visible at once.
+
+| #   | Comment                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Seven encounters waiting rendered as seven full-width buttons stacked above the Road, pushing the segments off screen. No way to collapse the list, and no scroll inside it. Correct data, unusable layout.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 2   | Encounters never expire. Nothing in GDD 9 §5 says a grant decays, so a week of not playing banks up to 35 fights. The 5/day cap limits the rate, not the pile.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 3   | Chevron not visible on skills in battle at 1.6.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 4   | 2.3 took a good ~25 secs to how new encounter button.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 5   | **Gate nodes do not read as boss fights.** A mid-boss and a final boss are drawn with the same glyph and weight as each other, and nothing marks either as a boss at all — the only signal is the wording `the road stops here` versus `you may walk on`, which is a _consequence_ of the gate rather than an identity. Cyclops, Cerberus and Fenrir should be visibly bosses, and a final boss should outrank a mid-boss on sight. GDD 9 §4.2 names three node types but specifies no iconography for them; §6 and GDD 13 §10 defer zone and Road art wholesale. Needs a decision on whether this is art-phase work or a structural change to the node.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 6   | A mid-boss node reads `Cyclops, ready to face` but tapping it does nothing — boss encounters are M4. The copy promises an action the build cannot deliver, so it reads as broken rather than as not-yet-built. Same family as note (a): the app is correct and silent about it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 7   | **The Inventory tab lies rather than being empty.** It is a stub that prints `Nothing to carry yet. Gear and items arrive with your first battles.` for every player at every time, including one holding three Salves and a tutorial weapon. An unbuilt screen saying nothing would be fine; this one makes a false claim about the save. Either gate the copy on a real count or say the sub-views are not built yet. Found at drill 5, where it was mistaken for lost data.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 8   | **Consecutive battles are not fun at the shipped Vigor rates.** First real playtest finding. Losing drops you to 25% of max, and at max 45 regen returns one point per 22 minutes — 12.6 hours back to full. A second fight after a loss is not a retry, it is tomorrow. GDD 2 §147 already marks both numbers (1%/10min, the 25% floor) as a first design pass "worth playtesting now that encounter frequency is fixed", so this is the playtest it asked for. Candidates: raise the defeat floor, raise the regen rate, or make the floor a fraction of _missing_ Vigor rather than of max. Needs a decision, not a patch.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 9   | **The game lets you build a character that cannot fight, and never says so.** The drill profile reached Level 16 with 30 of 45 points in Vigor, leaving Might 15 and Aegis 3 — about 60% of a balanced build's damage output while taking 54% more per hit. Every battle was unwinnable, and it read as a combat balance problem rather than as a build. Nothing on the allocation screen distinguishes Vigor from the stats that decide a fight, no in-game text explains what any stat does, and `StatPanel.tsx:15` correctly notes there is no respec — so the mistake is permanent and silent. GDD 1 §5 defines the stats but nothing surfaces their roles to the player. Needs either guidance at the point of spending or a respec. Found at drill 5, where it blocked the sheet for two days.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 10  | **Enemy stats outscale the player's, so one fight costs most of a day's Vigor.** Measured at Level 16 with a balanced spread (Vigor 30, Might 26, Resolve 18, Aegis 20): a Satyr has 48 Vigor and takes 6 rounds to kill while dealing ~3.8 per round — ~23 of the player's 30-point bar for one wild encounter. A Harpy costs ~12. Cause: the player earns **3 stat points per level across six stats**, while a Harpy gains **5.75 per level** free, 3.0 of it into Vigor. Totals cross at about Level 16 (player 115, Harpy 132) and diverge after (Level 60: 247 vs 385). No allocation both kills a Satyr and survives two, and the all-Vigor build that survives cannot kill anything. **This also puts GDD 9 §5 and GDD 2 §6 in direct conflict:** a 5-encounter daily cap against one daily Vigor pool only works if a fight costs ~20% of the bar; it costs 75%. Blocked drill 5 across three days. Needs a balance pass, not a tuning nudge — and it is the strongest evidence yet for GDD 2 §147's requested playtest.                                                                                                                                                                                                                                                 |
+| 11  | **Gear cannot be equipped, so every drop after the tutorial is dead loot.** Two mortal pieces dropped during drill 5 (armor +2, accessory +2) and both sit unequipped, because no equip path exists anywhere: no UI on Character or Inventory, no `OutboxKind`, no endpoint. The only equipped item any player can have is the tutorial weapon. GDD 8 §2 maps three slots to three stats, and none of them is reachable. This compounds note 10 — gear is one of the intended answers to enemy stat scaling, and it is currently unavailable, so the difficulty measured there is what the game will always feel like. Needs a scope answer: is equipping M4, or was it assumed built?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 12  | **Vigor is invisible outside a battle, so the Rest Day control appears to do nothing.** Character hosts "Tag today as a Rest Day" but shows no Vigor bar and no number, and the only feedback is the button flipping to `✓ Rest Day tagged`. The restore to 100% is the control's entire headline effect (GDD 2 §6, GDD 11 §3.1) and the player cannot see it happen — during drill 5 it read as a broken button, and the tag was spent twice before the data was checked. Vigor also drives whether the next encounter is winnable, so it is a number the player needs between fights, not only during them. Needs a Vigor readout on Character.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 13  | **A Rest Day tagged during a battle is silently lost.** `session.ts:197` reads `player.vigorCurrent` once when the battle is built; the fight then owns that number and `settleBattle` writes it back on the way out. So a Rest Day tagged mid-fight restores the mirror to 100%, the battle never sees it, and the settle overwrites the restore with the fight's own result. Observed at drill 5: tagged at 00:19:45 inside a battle running 00:16:53–00:24:06, and Vigor went from 7 to 31 to 7. GDD 11 §3.1 gives one tap per day with no cap and no way to un-spend it, so the player loses their only daily restore and — per note 12 — cannot see that it happened. Real defect, reachable in ordinary play. Fix is a decision: refuse the tag while a battle is open, or have the battle re-read Vigor when the mirror changes beneath it. **The same frozen copy survives a restart**: `battle_snapshot` persists the running fight and is cleared only on settle, so an unsettled battle resumes with its old Vigor however many times the app is reopened and however often the mirror is refilled beneath it. During drill 5 this looked like "every fight starts at 7" for half an hour. Whatever fix is chosen has to cover the resume path, not only the live one. |
+| 14  | **A move's category is invisible — nothing on a slot says Physical or Divine.** A skill slot shows only the name and uses left (`options.ts` — `SkillOption` carries no category and no type), so nothing distinguishes a Might-vs-Resolve swing from a Favor-vs-Aegis one, which is the stat pair the whole allocation decision rides on. GDD 13 §6.2 assumes a **type icon** on each typed move — the chevron is specified as sitting "next to its type icon" — and the build renders neither icon nor chevron (note 3). Even built as specced, category is only implicit: a Physical move would read as the _absence_ of an icon, and no GDD section says category itself is ever surfaced. Compounds note 9: the player allocates between Might and Favor with no way to see which moves use which. Needs the type icon built as specced, plus a decision on whether Physical gets an explicit mark rather than an absence.                                                                                                                                                                                                                                                                                                                                                   |

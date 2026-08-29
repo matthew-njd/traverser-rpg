@@ -270,8 +270,8 @@ namespace Traverser.Api.Migrations
                         new
                         {
                             Id = 1,
-                            GeneratedAt = new DateTime(2026, 8, 17, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Version = 2
+                            GeneratedAt = new DateTime(2026, 8, 29, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Version = 3
                         });
                 });
 
@@ -1421,8 +1421,8 @@ namespace Traverser.Api.Migrations
                         {
                             EnemyId = "enemy_harpy",
                             Stat = "vigor",
-                            Base = 8m,
-                            Rate = 3.0m
+                            Base = 22m,
+                            Rate = 0.8m
                         },
                         new
                         {
@@ -1443,7 +1443,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_harpy",
                             Stat = "favor",
                             Base = 7m,
-                            Rate = 0.75m
+                            Rate = 0.45m
                         },
                         new
                         {
@@ -1462,100 +1462,100 @@ namespace Traverser.Api.Migrations
                         new
                         {
                             EnemyId = "enemy_satyr",
-                            Stat = "vigor",
-                            Base = 8m,
-                            Rate = 2.5m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_satyr",
-                            Stat = "might",
-                            Base = 6m,
-                            Rate = 0.5m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_satyr",
-                            Stat = "resolve",
-                            Base = 6m,
-                            Rate = 0.5m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_satyr",
-                            Stat = "favor",
-                            Base = 7m,
-                            Rate = 0.75m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_satyr",
-                            Stat = "aegis",
-                            Base = 6m,
-                            Rate = 0.5m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_satyr",
-                            Stat = "stride",
-                            Base = 8m,
-                            Rate = 0.75m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_cyclops",
-                            Stat = "vigor",
-                            Base = 15m,
-                            Rate = 4.5m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_cyclops",
-                            Stat = "might",
-                            Base = 10m,
-                            Rate = 1.0m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_cyclops",
-                            Stat = "resolve",
-                            Base = 8m,
-                            Rate = 0.75m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_cyclops",
-                            Stat = "favor",
-                            Base = 7m,
-                            Rate = 0.5m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_cyclops",
-                            Stat = "aegis",
-                            Base = 7m,
-                            Rate = 0.5m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_cyclops",
-                            Stat = "stride",
-                            Base = 5m,
-                            Rate = 0.25m
-                        },
-                        new
-                        {
-                            EnemyId = "enemy_cerberus",
                             Stat = "vigor",
                             Base = 20m,
-                            Rate = 5.5m
+                            Rate = 0.65m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_satyr",
+                            Stat = "might",
+                            Base = 6m,
+                            Rate = 0.35m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_satyr",
+                            Stat = "resolve",
+                            Base = 6m,
+                            Rate = 0.5m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_satyr",
+                            Stat = "favor",
+                            Base = 6m,
+                            Rate = 0.4m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_satyr",
+                            Stat = "aegis",
+                            Base = 6m,
+                            Rate = 0.5m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_satyr",
+                            Stat = "stride",
+                            Base = 8m,
+                            Rate = 0.75m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_cyclops",
+                            Stat = "vigor",
+                            Base = 36m,
+                            Rate = 0.9m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_cyclops",
+                            Stat = "might",
+                            Base = 9m,
+                            Rate = 0.35m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_cyclops",
+                            Stat = "resolve",
+                            Base = 8m,
+                            Rate = 0.5m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_cyclops",
+                            Stat = "favor",
+                            Base = 7m,
+                            Rate = 0.35m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_cyclops",
+                            Stat = "aegis",
+                            Base = 7m,
+                            Rate = 0.5m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_cyclops",
+                            Stat = "stride",
+                            Base = 5m,
+                            Rate = 0.25m
+                        },
+                        new
+                        {
+                            EnemyId = "enemy_cerberus",
+                            Stat = "vigor",
+                            Base = 46m,
+                            Rate = 1.05m
                         },
                         new
                         {
                             EnemyId = "enemy_cerberus",
                             Stat = "might",
-                            Base = 9m,
-                            Rate = 0.75m
+                            Base = 8m,
+                            Rate = 0.35m
                         },
                         new
                         {
@@ -1569,7 +1569,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_cerberus",
                             Stat = "favor",
                             Base = 8m,
-                            Rate = 0.75m
+                            Rate = 0.35m
                         },
                         new
                         {
@@ -1589,15 +1589,15 @@ namespace Traverser.Api.Migrations
                         {
                             EnemyId = "enemy_draugr",
                             Stat = "vigor",
-                            Base = 8m,
-                            Rate = 2.5m
+                            Base = 24m,
+                            Rate = 0.5m
                         },
                         new
                         {
                             EnemyId = "enemy_draugr",
                             Stat = "might",
-                            Base = 8m,
-                            Rate = 0.75m
+                            Base = 7m,
+                            Rate = 0.25m
                         },
                         new
                         {
@@ -1611,7 +1611,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_draugr",
                             Stat = "favor",
                             Base = 5m,
-                            Rate = 0.5m
+                            Rate = 0.35m
                         },
                         new
                         {
@@ -1631,8 +1631,8 @@ namespace Traverser.Api.Migrations
                         {
                             EnemyId = "enemy_valkyrie",
                             Stat = "vigor",
-                            Base = 6m,
-                            Rate = 2.0m
+                            Base = 22m,
+                            Rate = 0.55m
                         },
                         new
                         {
@@ -1653,7 +1653,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_valkyrie",
                             Stat = "favor",
                             Base = 9m,
-                            Rate = 0.9m
+                            Rate = 0.5m
                         },
                         new
                         {
@@ -1673,15 +1673,15 @@ namespace Traverser.Api.Migrations
                         {
                             EnemyId = "enemy_fenrir",
                             Stat = "vigor",
-                            Base = 22m,
-                            Rate = 4.0m
+                            Base = 48m,
+                            Rate = 1.1m
                         },
                         new
                         {
                             EnemyId = "enemy_fenrir",
                             Stat = "might",
                             Base = 10m,
-                            Rate = 0.8m
+                            Rate = 0.45m
                         },
                         new
                         {
@@ -1695,7 +1695,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_fenrir",
                             Stat = "favor",
                             Base = 9m,
-                            Rate = 0.6m
+                            Rate = 0.4m
                         },
                         new
                         {
@@ -1715,15 +1715,15 @@ namespace Traverser.Api.Migrations
                         {
                             EnemyId = "enemy_jormungandr",
                             Stat = "vigor",
-                            Base = 18m,
-                            Rate = 4.0m
+                            Base = 55m,
+                            Rate = 1.3m
                         },
                         new
                         {
                             EnemyId = "enemy_jormungandr",
                             Stat = "might",
                             Base = 8m,
-                            Rate = 0.6m
+                            Rate = 0.4m
                         },
                         new
                         {
@@ -1737,7 +1737,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_jormungandr",
                             Stat = "favor",
                             Base = 10m,
-                            Rate = 0.8m
+                            Rate = 0.5m
                         },
                         new
                         {
@@ -1757,15 +1757,15 @@ namespace Traverser.Api.Migrations
                         {
                             EnemyId = "enemy_strix",
                             Stat = "vigor",
-                            Base = 10m,
-                            Rate = 2.6m
+                            Base = 26m,
+                            Rate = 0.65m
                         },
                         new
                         {
                             EnemyId = "enemy_strix",
                             Stat = "might",
                             Base = 6m,
-                            Rate = 0.5m
+                            Rate = 0.35m
                         },
                         new
                         {
@@ -1779,7 +1779,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_strix",
                             Stat = "favor",
                             Base = 8m,
-                            Rate = 0.9m
+                            Rate = 0.45m
                         },
                         new
                         {
@@ -1799,15 +1799,15 @@ namespace Traverser.Api.Migrations
                         {
                             EnemyId = "enemy_lemures",
                             Stat = "vigor",
-                            Base = 10m,
-                            Rate = 2.7m
+                            Base = 24m,
+                            Rate = 0.5m
                         },
                         new
                         {
                             EnemyId = "enemy_lemures",
                             Stat = "might",
-                            Base = 9m,
-                            Rate = 0.85m
+                            Base = 7m,
+                            Rate = 0.25m
                         },
                         new
                         {
@@ -1820,8 +1820,8 @@ namespace Traverser.Api.Migrations
                         {
                             EnemyId = "enemy_lemures",
                             Stat = "favor",
-                            Base = 6m,
-                            Rate = 0.6m
+                            Base = 5m,
+                            Rate = 0.35m
                         },
                         new
                         {
@@ -1841,29 +1841,29 @@ namespace Traverser.Api.Migrations
                         {
                             EnemyId = "enemy_griffin",
                             Stat = "vigor",
-                            Base = 20m,
-                            Rate = 2.5m
+                            Base = 42m,
+                            Rate = 0.85m
                         },
                         new
                         {
                             EnemyId = "enemy_griffin",
                             Stat = "might",
-                            Base = 10m,
-                            Rate = 0.85m
+                            Base = 9m,
+                            Rate = 0.4m
                         },
                         new
                         {
                             EnemyId = "enemy_griffin",
                             Stat = "resolve",
                             Base = 9m,
-                            Rate = 0.7m
+                            Rate = 0.55m
                         },
                         new
                         {
                             EnemyId = "enemy_griffin",
                             Stat = "favor",
-                            Base = 11m,
-                            Rate = 0.75m
+                            Base = 10m,
+                            Rate = 0.4m
                         },
                         new
                         {
@@ -1883,15 +1883,15 @@ namespace Traverser.Api.Migrations
                         {
                             EnemyId = "enemy_cacus",
                             Stat = "vigor",
-                            Base = 22m,
-                            Rate = 2.2m
+                            Base = 54m,
+                            Rate = 1.1m
                         },
                         new
                         {
                             EnemyId = "enemy_cacus",
                             Stat = "might",
-                            Base = 11m,
-                            Rate = 0.9m
+                            Base = 10m,
+                            Rate = 0.45m
                         },
                         new
                         {
@@ -1904,8 +1904,8 @@ namespace Traverser.Api.Migrations
                         {
                             EnemyId = "enemy_cacus",
                             Stat = "favor",
-                            Base = 13m,
-                            Rate = 0.95m
+                            Base = 12m,
+                            Rate = 0.45m
                         },
                         new
                         {

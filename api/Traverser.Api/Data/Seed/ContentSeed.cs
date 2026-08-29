@@ -24,14 +24,14 @@ internal static partial class ContentSeed
     /// and re-downloads only when it moved (tech-01 §3) — a content change that forgets to bump it is
     /// invisible to every already-installed client.
     /// </summary>
-    private const int Version = 2;
+    private const int Version = 3;
 
     /// <summary>
     /// <c>content_version.generated_at</c>. <c>HasData</c> requires a constant, so the store default
     /// of <c>now()</c> can't apply: this is the date the seed was authored and it moves with
     /// <see cref="Version"/>.
     /// </summary>
-    private static readonly DateTime GeneratedAt = new(2026, 8, 17, 0, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime GeneratedAt = new(2026, 8, 29, 0, 0, 0, DateTimeKind.Utc);
 
     internal static void Apply(ModelBuilder modelBuilder)
     {

@@ -50,8 +50,8 @@ describe('fixtures §10.8 — Harpy L15, 18 draws, all consumed', () => {
   it('produces the fixture’s damage, round by round', () => {
     const { battle } = fight();
 
-    // Harpy 9, player 25 · Harpy 1 (crit on a base of 1), player 6 · Harpy 13 (crit), player 30.
-    expect(damageLog(battle.events)).toEqual([9, 25, 1, 6, 13, 30]);
+    // Harpy 6, player 25 · Harpy 1 (crit on a base of 1), player 6 · Harpy 9 (crit), player 30.
+    expect(damageLog(battle.events)).toEqual([6, 25, 1, 6, 9, 30]);
   });
 
   it('selects the Harpy’s moves as the draws dictate', () => {
@@ -67,12 +67,12 @@ describe('fixtures §10.8 — Harpy L15, 18 draws, all consumed', () => {
     ]);
   });
 
-  it('ends in a win in 3 rounds at 13/36 Vigor', () => {
+  it('ends in a win in 3 rounds at 20/36 Vigor', () => {
     const { battle } = fight();
 
     expect(battle.state.outcome).toBe('win');
     expect(battle.state.round).toBe(3);
-    expect(battle.state.player.vigor).toBe(13);
+    expect(battle.state.player.vigor).toBe(20);
     expect(battle.state.enemy.vigor).toBe(0);
   });
 
@@ -88,7 +88,7 @@ describe('fixtures §10.8 — Harpy L15, 18 draws, all consumed', () => {
       event.type === 'damage_dealt' && event.wasCrit ? [event.amount] : [],
     );
 
-    expect(crits).toEqual([1, 13]);
+    expect(crits).toEqual([1, 9]);
   });
 
   it('rolls one item and no gear, and takes exactly 18 draws', () => {

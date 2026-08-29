@@ -174,10 +174,10 @@ describe('fixtures §10.3 — crit multiplies the floored base', () => {
  * 1.0 when the enemy attacks regardless of either side's type.
  */
 describe('fixtures §10.6 — enemy-side crit', () => {
-  it('Cerberus L15 Death Breath into Aegis 10: 14, and 21 on a crit', () => {
+  it('Cerberus L15 Death Breath into Aegis 10: 9, and 13 on a crit', () => {
     const cerberus = enemyStatsAt(enemy('enemy_cerberus'), 15);
 
-    expect(cerberus.favor).toBe(19);
+    expect(cerberus.favor).toBe(13);
 
     const move = enemy('enemy_cerberus').moves.find((candidate) => candidate.id === 'emove_death_breath');
 
@@ -196,8 +196,8 @@ describe('fixtures §10.6 — enemy-side crit', () => {
       rng: scriptedRng([0]),
     });
 
-    expect(plain).toMatchObject({ base: 14, typeMultiplier: 1, damage: 14 });
-    expect(crit.damage).toBe(21);
+    expect(plain).toMatchObject({ base: 9, typeMultiplier: 1, damage: 9 });
+    expect(crit.damage).toBe(13);
   });
 });
 
