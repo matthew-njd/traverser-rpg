@@ -162,6 +162,41 @@ public class MapReadTests(TraverserApiFixture api) : IDisposable
     }
 
     /// <summary>
+    /// ↯ <b>A gate inside a locked zone stays locked, however far the Waymarker has gone.</b> Found
+    /// on hardware at M3/P9: at 400 Leagues with Valheon still shut, Fenrir — a Valheon mid-boss at
+    /// 380 — read <c>available</c> while the same response called his zone locked. Two contradicting
+    /// claims in one document, and the fight is unreachable either way (GDD 9 §3). §4.2 defines
+    /// availability by distance alone because it never anticipated this state; only the dual gate
+    /// produces it.
+    /// </summary>
+    [Fact]
+    public async Task A_gate_in_a_locked_zone_stays_locked_however_far_past_its_threshold()
+    {
+        var client = await PlayerAsync();
+
+        await SyncAsync(client, [Steps(400_000)]);
+
+        var map = await MapAsync(client);
+
+        Assert.False(Zone(map, "valheon").GetProperty("unlocked").GetBoolean());
+        Assert.Equal("locked", StateOf(map, "gate_fenrir"));
+    }
+
+    [Fact]
+    public async Task That_same_gate_opens_the_moment_its_zone_does()
+    {
+        var client = await PlayerAsync();
+
+        await SyncAsync(client, [Steps(400_000)]);
+        await SyncAsync(client, battles: [BossWin("enemy_cerberus")]);
+
+        var map = await MapAsync(client);
+
+        Assert.True(Zone(map, "valheon").GetProperty("unlocked").GetBoolean());
+        Assert.Equal("available", StateOf(map, "gate_fenrir"));
+    }
+
+    /// <summary>
     /// GDD 9 §4.1's segments are drawn to their own threshold range, not to scale — so the entry
     /// threshold is what the client fills against, and it has to arrive with the zone.
     /// </summary>

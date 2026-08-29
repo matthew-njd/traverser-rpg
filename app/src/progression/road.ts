@@ -104,6 +104,8 @@ export function readRoad(db: SqliteDatabase): RoadState {
       .map((gate) => [gate.unlocks_zone_id as string, gate.league_threshold]),
   );
 
+  const openZoneIds = new Set(zones.filter((zone) => zone.unlocked === 1).map((zone) => zone.id));
+
   const resolved = gates.map(
     (gate): RoadGate => ({
       gateId: gate.id,
@@ -113,7 +115,12 @@ export function readRoad(db: SqliteDatabase): RoadState {
       leagueThreshold: gate.league_threshold,
       isHardGate: gate.is_hard_gate === 1,
       unlocksZoneId: gate.unlocks_zone_id,
-      state: stateOf(gate.defeat_count ?? 0, gate.league_threshold, leagues),
+      state: stateOf(
+        gate.defeat_count ?? 0,
+        gate.league_threshold,
+        leagues,
+        openZoneIds.has(gate.zone_id),
+      ),
     }),
   );
 
@@ -129,25 +136,42 @@ export function readRoad(db: SqliteDatabase): RoadState {
       gates: resolved.filter((gate) => gate.zoneId === zone.id),
     })),
 
-    // Gates are already ordered by threshold, so the first undefeated one is the nearest.
-    nextGate: resolved.find((gate) => gate.state !== 'defeated') ?? null,
+    // ↯ **The nearest gate still ahead by distance, which is neither the nearest unbeaten one nor
+    // the nearest locked one.** GDD 9 §4.4 wants Leagues *remaining*, so a gate already reached and
+    // left unfought is not it — naming one prints "121 / 90 to Cyclops", a distance the player
+    // passed 31 Leagues ago. Read off the threshold rather than off `state`, because `locked` now
+    // means "threshold ahead **or** zone shut" and only the first half is a distance. Gates are
+    // ordered by threshold, so the first match wins; null hides the line rather than inventing one.
+    nextGate:
+      resolved.find((gate) => gate.leagueThreshold > leagues && gate.state !== 'defeated') ?? null,
   };
 }
 
 /**
- * GDD 9 §4.2's ladder. Defeated outranks the threshold, and there is no path back down — bosses
- * are repeat-fightable (§5), so the tally rising again changes nothing.
+ * GDD 9 §4.2's ladder. Defeated outranks everything, and there is no path back down — bosses are
+ * repeat-fightable (§5), so the tally rising again changes nothing.
  *
  * ↯ `>=`, not `>`. A player standing exactly on a threshold has walked the full distance; locking
  * them out costs another thousand steps for a fight they already earned, with nothing on screen to
  * say why.
+ *
+ * ↯ **Available needs the zone open as well as the distance walked.** §4.2 defines availability by
+ * distance alone, because it never anticipated the state the dual gate creates: a Waymarker past a
+ * threshold inside a zone that has not been entered. Found on hardware at P9 — at 400 Leagues with
+ * Valheon still shut, Fenrir read `ready to face` on the same screen that drew his segment as
+ * `Locked`. Two contradicting claims, and the fight is unreachable either way (GDD 9 §3).
  */
-function stateOf(defeatCount: number, threshold: number, leagues: number): GateState {
+function stateOf(
+  defeatCount: number,
+  threshold: number,
+  leagues: number,
+  zoneOpen: boolean,
+): GateState {
   if (defeatCount > 0) {
     return 'defeated';
   }
 
-  return leagues >= threshold ? 'available' : 'locked';
+  return zoneOpen && leagues >= threshold ? 'available' : 'locked';
 }
 
 /**

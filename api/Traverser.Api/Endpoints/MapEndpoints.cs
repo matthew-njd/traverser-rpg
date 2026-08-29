@@ -97,7 +97,7 @@ public static class MapEndpoints
                 LeagueThreshold: g.LeagueThreshold,
                 IsHardGate: g.IsHardGate,
                 UnlocksZoneId: g.UnlocksZoneId,
-                State: StateOf(g.EnemyId, g.LeagueThreshold, leagues, defeated)))]));
+                State: StateOf(g.EnemyId, g.LeagueThreshold, leagues, defeated, unlockedZoneIds.Contains(g.ZoneId))))]));
     }
 
     /// <summary>
@@ -108,13 +108,21 @@ public static class MapEndpoints
     /// gate — off-by-one here locks a player out of a fight they walked the full distance for, and
     /// it stays locked until they walk another thousand steps, so nothing about it looks like a bug.
     /// </para>
+    /// <para>
+    /// ↯ <b>Available needs the zone open as well as the distance walked.</b> §4.2 defines
+    /// availability by distance alone because it never anticipated the state the dual gate creates:
+    /// a Waymarker past a threshold inside a zone that has not been entered. Found on hardware at
+    /// P9 — at 400 Leagues with Valheon still shut, Fenrir read <c>available</c> while the same
+    /// response called his zone locked. The fight is unreachable either way (GDD 9 §3).
+    /// </para>
     /// </summary>
     private static MapGateState StateOf(
         string enemyId,
         int threshold,
         long leagues,
-        HashSet<string> defeated) =>
+        HashSet<string> defeated,
+        bool zoneOpen) =>
         defeated.Contains(enemyId) ? MapGateState.Defeated
-            : leagues >= threshold ? MapGateState.Available
+            : zoneOpen && leagues >= threshold ? MapGateState.Available
             : MapGateState.Locked;
 }

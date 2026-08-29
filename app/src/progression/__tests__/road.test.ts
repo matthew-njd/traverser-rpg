@@ -74,9 +74,51 @@ describe('gate state', () => {
     expect(stateOf(road(0, beat('enemy_cyclops')), 'gate_cyclops')).toBe('defeated');
   });
 
+  /**
+   * ↯ **A gate inside a locked zone stays locked, however far the Waymarker has gone.** Found on
+   * hardware at M3/P9: at 400 Leagues with Valheon still shut, Fenrir — a Valheon mid-boss at 380 —
+   * read `available` on the same screen that drew his segment as `Locked`. Two contradicting claims,
+   * and the fight is unreachable either way (GDD 9 §3). §4.2 defines availability by distance alone
+   * because it never anticipated this state; only the dual gate produces it.
+   */
+  it('keeps a gate locked while its zone is, however far past the threshold', () => {
+    const state = road(400_000);
+
+    expect(zoneOf(state, 'valheon')?.unlocked).toBe(false);
+    expect(stateOf(state, 'gate_fenrir')).toBe('locked');
+  });
+
+  it('opens that same gate the moment its zone does', () => {
+    const opened = (db: SqliteDatabase) => {
+      beat('enemy_cerberus')(db);
+      db.runSync(
+        "INSERT INTO player_zone_progress (player_id, zone_id, unlocked_at) VALUES (?, 'valheon', '2026-08-24T00:00:00Z')",
+        [PLAYER_ID],
+      );
+    };
+
+    expect(stateOf(road(400_000, opened), 'gate_fenrir')).toBe('available');
+  });
+
   it('points at the nearest gate still ahead', () => {
     expect(road(0).nextGate?.gateId).toBe('gate_cyclops');
     expect(road(0, beat('enemy_cyclops')).nextGate?.gateId).toBe('gate_cerberus');
+  });
+
+  /**
+   * ↯ **Reached is not the same as beaten, and the counter measures distance.** Found on hardware
+   * at M3/P9: at 121 Leagues with Cyclops available-but-unfought at 90, the counter read
+   * `121 / 90 to Cyclops` — a distance the player passed 31 Leagues earlier. GDD 9 §4.4 asks for
+   * Leagues *remaining*, so a gate behind the Waymarker can never be the answer however unfought.
+   */
+  it('skips a gate already reached, however long it stays unfought', () => {
+    expect(road(121_000).nextGate?.gateId).toBe('gate_cerberus');
+    expect(road(121_000).nextGate?.leagueThreshold).toBe(220);
+  });
+
+  /** Nothing ahead means nothing to show — the screen hides the line rather than inventing one. */
+  it('reports no next gate once every threshold is behind the Waymarker', () => {
+    expect(road(3_000_000).nextGate).toBeNull();
   });
 });
 
