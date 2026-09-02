@@ -516,6 +516,41 @@ sync loses nothing. Adding any of the three would be a regression (tech-06 §8.4
 
 ---
 
+## M3 is complete
+
+**All eleven exit criteria verified on the Pixel, 2026-09-01** (`traverser-m3-plan.md` §5, §7, and
+the ten drills in `traverser-m3-drills.md`).
+
+The loop is closed. Walking a thousand steps can start a real fight, the daily cap holds at five, a
+final-boss gate blocks the next zone until its boss falls, and the Road renders from the device with
+the API switched off. Loot reaches the satchel before any sync, and Vigor recovers three ways.
+
+**Five defects were found on hardware and fixed** — the third consecutive milestone where the device
+found what a green suite could not. Two were Road defects sharing one root: a derived field reading
+its meaning off another field, so widening `locked` to mean "threshold ahead **or** zone shut"
+silently broke the League counter into naming gates the player had already walked past.
+
+**The largest finding was not a defect.** Drills 5 and 8 established that the loop worked and was not
+fun: enemies gained ~5.5–5.75 stat points per level against the player's allocated 3, so one wild
+fight cost ~75% of the daily Vigor bar where GDD 9 §5's five-encounter cap implies ~20%, and
+mid-bosses past Level 30 modelled as unwinnable. GDD 2 §147 had flagged those numbers for exactly
+this playtest since M0 and nobody had read it. All twelve rosters were retuned — content only, no
+engine change — and GDD 2 §7 now carries **fight-cost invariants** enforced by `balance.test.ts`
+against the shipped bundle, so the property cannot silently rot again.
+
+Drill 9's hand reconciliation came back **clean for the first time in three milestones**: the day's
+XP landed exactly at `floor(8351/20) + 69×3 + 6×51 = 930`, which is where M1's only shipped defect
+had lived.
+
+Seventeen notes were recorded. Three were fixed inside the milestone — a Rest Day tagged mid-battle
+was silently destroyed, a full satchel trapped the player in the item menu with no way out, and the
+Inventory tab claimed an empty save to a player holding five items. The remaining fourteen carry
+into `traverser-m4-plan.md`.
+
+↯ **One drill artifact must not be cleaned up.** `player_zone_progress` reconciles additively, so no
+server-side rollback can return a device to a Valheon-locked state. The profile created at drill 10
+is the only one left that can test the dual gate.
+
 ## M2 is complete
 
 **All eight exit criteria verified on the Pixel, 2026-08-22** (`traverser-m2-plan.md` §5, §7, and

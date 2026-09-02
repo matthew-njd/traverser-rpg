@@ -78,6 +78,12 @@ The Road is rendered as a single winding path, laid out left-to-right (or bottom
 
 Mid-bosses being soft gates (not blocking) versus final bosses being hard gates matches the existing repeat-boss policy (Section 5): players can walk straight past an undefeated Cyclops and keep earning Leagues, but they cannot enter Valheon without having beaten Cerberus.
 
+> **Amended 2026-09-01 (M3/P9, DECISIONS 2026-08-24). Available requires the zone open as well as the threshold reached.** The table above defines availability by distance alone, which is **silent rather than wrong**: it never anticipated a Waymarker standing past a gate's threshold inside a zone that has not been entered, because only the dual gate of §3 produces that state. Found on hardware — at 400 Leagues with Valheon still shut, Fenrir (a Valheon mid-boss at 380) was drawn `Available` on the same screen that tagged his segment `Locked`, inviting a fight §3 makes unreachable.
+>
+> A gate is therefore `Available` only when **both** its League threshold is reached **and** its own zone is unlocked; otherwise it stays `Locked`. This is the same dual condition the zone itself uses, and it is enforced on both tiers — `progression/road.ts` on the device and `GET /players/me/map` on the server.
+>
+> **§4.4's League counter follows from this**, and is the second half of the same defect: once `Locked` could mean "threshold ahead **or** zone shut", it stopped being a distance. The counter names the nearest gate that is both **ahead by distance** and undefeated — never one already passed. At 121 Leagues with Cyclops unfought at 90 it read `121 / 90 to Cyclops`, a distance the player had crossed 31 Leagues earlier. Where no gate remains ahead, the line is hidden rather than invented.
+
 ### 4.3 Revisiting earlier zones
 
 Because bosses are explicitly repeat-fightable (Section 5's Repeat Boss Policy) and the item/gear economy assumes ongoing wild encounters in already-cleared zones, the Viewport can scroll freely to any zone behind the Waymarker. From there, the player can tap an **Explore** action to manually trigger a wild encounter check against that zone's roster (see 5.2) — useful for farming a specific type charm or item from an earlier zone (e.g., returning to Olympion for Storm/War charms while leveling in Imperion).

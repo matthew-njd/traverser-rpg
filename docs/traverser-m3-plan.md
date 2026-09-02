@@ -306,3 +306,58 @@ Verified at P9, before the wrap-up. M3 is done when, on the Pixel:
   or an exemption, so nothing regresses silently — but the decision needs an owner, and M3's
   encounter volume is the evidence it has been waiting for. Take the verdict at this milestone's
   close-out or assign it a milestone in writing.
+
+---
+
+## 7. Packets, as delivered
+
+| Plan packet | Commit(s) | Date | Contents |
+|---|---|---|---|
+| **P4a (mockup)** | `adde7b1` | 08-22 | The action-layout packet and its mockup, written **before** P1 — see §7.1. |
+| **P1** | `72eac63` | 08-22 | Vigor recovery (regen, daily reset, Rest Day), the anchor on the wire. |
+| **P2** | `d26f5ee` | 08-22 | The drop payload resolves to a piece, closing §3.1's two-spec conflict. |
+| **P3** | `c1eb4a7` | 08-22 | Reveal Card, the local grant, the satchel reconcile. |
+| **P4** | `7ba5171` | 08-22 | Sync reliability and battle pacing (`usePacedLines`, 450ms). |
+| **P4a** | `d9bdf4e` | 08-22 | Attack centred, four slots always visible. GDD 13 §6.1 amended to match. |
+| **P5** | `38dbbc1` | 08-22 | Gate evaluation, encounter checkpoints, T2 §4 steps 7 and 8. |
+| **P6** | `98ab2e5` | 08-22 | `GET /players/me/map`. |
+| **P7** | `4b1ffa8` | 08-22 | The Road screen, derived on the device (DECISIONS 2026-08-22). |
+| **P8** | `385c3c3` | 08-22 | Explore, the rosters beyond Olympion, the debug card deleted. |
+| **P9** | `3a364f9`, `f0e1203`, `5adca47`, `99e0420` | 08-24 → 09-01 | Device build and ten drills. **Five defects found on hardware and fixed**, plus the balance pass the drills forced. All eleven exit criteria pass. |
+| **P10** | *this packet* | 09-01 | Close-out review, ten items. Nine passed; item 1 found an owed amendment and it was fixed here — see §7.2. |
+| **P11** | *this packet* | 09-01 | Wrap-up: this section, GDD 9 §4.2 amended, `traverser-m4-plan.md`. |
+
+### 7.1 Where the delivery diverged from the intent
+
+- **The drills stopped being a verification pass and became a design pass.** M1 and M2's drills each found a shipped defect; M3's found five, and then found something no checklist anticipated — *the game was not fun*. Notes 8 and 10 measured it rather than asserting it: enemies gained ~5.5–5.75 stat points per level against the player's allocated 3, so a single wild fight cost ~75% of the daily Vigor bar where the 5/day cap (GDD 9 §5) implies ~20%, and mid-bosses at L30+ modelled at over 200% — unwinnable. **This put two locked GDD sections in direct conflict**, and it was reachable only by playing, not by reading. *Lesson: a milestone that ships a system for the first time needs a packet for playing it, not only for verifying it.*
+
+- **The balance pass was sanctioned in advance and nobody noticed for three milestones.** GDD 2 §147 flagged the Vigor rates as a first pass "worth playtesting now that encounter frequency is fixed" — the exact playtest drill 5 became. The flag sat unread from M0 through M3. *Lesson: a spec's own open questions need a milestone that owns them, or they are invisible until something forces them.*
+
+- **The fix was content, not code.** Not one line of `damage.ts`, `state.ts` or any endpoint changed: enemy scaling lives in `enemy_stat_scaling` rows, so twelve rosters were retuned through the seed, a migration of 74 `UpdateData` calls, and a regenerated bundle. What the pass added permanently is **GDD 2 §7's fight-cost invariants** and `balance.test.ts`, which executes them against the shipped bundle — the property the original rosters violated for three milestones with 650 green tests.
+
+- **Two Road defects were found that no unit test had a fixture for**, both from the same root: a derived field piggybacking on another field's meaning. Making `locked` mean "threshold ahead **or** zone shut" silently broke the League counter, which had been reading distance off gate state. *Lesson: neither change looks wrong on its own, which is exactly why the pair is invisible to review.*
+
+- **A drill step asserted a control that cannot exist at that point in the sheet.** 10.18 sent the player to Settings for a restore that `isProfileReplaceable` correctly hides once the tutorial completes. This is M2's drill-3 failure in a new costume — the row was written against the plan, not the build, in a sheet whose own ↯ warns against exactly that. *Lesson: the warning at the top of a document does not enforce itself.*
+
+- **The one profile that can still test the dual gate is a drill artifact.** 10.16a needed a device with no Valheon row, and `player_zone_progress` reconciles additively (`ON CONFLICT DO NOTHING`) — so no server-side rollback can return a device to that state. The fresh profile created at drill 10 (`01a05f5a-6b35-7820-b876-5bf7e776498e`) is now **the only Valheon-locked profile in existence** and is worth keeping for future gate work. Recorded here because nothing else documents why it must not be cleaned up.
+
+- **Drill 9 came back clean for the first time.** M1 and M2 each had a shipped defect surface in the hand reconciliation. M3's ten claims all reconciled, and the day's XP landed exactly — `floor(8351/20) + 69×3 + 6×51 = 930`. The one claim that could not be tested was the tutorial-Salve provenance, because those rows had been spent; it was recovered at 10.17 on the fresh profile.
+
+- **A test shipped that `tsc` rejects.** `balance.test.ts` went in at `f0e1203` with two unchecked index reads; Jest passed because the transform strips types, and the gap surfaced only when an unrelated change prompted a type check. *Lesson: a green Jest run is not a type check, and item 6 exists because of exactly this.*
+
+### 7.2 Close-out review (P10) result
+
+Ten items, M1's eight plus M2's two. **Nine passed. One failed and was fixed in this packet**, which is the outcome the checklist is designed to produce.
+
+| # | Item | Result |
+|---|---|---|
+| 1 | Every spec amendment has code behind it | **FAILED, fixed here.** GDD 9 §4.2 was never amended, though DECISIONS 2026-08-24 recorded that it should be and the code shipped on both tiers. Amended at P11, covering the zone condition and §4.4's counter. |
+| 2 | Tests assert against fixtures | PASS — `enemyStats`, `harpy` and the seed tests all read fixtures §6 and §10; the retune regenerated the fixtures first and the code second. |
+| 3 | In-scope T2 §4 steps built, out-of-scope ones have a milestone | PASS — steps 7 and 8 shipped at P5; §2.2 names a milestone for 9, 10 and 11. |
+| 4 | Obligations discharged, not merely built | PASS — the identity export and the restore path were both **exercised for real** at drill 10, not asserted. |
+| 5 | Nothing deferred silently | PASS — every deferral has a DECISIONS line or a §2.2 row; the seventeen drill notes carry into `traverser-m4-plan.md`. |
+| 6 | `dotnet test`, `tsc --noEmit`, jest green, tree clean | PASS — 226 API, 656 client, `tsc` exit 0. |
+| 7 | `⟨verify⟩` markers resolved | PASS — M3 introduced none; the open ones in T4 and T6 predate it and are unrelated. |
+| 8 | The visual style has a named owner | PASS — unchanged since M1's deferral; carried into M4's plan rather than left implicit. |
+| 9 | The review takes no new work | PASS — item 1's fix is an owed amendment, not new scope. Everything else found went to the M4 plan. |
+| 10 | One row of real production data reconciled | PASS — drill 9, ten claims, 2026-08-31. Clean for the first time in three milestones. |
