@@ -102,8 +102,16 @@ describe('GDD 2 §7 — fight-cost invariants over the shipped rosters', () => {
     const violations: string[] = [];
 
     for (const entry of rosters) {
-      const from = GATE_FROM[entry.id] ?? ZONE_FROM[entry.zoneId!];
+      const from = GATE_FROM[entry.id] ?? ZONE_FROM[entry.zoneId ?? ''];
       const limits = LIMITS[entry.role];
+
+      // An enemy with no zone, or a role with no limits, is content this test does not know how to
+      // judge — a new role or a second typeless enemy must fail loudly rather than be skipped.
+      if (from === undefined || limits === undefined) {
+        violations.push(`${entry.id}: no invariant defined for role "${entry.role}"`);
+
+        continue;
+      }
 
       for (const level of LEVELS.filter((candidate) => candidate >= from)) {
         const { rounds, cost } = fight(entry.id, level);

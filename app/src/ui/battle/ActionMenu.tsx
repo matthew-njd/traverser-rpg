@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from '../theme';
 import type { Chevron } from './log';
@@ -110,14 +110,16 @@ export function ActionMenu({
           {items.length === 0 ? (
             <Text style={styles.empty}>Your satchel is empty.</Text>
           ) : (
-            items.map((item) => (
-              <ItemRow
-                key={item.playerItemId}
-                label={item.label}
-                disabled={disabled}
-                onPress={() => act(() => onItem(item))}
-              />
-            ))
+            <ScrollView style={styles.submenuScroll}>
+              {items.map((item) => (
+                <ItemRow
+                  key={item.playerItemId}
+                  label={item.label}
+                  disabled={disabled}
+                  onPress={() => act(() => onItem(item))}
+                />
+              ))}
+            </ScrollView>
           )}
         </View>
       ) : null}
@@ -417,6 +419,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingVertical: space.xs,
   },
+
+  // The satchel holds up to 20 (fixtures §9) and this list sits *above* the grid in the same
+  // column, so an uncapped height pushes the grid and both bars off screen — including the Items
+  // bar that closes it, leaving no way out but spending an item (drills note 15). Four rows.
+  submenuScroll: { maxHeight: MIN_TOUCH_TARGET * 4 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
