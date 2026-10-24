@@ -365,6 +365,20 @@ describe('the action menu', () => {
     expect(screen.queryByText(/vs./)).toBeNull();
   });
 
+  /** Drills note 14 — and note 3's hidden chevron reads as by design only if Physical is said. */
+  it('names a Physical slot rather than leaving its type blank', async () => {
+    await show();
+
+    expect(screen.getByText('Physical')).toBeTruthy();
+  });
+
+  it('names a Divine slot with its type', async () => {
+    await show();
+
+    expect(screen.getByText('Divine · Storm')).toBeTruthy();
+    expect(screen.getByText('Divine · War')).toBeTruthy();
+  });
+
   it('withholds the chevron on a first encounter', async () => {
     await show({ chevronsUnlocked: false });
 

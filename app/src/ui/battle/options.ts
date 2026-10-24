@@ -30,6 +30,8 @@ export function skillOptions(input: {
       moveId: move.id,
       label: labelFor(labels, move.id),
       usesLeft: usesLeft === undefined ? null : usesLeft,
+      category: move.category,
+      typeLabel: move.typeId === null ? null : labelFor(labels, move.typeId),
       chevron: hintFor(move, chart, enemyTypeId, labels, chevronsUnlocked),
     };
   });

@@ -16,6 +16,8 @@ const option = (moveId: string): SkillOption => ({
   moveId,
   label: moveId,
   usesLeft: 4,
+  category: 'physical',
+  typeLabel: null,
   chevron: null,
 });
 

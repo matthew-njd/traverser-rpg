@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from '../theme';
+import type { MoveCategory } from '../../battle/types';
 import type { Chevron } from './log';
 import type { Slot } from './options';
 
@@ -25,6 +26,10 @@ export interface SkillOption {
   readonly label: string;
   /** Null for Basic Attack, which has no per-battle limit. */
   readonly usesLeft: number | null;
+  /** Which stat pair the move swings with — Might/Resolve or Favor/Aegis (drills note 14). */
+  readonly category: MoveCategory;
+  /** The type's display name. Null on every Physical move. */
+  readonly typeLabel: string | null;
   /**
    * §6.2's pre-selection hint. Null when there is nothing honest to show: a Physical move, a
    * typeless enemy, or an enemy this player has not fought before.
@@ -272,6 +277,15 @@ function SkillSlot({
         {skill.label}
       </Text>
 
+      {/* "Physical" is said, not implied by a missing type: a blank there read as a bug (note 3). */}
+      <Text numberOfLines={1} style={styles.slotKind}>
+        {skill.category === 'physical'
+          ? 'Physical'
+          : skill.typeLabel === null
+            ? 'Divine'
+            : `Divine · ${skill.typeLabel}`}
+      </Text>
+
       <View style={styles.slotMeta}>
         {chevron === null ? null : (
           <Text
@@ -371,6 +385,7 @@ const styles = StyleSheet.create({
   slotBlank: { backgroundColor: colors.surface, borderStyle: 'dashed' },
   slotLabel: { ...type.body, color: colors.text },
   slotLocked: { ...type.small, ...tabular, color: colors.textDim },
+  slotKind: { ...type.small, color: colors.textDim },
   slotMeta: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
 
   centre: {
