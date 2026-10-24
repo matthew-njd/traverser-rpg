@@ -1,5 +1,5 @@
 import { fixedOffsetDates } from '../../health/localDate';
-import { recoverVigor, restoreVigor } from '../vigor';
+import { recoverVigor, restoreVigor, vigorReadout } from '../vigor';
 
 /**
  * GDD 2 §6. Fixtures §11's zone (UTC−4), so the day boundary is a declared value rather than the
@@ -78,5 +78,18 @@ describe('recoverVigor', () => {
 describe('restoreVigor', () => {
   it('fills the bar and re-anchors, so the restore is not topped up again on the next read', () => {
     expect(restoreVigor(MAX, minutes(0))).toEqual(state(MAX));
+  });
+});
+
+/** M4/P2 — Character's readout (drills note 12). */
+describe('vigorReadout', () => {
+  /** 150 minutes at max 20 buys three points; the readout must show them without a pass running. */
+  it('reflects recovery after a gap', () => {
+    expect(vigorReadout(state(5), MAX, minutes(150), DATES)).toBe(8);
+  });
+
+  it('never displays above max', () => {
+    expect(vigorReadout(state(23), MAX, minutes(150), DATES)).toBe(MAX);
+    expect(vigorReadout(state(19), MAX, minutes(999), DATES)).toBe(MAX);
   });
 });

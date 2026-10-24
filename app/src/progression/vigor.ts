@@ -67,6 +67,19 @@ export function recoverVigor(
   };
 }
 
+/**
+ * What Character shows: recovery derived at read time, never written (only a pass settles it).
+ * Capped at max for display — a stale server number must not read as more than full.
+ */
+export function vigorReadout(
+  state: VigorState,
+  maxVigor: number,
+  now: number,
+  dates: LocalDateResolver,
+): number {
+  return Math.min(recoverVigor(state, maxVigor, now, dates).vigorCurrent, maxVigor);
+}
+
 /** Max Vigor is the stat block's, so it moves with allocation and with equipped gear (GDD 8 §2). */
 export function maxVigorFor(db: SqliteDatabase, player: MirrorPlayer): number {
   return effectiveStats(player, readEquippedGear(db)).vigor;

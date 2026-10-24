@@ -6,6 +6,7 @@ import { getDatabase } from '@/db/open';
 import { type OwnedGear, readEquippedGear, readOwnedGear, readSnapshot } from '@/battle/mirror';
 import { type Labels, loadLabels } from '@/content/labels';
 import { type EquippedBonus, effectiveStats } from '@/progression/stats';
+import { maxVigorFor, vigorReadout } from '@/progression/vigor';
 import { syncNow } from '@/runtime';
 import type { ActivityDay } from '@/sync/dto';
 import { deviceLocalDates } from '@/health/localDate';
@@ -14,6 +15,7 @@ import { EquipError, type StatDeltas, allocateStatPoints, equipGear, tagRestDay 
 import { useAppStore } from '@/state/appStore';
 import { usePlayerStore } from '@/state/playerStore';
 import { ActivityLog } from '@/ui/ActivityLog';
+import { VigorBar } from '@/ui/battle/VigorBar';
 import { GearRack } from '@/ui/GearRack';
 import { HealthBanner } from '@/ui/HealthBanner';
 import { Button, Card, Heading, Screen, SegmentedControl } from '@/ui/primitives';
@@ -44,6 +46,7 @@ export default function Character() {
   const [refreshing, setRefreshing] = useState(false);
   const [rested, setRested] = useState(false);
   const [fighting, setFighting] = useState(false);
+  const [vigor, setVigor] = useState<{ current: number; max: number } | null>(null);
 
   const slice = usePlayerStore();
   const banner = useAppStore((state) => state.banner);
@@ -52,7 +55,19 @@ export default function Character() {
   const reload = useCallback(() => {
     const db = getDatabase();
 
-    setPlayer(readPlayer(db));
+    const mirror = readPlayer(db);
+
+    setPlayer(mirror);
+
+    // Derived on focus, never on a timer — nothing about Vigor ticks (progression/vigor.ts).
+    if (mirror === null) {
+      setVigor(null);
+    } else {
+      const max = maxVigorFor(db, mirror);
+
+      setVigor({ current: vigorReadout(mirror, max, Date.now(), deviceLocalDates), max });
+    }
+
     setEquipped(readEquippedGear(db));
     setOwned(readOwnedGear(db));
     setLabels(loadLabels(db));
@@ -199,6 +214,13 @@ export default function Character() {
           <Avatar leagues={slice.leagues} lifetimeSteps={slice.lifetimeSteps} />
 
           <RestDay name={slice.traverserName} tagged={rested} fighting={fighting} onTag={rest} />
+
+          {vigor === null ? null : (
+            <Card>
+              <Heading>Vigor</Heading>
+              <VigorBar side="player" vigor={vigor.current} vigorMax={vigor.max} />
+            </Card>
+          )}
 
           {player === null ? null : (
             <GearRack
