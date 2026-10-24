@@ -57,6 +57,10 @@ describe('requests', () => {
         },
       ],
       0,
+      [],
+      [],
+      [],
+      '2026-08-03',
     );
 
     const [url, init] = (fetchImpl as jest.Mock).mock.calls[0] as [string, RequestInit];
@@ -69,6 +73,7 @@ describe('requests', () => {
       battles: [],
       sessions: [],
       explores: [],
+      local_date: '2026-08-03',
       deltas: [
         {
           client_delta_id: 'd1',

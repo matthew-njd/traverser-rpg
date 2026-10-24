@@ -72,6 +72,12 @@ namespace Traverser.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("streak_credit_method");
 
+                    b.Property<bool>("SyncedSameDay")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("synced_same_day");
+
                     b.Property<int>("Tier1Minutes")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")

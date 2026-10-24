@@ -29,7 +29,12 @@ public sealed record SyncRequest(
     /// GDD 9 §4.3's Explore taps, queued while offline (T2 §1.3). Each consumes one roll from the
     /// same daily pool as travel and the session bonus.
     /// </summary>
-    IReadOnlyList<ExploreRequest>? Explores = null);
+    IReadOnlyList<ExploreRequest>? Explores = null,
+    /// <summary>
+    /// The device's local date when it synced (T2 §4). Step 9 reads it as "today": the day this sync
+    /// marks as opened, and where the streak's run is counted back from. Null skips step 9.
+    /// </summary>
+    DateOnly? LocalDate = null);
 
 /// <param name="ExternalSessionId">
 /// ↯ <c>hr:{started_at epoch seconds}</c>, frozen by the device's ledger (T3 §6.1). Tier minutes are
@@ -176,15 +181,8 @@ public sealed record LevelUpResponse(int Level, int StatPointsAwarded);
 /// The goal as it stood when the day was first created, never updated afterwards (tech-01 §4) —
 /// raising the goal must not retroactively un-hit a day that was legitimately earned.
 /// </param>
-/// <param name="StreakCreditMethod">
-/// Always null in M1: T2 §4 step 9 is streak evaluation and GDD 11 is M4's section. Present on the
-/// wire now because the column exists and the client mirrors it.
-/// </param>
-/// <param name="RestTaggedAt">
-/// When the player tagged the day (GDD 11 §3.1), or null. Distinct from
-/// <paramref name="StreakCreditMethod"/>: this records that the tag happened, while crediting the
-/// day for it is step 9's and lands at M4.
-/// </param>
+/// <param name="StreakCreditMethod">Why the day counts toward the streak (T2 §4 step 9), or null.</param>
+/// <param name="RestTaggedAt">When the player tagged the day (GDD 11 §3.1), or null.</param>
 public sealed record ActivityDayResponse(
     DateOnly ActivityDate,
     int Steps,

@@ -1,4 +1,4 @@
-import { MINUTE_MS, deviceLocalDates, fixedOffsetDates, minuteOf } from '../localDate';
+import { MINUTE_MS, dayBefore, deviceLocalDates, fixedOffsetDates, minuteOf } from '../localDate';
 import { READ_WINDOW_HOURS, readWindowFor } from '../provider';
 import { edt, edtDates } from './fixtures';
 
@@ -34,6 +34,13 @@ describe('local dates', () => {
 
     expect(deviceLocalDates.dateOf(now)).toBe(expected);
     expect(new Date(deviceLocalDates.startOfDay(now)).getHours()).toBe(0);
+  });
+
+  /** The retroactive Rest Day's yesterday — across a month, a year, and a spring-forward day. */
+  it('steps back one calendar date', () => {
+    expect(dayBefore('2026-03-01')).toBe('2026-02-28');
+    expect(dayBefore('2027-01-01')).toBe('2026-12-31');
+    expect(dayBefore('2026-03-09')).toBe('2026-03-08');
   });
 
   it('opens the minute containing an instant', () => {

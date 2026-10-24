@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { RestDay } from '../RestDay';
 
@@ -35,6 +35,30 @@ describe('the Rest Day control', () => {
 
     expect(screen.getByText('Tag today as a Rest Day')).toBeTruthy();
     expect(screen.queryByText(/strength returns/)).toBeNull();
+  });
+
+  /** GDD 11 §3.1's retroactive window — offered only while the caller passes the handler. */
+  it('offers yesterday only when asked to', async () => {
+    const onTagYesterday = jest.fn();
+
+    await render(
+      <RestDay name="Emdir" tagged fighting={false} onTag={() => {}} onTagYesterday={onTagYesterday} />,
+    );
+
+    await fireEvent.press(screen.getByText('Tag yesterday as a Rest Day'));
+
+    expect(onTagYesterday).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses yesterday too while a battle is open', async () => {
+    await render(
+      <RestDay name="Emdir" tagged fighting onTag={() => {}} onTagYesterday={() => {}} />,
+    );
+
+    const yesterday = screen.getAllByRole('button')[1];
+
+    expect(yesterday?.props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByText(/A fight is still open/)).toBeTruthy();
   });
 
   it('shows the confirmation once tagged, with no fight note', async () => {

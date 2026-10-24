@@ -278,6 +278,23 @@ describe('the online pass', () => {
     ]);
   });
 
+  /** Step 9's "today" — the device's local date, never the UTC instant's. */
+  it("sends the device's local date for streak evaluation", async () => {
+    const seen: unknown[] = [];
+
+    await run(registeredDatabase(), {
+      api: fakeApi({
+        sync: async (_deltas, _version, _battles, _sessions, _explores, localDate) => {
+          seen.push(localDate);
+
+          return response();
+        },
+      }),
+    });
+
+    expect(seen).toEqual([dates.dateOf(NOW)]);
+  });
+
   /**
    * GDD 9 §4.3's tap rides the same batch. Acknowledged on a 2xx like a battle: the operation
    * ledger is the server's idempotency key, so an answer means this tap has been ruled on either

@@ -82,6 +82,8 @@ export interface TraverserApi {
     sessions?: readonly SyncSession[],
     /** GDD 9 §4.3 taps queued while offline. Each spends one roll from the daily pool. */
     explores?: readonly ExplorePayload[],
+    /** "Today" for streak evaluation (T2 §4 step 9) — the day this sync marks as opened. */
+    localDate?: string,
   ): Promise<SyncResponse>;
   /** tech-02 §3's one-shot repair path, and what a restore uses to prove its credentials. */
   profile(): Promise<PlayerProfile>;
@@ -173,11 +175,13 @@ export function createApi(options: ApiOptions): TraverserApi {
       return parseBundle(await request(options, '/content/bundle'));
     },
 
-    async sync(deltas, contentVersion, battles = [], sessions = [], explores = []) {
+    async sync(deltas, contentVersion, battles = [], sessions = [], explores = [], localDate) {
       return parseSyncResponse(
         await request(options, '/sync', {
           method: 'POST',
-          body: JSON.stringify(toWireSyncRequest(deltas, contentVersion, battles, sessions, explores)),
+          body: JSON.stringify(
+            toWireSyncRequest(deltas, contentVersion, battles, sessions, explores, localDate),
+          ),
         }),
       );
     },

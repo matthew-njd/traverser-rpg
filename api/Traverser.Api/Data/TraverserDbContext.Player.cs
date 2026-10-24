@@ -156,6 +156,7 @@ public partial class TraverserDbContext
             entity.Property(e => e.GoalMet).HasDefaultValue(false);
             entity.Property(e => e.EncountersUsed).HasDefaultValue(0);
             entity.Property(e => e.DailyGearRolled).HasDefaultValue(false);
+            entity.Property(e => e.SyncedSameDay).HasDefaultValue(false);
 
             entity.HasOne(e => e.Player).WithMany()
                 .HasForeignKey(e => e.PlayerId).OnDelete(DeleteBehavior.Cascade);

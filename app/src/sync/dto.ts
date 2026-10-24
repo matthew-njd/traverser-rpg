@@ -138,6 +138,7 @@ export function toWireSyncRequest(
   battles: readonly Json[] = [],
   sessions: readonly SyncSession[] = [],
   explores: readonly ExplorePayload[] = [],
+  localDate: string | null = null,
 ): Json {
   return {
     deltas: deltas.map(toWireDelta),
@@ -145,6 +146,7 @@ export function toWireSyncRequest(
     battles,
     sessions: sessions.map(toWireSession),
     explores: explores.map(toWireExplore),
+    local_date: localDate,
   };
 }
 

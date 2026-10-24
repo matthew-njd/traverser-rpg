@@ -393,6 +393,7 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
       // never any XP: that comes from the deltas, which are durable.
       sessions,
       pendingExplores.map((entry) => JSON.parse(entry.payload) as ExplorePayload),
+      deps.dates.dateOf(deps.now),
     );
 
     // ---- Step 12 ----

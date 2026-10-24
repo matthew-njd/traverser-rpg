@@ -82,6 +82,8 @@ All of these apply optimistically to the mirror and replay to the server; all ar
 > `rest_day_window_expired` is **unimplemented and no client can currently trigger it**: the Character screen's control tags today and only today. The window is GDD 11 §3.1's rule about what a *player* may tag, and only the client knows where local midnight falls (§2) — so it is enforced where the retroactive tagging UI lands, at M4 with step 9. Recorded rather than skipped: the error code is still the right answer when something can send a stale date.
 >
 > ↯ **`vigor_after` is sent by the client, not computed here.** 100% of max Vigor needs the equipped gear and GDD 8's tier bonuses, which is the same reason a battle payload carries its own `vigor_after` (T5 §1.6).
+>
+> **Amended 2026-10-24 (M4/P5).** The retroactive tag has landed as "Tag yesterday as a Rest Day" on Character, and the window is checked at the tap. `rest_day_window_expired` stays unimplemented, because a tag made in time and replayed late from the outbox must not be refused. The endpoint also sets `streak_credit_method = 'rest_day_tag'` on a day with no credit yet.
 | • `POST` | `/api/v1/players/me/explore` | Queue an Explore request against a zone. Offline this records intent only; the grant is issued by the next sync (§1.3). |
 
 ### Reads
@@ -186,6 +188,8 @@ For each touched date plus the 48-hour lookback window:
 - Otherwise, if the date is inside the 48h window, was never synced at the time, and *actually met the goal* once these deltas merged → `'auto_sync_grace'`, **subject to** `COUNT(*) WHERE streak_credit_method = 'auto_sync_grace' AND activity_date > now() - interval '30 days' < 3` (GDD 11 §3.2). Over the cap, the steps and XP still credit in full — only the streak repair stops.
 - A `rest_tagged_at` date is `'rest_day_tag'` and needs nothing here.
 - Recompute `streak_state.current_streak` from the contiguous run; `longest_streak` only ever rises.
+
+> **Amended 2026-10-24 (M4/P5).** "Never synced at the time" means no sync arrived while that date was the device's local date. The request's `local_date` sets `activity_day.synced_same_day` on that date, and only a goal-met day without the flag can take `auto_sync_grace`. "Touched dates" includes `local_date` and the two days before it, and those rows return in `activity_days`. The run is counted back from `local_date`; today without a credit yet is not a break. A sync with no `local_date` skips step 9.
 
 A null `streak_credit_method` on a past date is a break, and that is *all* it is: no flag is written, no notification is queued, no field records that a streak was lost (GDD 11 §4). The quiet reset copy is the client's business.
 

@@ -413,8 +413,7 @@ public class ProgressionTests(TraverserApiFixture api)
         Assert.Equal(20, player.VigorCurrent);
         Assert.NotNull(day.RestTaggedAt);
 
-        // Crediting the day is T2 §4 step 9, which is M4 — the tag is recorded, not yet acted on.
-        Assert.Null(day.StreakCreditMethod);
+        Assert.Equal(StreakCreditMethod.RestDayTag, day.StreakCreditMethod);
     }
 
     /// <summary>

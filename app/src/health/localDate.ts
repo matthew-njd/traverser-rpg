@@ -50,6 +50,11 @@ export const deviceLocalDates: LocalDateResolver = {
   },
 };
 
+/** The calendar date before `date`. Arithmetic on the date itself, so no DST day to cross. */
+export function dayBefore(date: string): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+}
+
 /**
  * A resolver at a fixed UTC offset. This is what the fixtures need — fixtures §11 declares its
  * offset (`UTC−4, EDT`) as *part of the fixture*, and none of its timelines cross a DST transition,

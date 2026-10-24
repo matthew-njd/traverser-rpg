@@ -1,4 +1,4 @@
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card } from './primitives';
 import { colors, space, type } from './theme';
@@ -22,11 +22,14 @@ export function RestDay({
   tagged,
   fighting,
   onTag,
+  onTagYesterday,
 }: {
   name: string;
   tagged: boolean;
   fighting: boolean;
   onTag: () => void;
+  /** GDD 11 §3.1's 24-hour retroactive tag. Passed only while yesterday is uncredited. */
+  onTagYesterday?: () => void;
 }) {
   return (
     <Card>
@@ -37,7 +40,18 @@ export function RestDay({
         onPress={onTag}
       />
 
-      {!tagged && fighting ? (
+      {onTagYesterday === undefined ? null : (
+        <View style={styles.yesterday}>
+          <Button
+            label="Tag yesterday as a Rest Day"
+            variant="secondary"
+            disabled={fighting}
+            onPress={onTagYesterday}
+          />
+        </View>
+      )}
+
+      {fighting && (!tagged || onTagYesterday !== undefined) ? (
         <Text style={styles.note}>
           A fight is still open. Settle or flee it first — the rest will keep.
         </Text>
@@ -55,4 +69,5 @@ export function RestDay({
 
 const styles = StyleSheet.create({
   note: { ...type.small, color: colors.textDim, marginTop: space.sm },
+  yesterday: { marginTop: space.sm },
 });

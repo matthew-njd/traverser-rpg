@@ -298,9 +298,7 @@ public static class ProgressionEndpoints
     /// GDD 11 §3.1's manual Rest Day tag. Unlimited, uncapped, no explanation asked for — a cap here
     /// would contradict the design constraint the whole section is built on.
     /// <para>
-    /// The tag is recorded; <c>streak_credit_method</c> is not set. Crediting the day is T2 §4 step
-    /// 9's, which is M4 — so until then a tag restores Vigor and leaves a record, and does not yet
-    /// protect a streak.
+    /// The tag credits the day here; the streak's run is recounted by the next sync's step 9.
     /// </para>
     /// </summary>
     private static async Task<IResult> TagRestDayAsync(
@@ -335,11 +333,13 @@ public static class ProgressionEndpoints
                 ActivityDate = request.ActivityDate,
                 StepGoalSnapshot = player.DailyStepGoal,
                 RestTaggedAt = now,
+                StreakCreditMethod = StreakCreditMethod.RestDayTag,
             });
         }
         else
         {
             day.RestTaggedAt = now;
+            day.StreakCreditMethod ??= StreakCreditMethod.RestDayTag;
         }
 
         // ↯ Vigor is the client's number here, as it is on a battle payload (T5 §1.6). A tag that

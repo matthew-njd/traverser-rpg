@@ -457,6 +457,16 @@ export function isRestTagged(db: SqliteDatabase, activityDate: string): boolean 
   );
 }
 
+/** The day counts toward the streak already, or is tagged and will on the next sync. */
+export function isCredited(db: SqliteDatabase, activityDate: string): boolean {
+  const row = db.getFirstSync<{ streak_credit_method: string | null; rest_tagged_at: string | null }>(
+    'SELECT streak_credit_method, rest_tagged_at FROM activity_day WHERE activity_date = ?',
+    [activityDate],
+  );
+
+  return row != null && (row.streak_credit_method !== null || row.rest_tagged_at !== null);
+}
+
 /** The tag itself. The row may not exist yet — a rest day often has no synced activity at all. */
 export function writeRestTag(
   db: SqliteDatabase,

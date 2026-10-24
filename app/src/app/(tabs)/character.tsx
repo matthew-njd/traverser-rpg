@@ -9,8 +9,8 @@ import { type EquippedBonus, effectiveStats } from '@/progression/stats';
 import { maxVigorFor, vigorReadout } from '@/progression/vigor';
 import { syncNow } from '@/runtime';
 import type { ActivityDay } from '@/sync/dto';
-import { deviceLocalDates } from '@/health/localDate';
-import { type MirrorPlayer, isRestTagged, readActivityDays, readPlayer } from '@/sync/mirror';
+import { dayBefore, deviceLocalDates } from '@/health/localDate';
+import { type MirrorPlayer, isCredited, isRestTagged, readActivityDays, readPlayer } from '@/sync/mirror';
 import { EquipError, type StatDeltas, allocateStatPoints, equipGear, tagRestDay } from '@/sync/writes';
 import { useAppStore } from '@/state/appStore';
 import { usePlayerStore } from '@/state/playerStore';
@@ -20,6 +20,7 @@ import { GearRack } from '@/ui/GearRack';
 import { HealthBanner } from '@/ui/HealthBanner';
 import { Button, Card, Heading, Screen, SegmentedControl } from '@/ui/primitives';
 import { RestDay } from '@/ui/RestDay';
+import { Streak } from '@/ui/Streak';
 import { XpBar } from '@/ui/XpBar';
 import { StatPanel } from '@/ui/StatPanel';
 import { colors, radius, space, tabular, type } from '@/ui/theme';
@@ -28,9 +29,6 @@ import { colors, radius, space, tabular, type } from '@/ui/theme';
  * GDD 13 §3 — the Character tab, and M1's default landing screen.
  *
  * Avatar and Stats are sub-views, not routes (tech-04 §4.3) — one route, both panes mounted.
- *
- * The streak badge is still GDD 11's and still M4. The Rest Day control landed early with Vigor
- * recovery (GDD 2 §6) — it is the same one tap, and the Vigor half of it is buildable now.
  */
 const ACTIVITY_LOG_LIMIT = 90;
 
@@ -45,6 +43,7 @@ export default function Character() {
   const [allocating, setAllocating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [rested, setRested] = useState(false);
+  const [yesterdayOpen, setYesterdayOpen] = useState(false);
   const [fighting, setFighting] = useState(false);
   const [vigor, setVigor] = useState<{ current: number; max: number } | null>(null);
 
@@ -72,7 +71,17 @@ export default function Character() {
     setOwned(readOwnedGear(db));
     setLabels(loadLabels(db));
     setDays(readActivityDays(db, ACTIVITY_LOG_LIMIT));
-    setRested(isRestTagged(db, deviceLocalDates.dateOf(Date.now())));
+    const today = deviceLocalDates.dateOf(Date.now());
+    const yesterday = dayBefore(today);
+
+    setRested(isRestTagged(db, today));
+
+    // Not before the account existed — there was no streak that day to protect.
+    setYesterdayOpen(
+      mirror !== null &&
+        yesterday >= deviceLocalDates.dateOf(Date.parse(mirror.createdAt)) &&
+        !isCredited(db, yesterday),
+    );
     setFighting(readSnapshot(db) !== null);
   }, []);
 
@@ -131,10 +140,11 @@ export default function Character() {
    * server hears about it, so the confirmation is never waiting on a network the app assumes it
    * does not have.
    */
-  const rest = () => {
+  const rest = (yesterday: boolean) => {
     const now = Date.now();
+    const today = deviceLocalDates.dateOf(now);
 
-    if (tagRestDay(getDatabase(), deviceLocalDates.dateOf(now), now) === null) {
+    if (tagRestDay(getDatabase(), yesterday ? dayBefore(today) : today, now) === null) {
       return;
     }
 
@@ -213,7 +223,15 @@ export default function Character() {
         >
           <Avatar leagues={slice.leagues} lifetimeSteps={slice.lifetimeSteps} />
 
-          <RestDay name={slice.traverserName} tagged={rested} fighting={fighting} onTag={rest} />
+          <Streak current={slice.streak.current} longest={slice.streak.longest} />
+
+          <RestDay
+            name={slice.traverserName}
+            tagged={rested}
+            fighting={fighting}
+            onTag={() => rest(false)}
+            onTagYesterday={yesterdayOpen ? () => rest(true) : undefined}
+          />
 
           {vigor === null ? null : (
             <Card>

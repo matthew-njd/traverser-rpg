@@ -60,6 +60,7 @@ describe('outbound', () => {
       battles: [],
       sessions: [],
       explores: [],
+      local_date: null,
     });
   });
 });

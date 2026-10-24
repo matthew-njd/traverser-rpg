@@ -44,6 +44,13 @@ public class ActivityDay
 
     public DateTime? RestTaggedAt { get; set; }
 
+    /// <summary>
+    /// A sync arrived while this was the device's local date. False is what makes a goal-met day
+    /// GDD 11 §3.2's Auto Sync Grace rather than a plain goal hit — steps arriving after midnight on
+    /// a day that was opened do not spend grace.
+    /// </summary>
+    public bool SyncedSameDay { get; set; }
+
     /// <summary>GDD 9 §5.3's hard cap of 5/day, resetting for free because the row is per local date.</summary>
     public int EncountersUsed { get; set; }
 

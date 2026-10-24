@@ -12,10 +12,8 @@ namespace Traverser.Api.Endpoints;
 /// <summary>
 /// <c>POST /api/v1/sync</c> — T2 §4. The only endpoint that advances progression.
 /// <para>
-/// M1 implements steps <b>1, 3, 4, 5, 6</b>. Step 2 (battles, drops, bestiary) and step 8 (encounter
-/// checkpoints) arrive with the battle engine at M2; step 7 (gates) needs the Map at M3; steps 9–11
-/// (streak, deterministic rewards, overactivity) are GDD 11's and land at M4. The order of what is
-/// here is normative and steps 3–6 in particular cannot be reordered without changing outcomes.
+/// Steps 1–9 are built; steps 10 and 11 (deterministic rewards, overactivity) are M5's. The order
+/// is normative and steps 3–6 in particular cannot be reordered without changing outcomes.
 /// </para>
 /// </summary>
 public static class SyncEndpoints
@@ -171,6 +169,15 @@ public static class SyncEndpoints
         var grants = await IssueEncountersAsync(
             db, player, request, stepsBefore, newDeltas, days, zonesOpen, rng, ct);
 
+        // ---- Step 9. Streak evaluation ----------------------------------------------------------
+        if (request.LocalDate is { } today)
+        {
+            // Into the response too, so a day credited from the window reaches the mirror.
+            touchedDates.AddRange(new[] { today.AddDays(-2), today.AddDays(-1), today }.Except(touchedDates));
+
+            await EvaluateStreakAsync(db, player, today, touchedDates, ct);
+        }
+
         await db.SaveChangesAsync(ct);
 
         var profile = await PlayerProfile.LoadAsync(db, player.Id, ct)
@@ -203,6 +210,98 @@ public static class SyncEndpoints
             DuplicateDeltaIds: duplicateIds,
             EncounterGrants: grants,
             UnlockedZoneIds: unlockedZoneIds));
+    }
+
+    /// <summary>
+    /// T2 §4 step 9. Credits each uncredited day in reach, then recounts the run back from today.
+    /// <para>
+    /// A break writes nothing — no flag, no notification (GDD 11 §4). It is only a null credit,
+    /// and the run stops at it.
+    /// </para>
+    /// </summary>
+    private static async Task EvaluateStreakAsync(
+        TraverserDbContext db,
+        Player player,
+        DateOnly today,
+        IReadOnlyList<DateOnly> touchedDates,
+        CancellationToken ct)
+    {
+        var todayRow = await db.ActivityDays.FindAsync([player.Id, today], ct);
+
+        if (todayRow is null)
+        {
+            todayRow = new ActivityDay
+            {
+                PlayerId = player.Id,
+                ActivityDate = today,
+                StepGoalSnapshot = player.DailyStepGoal,
+            };
+
+            db.ActivityDays.Add(todayRow);
+        }
+
+        todayRow.SyncedSameDay = true;
+
+        // GDD 11 §3.2: 48 hours back, 3 per rolling 30 days.
+        var graceFrom = today.AddDays(-2);
+        var graceUsed = await db.ActivityDays.CountAsync(a =>
+            a.PlayerId == player.Id
+            && a.StreakCreditMethod == StreakCreditMethod.AutoSyncGrace
+            && a.ActivityDate > today.AddDays(-30), ct);
+
+        foreach (var date in touchedDates.Where(d => d <= today).Order())
+        {
+            var day = await db.ActivityDays.FindAsync([player.Id, date], ct);
+
+            // An existing credit is never revisited (T2 §6.4).
+            if (day is null || day.StreakCreditMethod is not null)
+            {
+                continue;
+            }
+
+            if (day.RestTaggedAt is not null)
+            {
+                day.StreakCreditMethod = StreakCreditMethod.RestDayTag;
+            }
+            else if (day.GoalMet && day.SyncedSameDay)
+            {
+                day.StreakCreditMethod = StreakCreditMethod.GoalHit;
+            }
+            else if (day.GoalMet && date >= graceFrom && graceUsed < 3)
+            {
+                day.StreakCreditMethod = StreakCreditMethod.AutoSyncGrace;
+                graceUsed++;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        var credited = await db.ActivityDays
+            .Where(a => a.PlayerId == player.Id && a.StreakCreditMethod != null && a.ActivityDate <= today)
+            .OrderByDescending(a => a.ActivityDate)
+            .Select(a => a.ActivityDate)
+            .ToListAsync(ct);
+
+        // Today still uncredited is not a break — the day has not passed (GDD 11 §3.3).
+        var cursor = credited.FirstOrDefault() == today ? today : today.AddDays(-1);
+        var current = 0;
+
+        foreach (var date in credited.SkipWhile(d => d > cursor))
+        {
+            if (date != cursor)
+            {
+                break;
+            }
+
+            current++;
+            cursor = cursor.AddDays(-1);
+        }
+
+        var state = await db.StreakStates.SingleAsync(s => s.PlayerId == player.Id, ct);
+
+        state.CurrentStreak = current;
+        state.LongestStreak = Math.Max(state.LongestStreak, current);
+        state.LastCreditedDate = credited.Count > 0 ? credited[0] : null;
     }
 
     /// <summary>
