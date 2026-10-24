@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { NO_STATS, type StatDeltas } from '../../sync/writes';
-import { StatPanel, nextDraft } from '../StatPanel';
+import { STATS, StatPanel, nextDraft } from '../StatPanel';
 
 /**
  * tech-04 §12 reserves RNTL for components with **real logic**, never for layout. This one
@@ -148,5 +148,24 @@ describe('StatPanel', () => {
     // The value and the pending addition are separate Text nodes inside one line, which RNTL
     // matches as the composed string.
     expect(screen.getByText('20 +2')).toBeTruthy();
+  });
+});
+
+/** M4/P4 — guidance at the point of spending (drills note 9). */
+describe('stat guidance', () => {
+  /** Keyed off the stat block itself, so a seventh stat cannot ship without a line. */
+  it('has a guidance line for every stat', () => {
+    for (const key of Object.keys(NO_STATS)) {
+      expect(STATS.find((stat) => stat.key === key)?.note).toMatch(/\S/);
+    }
+  });
+
+  /** The drill build that could not win had 30 of 45 points here and no warning. */
+  it('sets Vigor apart from the stats that decide a fight', async () => {
+    await render(<StatPanel unspent={3} current={CURRENT} onConfirm={jest.fn()} />);
+
+    expect(screen.getByText('Survive')).toBeTruthy();
+    expect(screen.getByText('Fight')).toBeTruthy();
+    expect(STATS.filter((stat) => stat.group === 'Survive').map((stat) => stat.key)).toEqual(['vigor']);
   });
 });

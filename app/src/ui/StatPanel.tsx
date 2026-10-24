@@ -15,14 +15,26 @@ import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme'
  * Permanent on confirm: the GDD names no respec mechanic, so there is no undo. That is why
  * Confirm is a second deliberate action rather than each `+` spending a point.
  */
-const STATS = [
-  { key: 'vigor', label: 'Vigor', note: 'Health pool' },
-  { key: 'might', label: 'Might', note: 'Physical damage' },
-  { key: 'resolve', label: 'Resolve', note: 'Physical defence' },
-  { key: 'favor', label: 'Favor', note: 'Divine damage' },
-  { key: 'aegis', label: 'Aegis', note: 'Divine defence' },
-  { key: 'stride', label: 'Stride', note: 'Turn order' },
-] as const satisfies readonly { key: keyof StatDeltas; label: string; note: string }[];
+/**
+ * M4/P4 — what each stat does, at the point of spending (drills note 9). The move categories are the
+ * words every skill slot shows, so a note can be checked against the loadout it describes.
+ *
+ * ↯ Vigor sits apart from the five that decide a fight: a drill build put 30 of 45 points into it
+ * and could not win, and nothing here said that was a choice with a cost.
+ */
+export const STATS = [
+  { key: 'vigor', label: 'Vigor', note: 'Your health. Lets you take more hits.', group: 'Survive' },
+  { key: 'might', label: 'Might', note: 'Increases damage of Physical moves, Attack included.', group: 'Fight' },
+  { key: 'resolve', label: 'Resolve', note: 'Less damage from enemy Physical moves.', group: 'Fight' },
+  { key: 'favor', label: 'Favor', note: 'Increases damage of Divine moves.', group: 'Fight' },
+  { key: 'aegis', label: 'Aegis', note: 'Less damage from enemy Divine moves.', group: 'Fight' },
+  { key: 'stride', label: 'Stride', note: 'Turn order. Higher acts first each round.', group: 'Fight' },
+] as const satisfies readonly {
+  key: keyof StatDeltas;
+  label: string;
+  note: string;
+  group: 'Survive' | 'Fight';
+}[];
 
 /**
  * One press applied to a draft, or the draft unchanged if it would break the budget.
@@ -79,36 +91,46 @@ export function StatPanel({
         )}
       </View>
 
-      {STATS.map((stat, index) => (
-        <View key={stat.key} style={[styles.row, index > 0 && styles.ruled]}>
-          <View style={styles.labels}>
-            <Text style={styles.label}>{stat.label}</Text>
-            <Text style={styles.note}>{stat.note}</Text>
-          </View>
+      {STATS.map((stat, index) => {
+        const opensGroup = index === 0 || STATS[index - 1]?.group !== stat.group;
 
-          <Text style={styles.value}>
-            {current[stat.key]}
-            {draft[stat.key] > 0 ? <Text style={styles.pending}> +{draft[stat.key]}</Text> : null}
-          </Text>
+        return (
+          <View key={stat.key}>
+            {opensGroup ? (
+              <Text style={[styles.group, index > 0 && styles.groupBreak]}>{stat.group}</Text>
+            ) : null}
 
-          {unspent > 0 ? (
-            <View style={styles.stepper}>
-              <Step
-                label="−"
-                accessibilityLabel={`Remove a point from ${stat.label}`}
-                disabled={draft[stat.key] === 0}
-                onPress={() => adjust(stat.key, -1)}
-              />
-              <Step
-                label="+"
-                accessibilityLabel={`Add a point to ${stat.label}`}
-                disabled={remaining <= 0}
-                onPress={() => adjust(stat.key, 1)}
-              />
+            <View style={[styles.row, !opensGroup && styles.ruled]}>
+              <View style={styles.labels}>
+                <Text style={styles.label}>{stat.label}</Text>
+                <Text style={styles.note}>{stat.note}</Text>
+              </View>
+
+              <Text style={styles.value}>
+                {current[stat.key]}
+                {draft[stat.key] > 0 ? <Text style={styles.pending}> +{draft[stat.key]}</Text> : null}
+              </Text>
+
+              {unspent > 0 ? (
+                <View style={styles.stepper}>
+                  <Step
+                    label="−"
+                    accessibilityLabel={`Remove a point from ${stat.label}`}
+                    disabled={draft[stat.key] === 0}
+                    onPress={() => adjust(stat.key, -1)}
+                  />
+                  <Step
+                    label="+"
+                    accessibilityLabel={`Add a point to ${stat.label}`}
+                    disabled={remaining <= 0}
+                    onPress={() => adjust(stat.key, 1)}
+                  />
+                </View>
+              ) : null}
             </View>
-          ) : null}
-        </View>
-      ))}
+          </View>
+        );
+      })}
 
       {spent > 0 ? (
         <View style={styles.actions}>
@@ -161,6 +183,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: MIN_TOUCH_TARGET },
   // GDD 13 §11 — six stats read as one ruled table, not six stacked plates.
   ruled: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  group: { ...type.small, color: colors.accent, fontWeight: '600', marginTop: space.sm },
+  groupBreak: { marginTop: space.md },
   labels: { flex: 1 },
   label: { ...type.body, color: colors.text },
   note: { ...type.small, color: colors.textDim },
