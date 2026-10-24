@@ -140,6 +140,20 @@ describe('pagination (tech-04 §8.2)', () => {
     expect(mockRead.mock.calls[1]?.[1]).toMatchObject({ pageToken: 'page-2' });
   });
 
+  /** What the device actually sends. `!== undefined` alone re-read page one up to the cap, every pass. */
+  it('stops on a null pageToken', async () => {
+    mockRead.mockResolvedValueOnce(stepsPage([{ id: 1 }], null as unknown as string));
+
+    await readAllRecords('HeartRate', {
+      operator: 'between',
+      startTime: '2026-07-19T04:00:00.000Z',
+      endTime: '2026-07-19T22:00:00.000Z',
+    });
+
+    expect(mockRead).toHaveBeenCalledTimes(1);
+    expect(Sentry.captureMessage).not.toHaveBeenCalled();
+  });
+
   it('sends no pageToken on the first call', async () => {
     await readAllRecords('HeartRate', {
       operator: 'between',

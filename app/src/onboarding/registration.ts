@@ -84,9 +84,9 @@ export async function registerNewPlayer(
  * 2026-08-16).
  *
  * The guard is on what the player **chose** and cannot undo: a spent stat point has no respec, and
- * a completed tutorial has no replay. Everything else about a young profile is recoverable —
- * {@link handOverTo} clears the watermarks and the next read window re-mints the last 72 hours for
- * the restored player (T3 §4.1).
+ * a completed tutorial has no replay. Everything else about a young profile is activity, not choice.
+ * {@link handOverTo} clears the watermarks, so the next read is a baseline that credits nothing
+ * (T3 §4.1, amended 2026-08-05): history Health Connect already holds is never re-minted.
  *
  * ↯ **Level is deliberately not part of this**, and the first version of it was wrong for exactly
  * that reason. Level is not a decision, it is arithmetic on steps: a fresh profile that syncs one

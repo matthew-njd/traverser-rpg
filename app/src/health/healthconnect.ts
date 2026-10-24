@@ -109,7 +109,8 @@ export async function readAllRecords<T extends RecordType>(
     const page = await readRecords(recordType, { timeRangeFilter, pageToken });
 
     all.push(...page.records);
-    pageToken = page.pageToken;
+    // ↯ The typings say `string | undefined`; the last page arrives as `null` from Kotlin.
+    pageToken = page.pageToken || undefined;
     pages += 1;
 
     if (pages >= MAX_PAGES && pageToken !== undefined) {

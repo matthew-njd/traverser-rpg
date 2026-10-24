@@ -54,6 +54,7 @@ change what a boss fight should cost.
 | Trinkets and gear-granted moves | M5 | GDD 10 §9's constraint: not until the first Heroic Trinket. P1 deliberately stops short of the fourth slot — §3.1. |
 | A respec | undecided | A design question, not a gap. §3.3 records why guidance is tried first. |
 | The restore door's silence (note 17) | M5 | Rare, has a workaround, and its fix is an onboarding-flow choice rather than a bug fix. |
+| A restore silently discards the read window | M5 | Found 2026-09-14: ~13 days lost, noticed only as a 28-step day. Warn at restore, or show "last synced N days ago". Rides with note 17 — same screen, same kind of choice. |
 | In-game codex / help screen | M5+ | Carried from M3 §2.2; still needs a GDD 13 amendment first. |
 | Layered gear sprites, tier colours | Art phase | GDD 8's visual half. P1 ships slots and stats, not pictures. |
 | Battle sprites, animation choreography | Art phase | T5 §13, carried from M3. |
@@ -119,6 +120,11 @@ drills should be written to measure that rather than assume it.
 A ~25-second Explore round trip was recorded at M3's drill 2.3 and never explained. It may be the
 tap, the sync pass, or the tunnel. One measurement decides which, and it is cheap enough that
 guessing is the expensive option. It is not a packet; it is the first thing done inside P1's build.
+
+**Measured 2026-10-24: the heart-rate read, and a defect rather than a cost.** A tap took 63 s — two
+passes at ~40 s each, ~39.5 s of each in Health Connect's HR read; steps took 51 ms and the network
+under 1 s. The read looped to the 50-page cap re-reading one 780-record page (DECISIONS 2026-10-24).
+Fixed: a pass now takes 1.6 s.
 
 ---
 
