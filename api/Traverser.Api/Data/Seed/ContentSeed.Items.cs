@@ -10,7 +10,7 @@ internal static partial class ContentSeed
         modelBuilder.Entity<ItemDef>().HasData(
             // Healing — the only items usable outside battle (GDD 4 §4), hence BattleOnly = false.
             // Percentages of *max* Vigor, so they stay relevant at every level without a rebalance.
-            Heal(Ids.Item.TravelersSalve, "Traveler's Salve", ItemRarity.Common, healPct: 20, maxStack: 5,
+            Heal(Ids.Item.TravelersSalve, "Traveller's Salve", ItemRarity.Common, healPct: 20, maxStack: 5,
                 "Found along every old road. Mixed from whatever grows near the path."),
             Heal(Ids.Item.HeraldsDraft, "Herald's Draft", ItemRarity.Uncommon, healPct: 40, maxStack: 3,
                 "What gods' messengers drink between realms. Enough remains for mortals."),

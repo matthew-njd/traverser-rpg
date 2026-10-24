@@ -296,10 +296,20 @@ export function rollDrops(input: {
       continue;
     }
 
+    // GDD 5–7: a zone boss's first kill always includes its Rare, which each GDD lists first. It
+    // takes no draw; the rest of the quantity is drawn from the remaining entries (fixtures: "first
+    // kill ≥1 Rare").
+    const guaranteed = encounterKind === 'zone_boss_first' && pool.length > 1 ? candidates[0] : undefined;
+    const drawFrom = guaranteed === undefined ? candidates : candidates.slice(1);
+
+    if (guaranteed !== undefined) {
+      items.push(guaranteed.itemDefId);
+    }
+
     // qty_min..qty_max, one pool draw per item granted (T5 §4.1). The quantity itself is not a
     // draw — no fixture treats it as one, and §4.1's list does not include it.
-    for (let index = 0; index < Math.max(1, rate.qtyMin); index += 1) {
-      items.push(weightedPick(candidates, (entry) => entry.weight, rng).itemDefId);
+    for (let index = items.length; index < Math.max(1, rate.qtyMin); index += 1) {
+      items.push(weightedPick(drawFrom, (entry) => entry.weight, rng).itemDefId);
     }
   }
 

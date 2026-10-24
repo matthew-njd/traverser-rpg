@@ -15,7 +15,17 @@ import { colors, space, tabular, type } from './theme';
  */
 const SLOTS = Object.keys(SLOT_STAT) as (keyof typeof SLOT_STAT)[];
 
-const statName = (stat: string) => stat.charAt(0).toUpperCase() + stat.slice(1);
+/** Not derived from the IDs: the IDs are American (`armor`, `vigor`) and the copy is Canadian. */
+const NAMES: Record<string, string> = {
+  weapon: 'Weapon',
+  armor: 'Armour',
+  accessory: 'Accessory',
+  might: 'Might',
+  resolve: 'Resolve',
+  vigor: 'Vigour',
+};
+
+const statName = (key: string) => NAMES[key] ?? key;
 
 export function GearRack({
   gear,

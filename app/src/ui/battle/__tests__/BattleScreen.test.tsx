@@ -45,7 +45,7 @@ const LABELS = new Map([
   ['skill_iron_advance', 'Iron Advance'],
   ['skill_thunderers_wrath', "Thunderer's Wrath"],
   ['skill_warlords_advance', "Warlord's Advance"],
-  ['item_travelers_salve', "Traveler's Salve"],
+  ['item_travelers_salve', "Traveller's Salve"],
 ]);
 
 function stateOf(overrides: Partial<BattleState> = {}): BattleState {
@@ -82,7 +82,7 @@ function stateOf(overrides: Partial<BattleState> = {}): BattleState {
 const SALVE = {
   playerItemId: 'pi-1',
   itemDefId: 'item_travelers_salve',
-  label: "Traveler's Salve",
+  label: "Traveller's Salve",
 };
 
 const hit = (typeMultiplier: number): BattleEvent => ({
@@ -398,7 +398,7 @@ describe('the action menu', () => {
     const handlers = await show();
 
     await fireEvent.press(screen.getByText('Items'));
-    await fireEvent.press(screen.getByText("Traveler's Salve"));
+    await fireEvent.press(screen.getByText("Traveller's Salve"));
 
     expect(handlers.onItem).toHaveBeenCalledWith(SALVE);
   });
@@ -515,13 +515,13 @@ describe('the fight as a whole', () => {
       state: { phase: 'victory', outcome: 'win' },
       reveals: [
         { defId: 'item_stormveil', name: 'Stormveil', grade: 'uncommon', flavor: 'Bottled weather.' },
-        { defId: 'gear_weapon_mortal', name: "Traveler's Blade", grade: 'mortal', flavor: null },
+        { defId: 'gear_weapon_mortal', name: "Traveller's Blade", grade: 'mortal', flavor: null },
       ],
     });
 
     expect(screen.getByText('Stormveil')).toBeTruthy();
     expect(screen.getByText('Bottled weather.')).toBeTruthy();
-    expect(screen.getByText("Traveler's Blade")).toBeTruthy();
+    expect(screen.getByText("Traveller's Blade")).toBeTruthy();
     expect(screen.getAllByText('Continue')).toHaveLength(1);
   });
 

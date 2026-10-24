@@ -6,7 +6,7 @@ import { getDatabase } from '@/db/open';
 import { mintUuidV7 } from '@/health/deltaId';
 import { deviceLocalDates } from '@/health/localDate';
 import { syncNow } from '@/runtime';
-import { battleInProgress, useBattleStore } from '@/state/battleStore';
+import { backAction, battleInProgress, useBattleStore } from '@/state/battleStore';
 import { usePlayerStore } from '@/state/playerStore';
 import type { EncounterKind } from '@/battle/types';
 import { BattleScreen } from '@/ui/battle/BattleScreen';
@@ -74,29 +74,31 @@ export default function Battle() {
   };
 
   const finishRef = useRef(finish);
+  const leaveRef = useRef(leave);
 
   finishRef.current = finish;
+  leaveRef.current = leave;
 
   /**
-   * ↯ tech-04 §4.2's "what does hardware back do here". `gestureEnabled: false` only stops iOS's
-   * swipe — Android's back still popped this route mid-fight, leaving the battle open, and every
-   * later encounter tap resumed it instead (a Cyclops tap opened an abandoned Harpy). Mid-fight,
-   * back does nothing; once the outcome is in, it is Done.
+   * ↯ `gestureEnabled: false` only stops iOS's swipe — Android's back still popped this route
+   * mid-fight. {@link backAction} decides instead.
    */
   useFocusEffect(
     useCallback(() => {
       const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-        const snapshot = useBattleStore.getState().snapshot;
-
-        if (snapshot === null) {
-          return false;
+        switch (backAction(useBattleStore.getState().snapshot)) {
+          case 'leave':
+            return false;
+          case 'cancel':
+            useBattleStore.getState().abandon(getDatabase());
+            leaveRef.current();
+            return true;
+          case 'finish':
+            finishRef.current();
+            return true;
+          case 'block':
+            return true;
         }
-
-        if (snapshot.state.outcome !== null) {
-          finishRef.current();
-        }
-
-        return true;
       });
 
       return () => subscription.remove();

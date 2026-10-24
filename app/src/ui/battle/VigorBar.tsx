@@ -73,7 +73,7 @@ export function VigorBar({
       <View
         accessible
         accessibilityRole="progressbar"
-        accessibilityLabel={enemy ? 'Enemy Vigor' : 'Your Vigor'}
+        accessibilityLabel={enemy ? 'Enemy Vigour' : 'Your Vigour'}
         accessibilityValue={enemy ? { text: `${percent}%` } : { min: 0, max: vigorMax, now: vigor }}
         style={styles.track}
       >

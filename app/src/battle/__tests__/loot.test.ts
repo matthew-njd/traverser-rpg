@@ -170,3 +170,36 @@ describe('resolving a rolled drop', () => {
     expect(drops.trinket).toBeNull();
   });
 });
+
+/**
+ * GDD 5–7 — a zone boss's first kill always includes its Rare (fixtures: "first kill ≥1 Rare"). The
+ * engine drew every item at random until drill 7, so Cerberus's Fleet Omen could miss entirely.
+ */
+describe('a zone boss first kill', () => {
+  const firstKillPool = (enemyId: string) =>
+    TABLES.enemy_drop_pool
+      .filter((row) => row.enemy_id === enemyId && row.encounter_kind === 'zone_boss_first')
+      .map((row) => ({ itemDefId: String(row.item_def_id), weight: Number(row.weight), ordinal: Number(row.ordinal) }));
+
+  it.each`
+    enemyId                | rare
+    ${'enemy_cerberus'}    | ${'item_fleet_omen'}
+    ${'enemy_jormungandr'} | ${'item_ambrosia_shard'}
+    ${'enemy_cacus'}       | ${'item_ambrosia_shard'}
+  `('always includes $rare from $enemyId, and draws the rest from the others', ({ enemyId, rare }) => {
+    for (const draw of [0, 0.5, 0.99]) {
+      const drops = rollDrops({
+        encounterKind: 'zone_boss_first',
+        tables: DROPS,
+        pool: firstKillPool(enemyId as string),
+        level: 20,
+        zoneId: 'olympion',
+        rng: scriptedRng([0, 0, 0, draw, draw, draw, draw]),
+      });
+
+      expect(drops.items[0]).toBe(rare);
+      expect(drops.items.length).toBeGreaterThanOrEqual(2);
+      expect(drops.items.slice(1)).not.toContain(rare);
+    }
+  });
+});

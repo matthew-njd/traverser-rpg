@@ -19,21 +19,21 @@ import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme'
  * M4/P4 — what each stat does, at the point of spending (drills note 9). The move categories are the
  * words every skill slot shows, so a note can be checked against the loadout it describes.
  *
- * ↯ Vigor sits apart from the five that decide a fight: a drill build put 30 of 45 points into it
- * and could not win, and nothing here said that was a choice with a cost.
+ * Keep each group's stats adjacent: a caption is drawn wherever the group changes, so a split group
+ * gets two captions.
  */
 export const STATS = [
-  { key: 'vigor', label: 'Vigor', note: 'Your health. Lets you take more hits.', group: 'Survive' },
-  { key: 'might', label: 'Might', note: 'Increases damage of Physical moves, Attack included.', group: 'Fight' },
-  { key: 'resolve', label: 'Resolve', note: 'Less damage from enemy Physical moves.', group: 'Fight' },
-  { key: 'favor', label: 'Favor', note: 'Increases damage of Divine moves.', group: 'Fight' },
-  { key: 'aegis', label: 'Aegis', note: 'Less damage from enemy Divine moves.', group: 'Fight' },
-  { key: 'stride', label: 'Stride', note: 'Turn order. Higher acts first each round.', group: 'Fight' },
+  { key: 'vigor', label: 'Vigour', note: 'Your health. Lets you take more hits.', group: 'Hardiness' },
+  { key: 'might', label: 'Might', note: 'Increases damage of Physical moves, Basic Attack included.', group: 'Fierceness' },
+  { key: 'favor', label: 'Favour', note: 'Increases damage of Divine moves.', group: 'Fierceness' },
+  { key: 'resolve', label: 'Resolve', note: 'Less damage from enemy Physical moves.', group: 'Sturdiness' },
+  { key: 'aegis', label: 'Aegis', note: 'Less damage from enemy Divine moves.', group: 'Sturdiness' },
+  { key: 'stride', label: 'Stride', note: 'Turn order. Higher acts first each round.', group: 'Quickness' },
 ] as const satisfies readonly {
   key: keyof StatDeltas;
   label: string;
   note: string;
-  group: 'Survive' | 'Fight';
+  group: 'Hardiness' | 'Fierceness' | 'Sturdiness' | 'Quickness';
 }[];
 
 /**

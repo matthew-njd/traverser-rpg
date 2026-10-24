@@ -276,8 +276,8 @@ namespace Traverser.Api.Migrations
                         new
                         {
                             Id = 1,
-                            GeneratedAt = new DateTime(2026, 8, 29, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Version = 3
+                            GeneratedAt = new DateTime(2026, 10, 24, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Version = 4
                         });
                 });
 
@@ -2089,7 +2089,7 @@ namespace Traverser.Api.Migrations
                         new
                         {
                             Id = "gear_weapon_mortal",
-                            DisplayName = "Traveler's Blade",
+                            DisplayName = "Traveller's Blade",
                             Slot = "weapon",
                             Tier = "mortal"
                         },
@@ -2117,7 +2117,7 @@ namespace Traverser.Api.Migrations
                         new
                         {
                             Id = "gear_armor_mortal",
-                            DisplayName = "Traveler's Guard",
+                            DisplayName = "Traveller's Guard",
                             Slot = "armor",
                             Tier = "mortal"
                         },
@@ -2145,7 +2145,7 @@ namespace Traverser.Api.Migrations
                         new
                         {
                             Id = "gear_accessory_mortal",
-                            DisplayName = "Traveler's Band",
+                            DisplayName = "Traveller's Band",
                             Slot = "accessory",
                             Tier = "mortal"
                         },
@@ -2541,7 +2541,7 @@ namespace Traverser.Api.Migrations
                             Id = "item_travelers_salve",
                             BattleOnly = false,
                             Category = "heal",
-                            DisplayName = "Traveler's Salve",
+                            DisplayName = "Traveller's Salve",
                             Flavor = "Found along every old road. Mixed from whatever grows near the path.",
                             HealPct = 20,
                             MaxStack = 5,

@@ -12,7 +12,7 @@ import { RESISTED, SUPER_EFFECTIVE, calloutFor, calloutOf, chevronFor, logLines 
 const LABELS = new Map([
   ['skill_thunderers_wrath', "Thunderer's Wrath"],
   ['skill_basic_attack', 'Basic Attack'],
-  ['item_travelers_salve', "Traveler's Salve"],
+  ['item_travelers_salve', "Traveller's Salve"],
   ['storm', 'Storm'],
   ['sea', 'Sea'],
 ]);
@@ -117,7 +117,7 @@ describe('logLines', () => {
   it('reads an item by its content name and says what it restored', () => {
     expect(
       logLines([{ type: 'item_used', itemDefId: 'item_travelers_salve', healed: 4 }], LABELS),
-    ).toEqual(["Traveler's Salve — 4 Vigor restored."]);
+    ).toEqual(["Traveller's Salve — 4 Vigour restored."]);
   });
 
   it('does not claim a heal for an item that armed a charm instead', () => {

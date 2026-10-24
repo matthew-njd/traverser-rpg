@@ -269,6 +269,25 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 }));
 
 /**
+ * What Android back does on the battle route (tech-04 §4.2).
+ *
+ * Before Begin nothing has happened — only the resume snapshot exists, no grant is spent — so back
+ * cancels an accidental tap. After Begin it is blocked: abandoning a fight in progress left it open
+ * for the next encounter tap to resume (DECISIONS 2026-10-24). Once the outcome is in, it is Done.
+ */
+export function backAction(snapshot: BattleSnapshot | null): 'leave' | 'cancel' | 'block' | 'finish' {
+  if (snapshot === null) {
+    return 'leave';
+  }
+
+  if (snapshot.state.outcome !== null) {
+    return 'finish';
+  }
+
+  return snapshot.state.phase === 'enemy_intro' ? 'cancel' : 'block';
+}
+
+/**
  * Whether a fight is still **unresolved**, which is the only state a new battle must not overwrite.
  *
  * ↯ Not `snapshot !== null`. `settle` leaves the settled battle in the store so the outcome panel
@@ -279,7 +298,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 export function battleInProgress(): boolean {
   const snapshot = useBattleStore.getState().snapshot;
 
-  return snapshot !== null && snapshot.state.outcome === null;
+  // Until settled, not until it has an outcome: a won fight still on its victory panel is unrecorded,
+  // and opening a battle over it lost a boss win and its drops (DECISIONS 2026-10-24).
+  return snapshot !== null && snapshot.state.phase !== 'settled';
 }
 /** The state a screen renders, or null when no battle is open. */
 export const currentBattle = (store: BattleStore): BattleState | null => store.snapshot?.state ?? null;

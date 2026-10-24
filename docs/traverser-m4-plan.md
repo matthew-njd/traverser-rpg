@@ -52,6 +52,8 @@ change what a boss fight should cost.
 | Item | Milestone | Why |
 |---|---|---|
 | Trinkets and gear-granted moves | M5 | GDD 10 §9's constraint: not until the first Heroic Trinket. P1 deliberately stops short of the fourth slot — §3.1. |
+| Satchel tab: Gear and Items sub-views | M5 | Decided 2026-10-24 during the P7 drills. GDD 13 §5.1 makes Gear the Satchel tab's default sub-view, and P1 put the Gear card on Character instead, which crowded the Avatar pane. Moves with the Trinket slot, since §5.1's four-slot row includes it. Also ends M3 note 7: the tab is still a stub. The Vigour card stays on Character, beside Rest Day. |
+| Road layout: collapsible encounters, and GDD 13's Explore button | M5 | Decided 2026-10-24 during the P7 drills. With 9 encounters waiting, every Explore button sat below a full-height list. The encounters card collapses by default to a count, **Face the next ›** and **Show all ▾** (GDD 13 doesn't specify this card). Explore becomes GDD 13 §4's single floating button at the bottom-left, enabled when the Viewport is on an unlocked zone, replacing the per-zone buttons the build shipped. |
 | A respec | undecided | A design question, not a gap. §3.3 records why guidance is tried first. |
 | The restore door's silence (note 17) | M5 | Rare, has a workaround, and its fix is an onboarding-flow choice rather than a bug fix. |
 | A restore silently discards the read window | M5 | Found 2026-09-14: ~13 days lost, noticed only as a 28-step day. Warn at restore, or show "last synced N days ago". Rides with note 17 — same screen, same kind of choice. |

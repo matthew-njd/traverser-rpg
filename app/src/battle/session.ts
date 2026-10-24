@@ -131,8 +131,10 @@ export function buildContext(
     moves,
     items: itemsFrom(rows),
     tables: dropTablesFrom(rows),
+    // By drop kind as well as enemy: a zone boss has separate first-kill and repeat lists, and
+    // merging them gave a first kill repeat-only items and a repeat kill the first-kill Rare.
     pool: rows('enemy_drop_pool')
-      .filter((row) => row.enemy_id === enemyId)
+      .filter((row) => row.enemy_id === enemyId && row.encounter_kind === dropEncounterKind)
       .map((row) => ({
         itemDefId: String(row.item_def_id),
         weight: Number(row.weight),

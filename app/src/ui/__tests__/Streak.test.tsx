@@ -7,7 +7,8 @@ describe('the streak badge', () => {
   it('shows the run and the personal best', async () => {
     await render(<Streak current={9} longest={22} />);
 
-    expect(screen.getByText('🔥 9')).toBeTruthy();
+    expect(screen.getByLabelText('9 day streak')).toBeTruthy();
+    expect(screen.getByText('9')).toBeTruthy();
     expect(screen.getByText('Best 22')).toBeTruthy();
     expect(screen.queryByText(/new road/)).toBeNull();
   });

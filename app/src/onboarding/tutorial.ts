@@ -29,13 +29,13 @@ export interface TutorialBeat {
 const BEATS: readonly TutorialBeat[] = [
   { note: null, prompt: 'Tap Attack to strike first.', attackEnabled: true },
   {
-    note: "That's your Vigor — it's your health. Keep an eye on it.",
+    note: "That's your Vigour — it's your health. Keep an eye on it.",
     prompt: 'Attack again.',
     attackEnabled: true,
   },
   {
     note: "Taken a couple of hits? Let's patch up — open your Items.",
-    prompt: 'Use a Traveler’s Salve.',
+    prompt: 'Use a Traveller’s Salve.',
     attackEnabled: false,
   },
   { note: null, prompt: 'Finish it!', attackEnabled: true },

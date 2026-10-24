@@ -119,7 +119,7 @@ export function logLines(events: readonly BattleEvent[], labels: Labels): string
         lines.push(
           event.healed === null || event.healed === 0
             ? `${labelFor(labels, event.itemDefId)} used.`
-            : `${labelFor(labels, event.itemDefId)} — ${event.healed} Vigor restored.`,
+            : `${labelFor(labels, event.itemDefId)} — ${event.healed} Vigour restored.`,
         );
         break;
 

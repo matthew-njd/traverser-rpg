@@ -6,7 +6,7 @@ import { peek } from '../../db/outbox';
 import type { SqliteDatabase } from '../../db/types';
 import { PLAYER_ID, registeredDatabase } from '../../sync/__tests__/fixtures';
 import { readPlayer } from '../../sync/mirror';
-import { battleInProgress, useBattleStore } from '../battleStore';
+import { backAction, battleInProgress, useBattleStore } from '../battleStore';
 
 /**
  * T5 §9's adapter. The engine is proven elsewhere; what is only observable here is **durability** —
@@ -83,7 +83,7 @@ describe('opening a battle', () => {
     open(db);
 
     expect(useBattleStore.getState().items).toEqual([
-      { playerItemId: 'pi-1', itemDefId: 'item_travelers_salve', label: "Traveler's Salve" },
+      { playerItemId: 'pi-1', itemDefId: 'item_travelers_salve', label: "Traveller's Salve" },
     ]);
   });
 });
@@ -227,13 +227,18 @@ describe('battleInProgress', () => {
     expect(battleInProgress()).toBe(true);
   });
 
-  it('is false once the fight has ended, before it is even settled', () => {
+  /**
+   * An ended fight is unrecorded until Continue settles it. This used to read `false`, and a
+   * dev-build hot reload re-ran the route's `begin` over a won boss fight on its victory panel — the
+   * win and its drops were never queued.
+   */
+  it('is still true once the fight has ended, until it is settled', () => {
     const db = battleReady();
 
     open(db);
     fightOut(db);
 
-    expect(battleInProgress()).toBe(false);
+    expect(battleInProgress()).toBe(true);
   });
 
   it('is false after settling, so the next battle can start', () => {
@@ -245,5 +250,29 @@ describe('battleInProgress', () => {
 
     expect(useBattleStore.getState().snapshot).not.toBeNull();
     expect(battleInProgress()).toBe(false);
+  });
+});
+
+/**
+ * Android back on the battle route. Before Begin it cancels an accidental tap; after it, it must not
+ * abandon the fight — an abandoned fight resumed on the next encounter tap, whatever was tapped.
+ */
+describe('backAction', () => {
+  const action = () => backAction(useBattleStore.getState().snapshot);
+
+  it('cancels before Begin, blocks mid-fight, and finishes once the outcome is in', () => {
+    const db = battleReady();
+
+    useBattleStore.getState().abandon(db);
+    expect(action()).toBe('leave');
+
+    open(db);
+    expect(action()).toBe('cancel');
+
+    useBattleStore.getState().dispatch(db, { kind: 'begin' });
+    expect(action()).toBe('block');
+
+    useBattleStore.getState().dispatch(db, { kind: 'flee' });
+    expect(action()).toBe('finish');
   });
 });

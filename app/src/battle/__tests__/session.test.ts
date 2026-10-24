@@ -83,6 +83,20 @@ describe('buildContext', () => {
     expect(context.enemy.id).toBe('enemy_harpy');
   });
 
+  /**
+   * GDD 5 §3.4 and §5 — Cerberus's first kill draws from Fleet Omen, Gravemark and Pale Ash, and a
+   * repeat kill never offers the Rare. The pool used to be filtered by enemy alone, which merged the
+   * two lists: drill 7 dropped the repeat-only Warhex on a first kill.
+   */
+  it("draws a zone boss's first and repeat kills from their own lists", () => {
+    const ids = (kind: 'zone_boss_first' | 'zone_boss_repeat') =>
+      buildContext(battleReady(), 'enemy_cerberus', kind).pool.map((entry) => entry.itemDefId);
+
+    expect(ids('zone_boss_first')).toEqual(['item_fleet_omen', 'item_gravemark', 'item_pale_ash']);
+    expect(ids('zone_boss_repeat')).not.toContain('item_fleet_omen');
+    expect(ids('zone_boss_repeat')).toContain('item_warhex');
+  });
+
   it('refuses an enemy the bundle does not have', () => {
     expect(() => buildContext(battleReady(), 'enemy_nonexistent', 'wild')).toThrow(/no such enemy/);
   });

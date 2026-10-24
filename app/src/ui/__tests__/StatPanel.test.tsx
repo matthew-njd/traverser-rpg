@@ -79,7 +79,7 @@ describe('StatPanel', () => {
 
     await render(<StatPanel unspent={6} current={CURRENT} onConfirm={onConfirm} />);
 
-    await add('Vigor', 2);
+    await add('Vigour', 2);
     await add('Stride');
     await fireEvent.press(screen.getByText('Confirm 3 points'));
 
@@ -143,7 +143,7 @@ describe('StatPanel', () => {
   it('shows the current value and the pending addition separately', async () => {
     await render(<StatPanel unspent={3} current={CURRENT} onConfirm={jest.fn()} />);
 
-    await add('Vigor', 2);
+    await add('Vigour', 2);
 
     // The value and the pending addition are separate Text nodes inside one line, which RNTL
     // matches as the composed string.
@@ -164,8 +164,20 @@ describe('stat guidance', () => {
   it('sets Vigor apart from the stats that decide a fight', async () => {
     await render(<StatPanel unspent={3} current={CURRENT} onConfirm={jest.fn()} />);
 
-    expect(screen.getByText('Survive')).toBeTruthy();
-    expect(screen.getByText('Fight')).toBeTruthy();
-    expect(STATS.filter((stat) => stat.group === 'Survive').map((stat) => stat.key)).toEqual(['vigor']);
+    expect(screen.getByText('Hardiness')).toBeTruthy();
+    expect(screen.getByText('Fierceness')).toBeTruthy();
+    expect(screen.getByText('Sturdiness')).toBeTruthy();
+    expect(screen.getByText('Quickness')).toBeTruthy();
+    expect(STATS.filter((stat) => stat.group === 'Hardiness').map((stat) => stat.key)).toEqual(['vigor']);
+    expect(STATS.filter((stat) => stat.group === 'Sturdiness').map((stat) => stat.key)).toEqual(['resolve', 'aegis']);
+  });
+
+  /** A group split by another gets a second caption — getAllByText would find two. */
+  it('draws each caption exactly once', async () => {
+    await render(<StatPanel unspent={3} current={CURRENT} onConfirm={jest.fn()} />);
+
+    for (const group of ['Hardiness', 'Fierceness', 'Sturdiness', 'Quickness']) {
+      expect(screen.getAllByText(group)).toHaveLength(1);
+    }
   });
 });

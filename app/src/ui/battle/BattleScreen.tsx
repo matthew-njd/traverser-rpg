@@ -184,7 +184,7 @@ export function BattleScreen({
             One Continue for the whole reveal, per §6.3 — not one tap per card. The cards scroll and
             Continue stays put: a boss's three drops ran off the bottom of a plain View.
           */}
-          <ScrollView style={styles.reveals} contentContainerStyle={styles.outcome}>
+          <ScrollView style={styles.reveals} contentContainerStyle={styles.revealList}>
             {reveals.map((reveal) => (
               <RevealCard
                 key={reveal.defId}
@@ -295,5 +295,7 @@ const styles = StyleSheet.create({
   outcome: { gap: space.sm, flexShrink: 1 },
   // ↯ RN's ScrollView defaults to `flexGrow: 1`, which takes the whole column and pushes Continue off.
   reveals: { flexGrow: 0, flexShrink: 1 },
+  // No flexShrink here: a content container that shrinks to the viewport has nothing left to scroll.
+  revealList: { gap: space.sm },
   outcomeLabel: { ...type.heading, color: colors.text, textAlign: 'center' },
 });

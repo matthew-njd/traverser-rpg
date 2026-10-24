@@ -5,7 +5,7 @@ import { revealsFor } from '../reveal';
 /** GDD 13 §6.3 — what a won battle announces, joined to content before anything renders. */
 const LABELS = new Map([
   ['item_stormveil', 'Stormveil'],
-  ['gear_weapon_mortal', "Traveler's Blade"],
+  ['gear_weapon_mortal', "Traveller's Blade"],
   ['gear_skyroad_sigil', 'Skyroad Sigil'],
 ]);
 

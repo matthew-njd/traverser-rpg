@@ -150,6 +150,11 @@ A seeded RNG only yields a reproducible fight if the number and order of draws p
 
 > **Amended 2026-08-22 (M3/P2).** Step 4 read "one pool-selection draw per granted item", which was exact while gear resolved to a tier and took no draw. A granted **gear** roll now takes one draw as well — GDD 8 §5.1's equal-weight slot pick — and a granted **Trinket** still takes none, because its zone and tier name it outright. So: three dice, then the item pool draws, then the slot draw, and nothing for the Trinket.
 
+> **Amended 2026-10-24 (M4/P7, found on the device).** Two corrections to the item draws.
+>
+> - **The pool is the enemy's rows for this drop kind**, not every row for the enemy. A zone boss has separate `zone_boss_first` and `zone_boss_repeat` lists, and merging them let a first kill drop repeat-only items and a repeat kill drop the first-kill Rare, which GDD 5 §5 forbids.
+> - **A zone boss's first kill always includes its Rare**, the first entry in the GDD's list: Fleet Omen for Cerberus, Ambrosia Shard for Jörmungandr and Cacus. It takes **no draw**. The rest of the quantity is drawn from the remaining entries. DECISIONS 2026-08-01 assigned this guarantee to the engine, and it was never built.
+
 An action that ends the battle before the second combatant acts consumes no further draws that round (GDD 2 §5.3). Any change to this list is a breaking change to every `ScriptedRng` test and must be made deliberately.
 
 ---

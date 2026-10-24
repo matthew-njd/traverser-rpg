@@ -51,7 +51,7 @@ export default function Loadout() {
           <Plate
             glyph="✳"
             name={labelFor(labels, 'item_travelers_salve')}
-            note={`×${salves} · restores Vigor mid-fight`}
+            note={`×${salves} · restores Vigour mid-fight`}
           />
         )}
       </View>

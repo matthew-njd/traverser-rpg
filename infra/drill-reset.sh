@@ -11,7 +11,10 @@ DAY="${1:-}"
 
 docker compose -f "$(dirname "$0")/docker-compose.yml" exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -v ON_ERROR_STOP=1 <<SQL
 update player
-   set vigor_current = (select 20 + alloc_vigor from player where id = '$PLAYER'),
+   -- effectiveStats' Vigor: base, allocation, and the worn Accessory (GDD 8 §2's only Vigor slot).
+   set vigor_current = (select 20 + alloc_vigor from player where id = '$PLAYER')
+                     + coalesce((select bonus_primary from player_gear
+                                  where player_id = '$PLAYER' and equipped_slot = 'accessory'), 0),
        vigor_anchor_at = now()
  where id = '$PLAYER';
 

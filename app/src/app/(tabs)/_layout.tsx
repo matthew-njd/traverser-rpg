@@ -34,12 +34,12 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="map"
-        options={{ title: 'Map', tabBarIcon: ({ color }) => <Glyph color={color}>◇</Glyph> }}
+        options={{ title: 'Road', tabBarIcon: ({ color }) => <Glyph color={color}>◇</Glyph> }}
       />
       <Tabs.Screen
         name="inventory"
         options={{
-          title: 'Inventory',
+          title: 'Satchel',
           tabBarIcon: ({ color }) => <Glyph color={color}>▣</Glyph>,
         }}
       />

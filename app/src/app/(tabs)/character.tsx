@@ -235,7 +235,7 @@ export default function Character() {
 
           {vigor === null ? null : (
             <Card>
-              <Heading>Vigor</Heading>
+              <Heading>Vigour</Heading>
               <VigorBar side="player" vigor={vigor.current} vigorMax={vigor.max} />
             </Card>
           )}

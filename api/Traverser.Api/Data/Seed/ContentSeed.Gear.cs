@@ -15,15 +15,15 @@ internal static partial class ContentSeed
             // Weapon/Armor/Accessory: one tier ladder, zone-agnostic, no move, no flavor text in the
             // GDD. Traveler's → Warden's → Paragon's → Ascendant's (GDD 8 §7). "Paragon's" rather than
             // "Champion's" to avoid colliding with the Champion's Surge skill.
-            Wearable(Ids.Gear.WeaponMortal, "Traveler's Blade", GearSlot.Weapon, GearTier.Mortal),
+            Wearable(Ids.Gear.WeaponMortal, "Traveller's Blade", GearSlot.Weapon, GearTier.Mortal),
             Wearable(Ids.Gear.WeaponHeroic, "Warden's Blade", GearSlot.Weapon, GearTier.Heroic),
             Wearable(Ids.Gear.WeaponMythic, "Paragon's Blade", GearSlot.Weapon, GearTier.Mythic),
             Wearable(Ids.Gear.WeaponDivine, "Ascendant's Blade", GearSlot.Weapon, GearTier.Divine),
-            Wearable(Ids.Gear.ArmorMortal, "Traveler's Guard", GearSlot.Armor, GearTier.Mortal),
+            Wearable(Ids.Gear.ArmorMortal, "Traveller's Guard", GearSlot.Armor, GearTier.Mortal),
             Wearable(Ids.Gear.ArmorHeroic, "Warden's Guard", GearSlot.Armor, GearTier.Heroic),
             Wearable(Ids.Gear.ArmorMythic, "Paragon's Guard", GearSlot.Armor, GearTier.Mythic),
             Wearable(Ids.Gear.ArmorDivine, "Ascendant's Guard", GearSlot.Armor, GearTier.Divine),
-            Wearable(Ids.Gear.AccessoryMortal, "Traveler's Band", GearSlot.Accessory, GearTier.Mortal),
+            Wearable(Ids.Gear.AccessoryMortal, "Traveller's Band", GearSlot.Accessory, GearTier.Mortal),
             Wearable(Ids.Gear.AccessoryHeroic, "Warden's Band", GearSlot.Accessory, GearTier.Heroic),
             Wearable(Ids.Gear.AccessoryMythic, "Paragon's Band", GearSlot.Accessory, GearTier.Mythic),
             Wearable(Ids.Gear.AccessoryDivine, "Ascendant's Band", GearSlot.Accessory, GearTier.Divine),
