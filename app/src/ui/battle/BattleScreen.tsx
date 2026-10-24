@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { BattleContext, BattleEvent, BattleState } from '../../battle/state';
 import type { Move } from '../../battle/types';
@@ -180,15 +180,20 @@ export function BattleScreen({
         <View style={styles.outcome}>
           <Text style={styles.outcomeLabel}>{OUTCOME_COPY[state.outcome ?? 'flee']}</Text>
 
-          {/* One Continue for the whole reveal, per §6.3 — not one tap per card. */}
-          {reveals.map((reveal) => (
-            <RevealCard
-              key={reveal.defId}
-              name={reveal.name}
-              grade={reveal.grade}
-              flavor={reveal.flavor}
-            />
-          ))}
+          {/*
+            One Continue for the whole reveal, per §6.3 — not one tap per card. The cards scroll and
+            Continue stays put: a boss's three drops ran off the bottom of a plain View.
+          */}
+          <ScrollView style={styles.reveals} contentContainerStyle={styles.outcome}>
+            {reveals.map((reveal) => (
+              <RevealCard
+                key={reveal.defId}
+                name={reveal.name}
+                grade={reveal.grade}
+                flavor={reveal.flavor}
+              />
+            ))}
+          </ScrollView>
 
           <Button label="Continue" onPress={onDone} />
         </View>
@@ -287,6 +292,8 @@ const styles = StyleSheet.create({
   guideNote: { ...type.small, color: colors.textDim },
   guidePrompt: { ...type.body, color: colors.gold },
 
-  outcome: { gap: space.sm },
+  outcome: { gap: space.sm, flexShrink: 1 },
+  // ↯ RN's ScrollView defaults to `flexGrow: 1`, which takes the whole column and pushes Continue off.
+  reveals: { flexGrow: 0, flexShrink: 1 },
   outcomeLabel: { ...type.heading, color: colors.text, textAlign: 'center' },
 });

@@ -1,9 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { GateState, RoadGate, RoadState, RoadZone } from '../progression/road';
 import { segmentFill } from '../progression/road';
 import { Button } from './primitives';
-import { colors, radius, space, tabular, type } from './theme';
+import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme';
 
 /**
  * GDD 9 §4 — the Road as layout and state. Art is the art phase's (§6, GDD 13 §10).
@@ -16,6 +16,7 @@ export function Road({
   state,
   exploring = null,
   onExplore,
+  onFace,
   onZoneLayout,
 }: {
   state: RoadState;
@@ -23,6 +24,8 @@ export function Road({
   exploring?: string | null;
   /** GDD 9 §4.3 — offered on an already-unlocked segment and nowhere else. */
   onExplore?: (zoneId: string) => void;
+  /** GDD 9 §4.2 — tapping a reached gate starts the fight; a defeated one is a rematch (GDD 5 §5). */
+  onFace?: (gate: RoadGate) => void;
   /** Reports each segment's y offset so the screen can scroll the Viewport to it (§4.3). */
   onZoneLayout?: (zoneId: string, y: number) => void;
 }) {
@@ -37,6 +40,7 @@ export function Road({
           here={zone.zoneId === waymarkerZone(state)}
           exploring={exploring === zone.zoneId}
           onExplore={onExplore}
+          onFace={onFace}
           onLayout={onZoneLayout}
         />
       ))}
@@ -66,6 +70,7 @@ function ZoneSegment({
   here,
   exploring,
   onExplore,
+  onFace,
   onLayout,
 }: {
   zone: RoadZone;
@@ -74,6 +79,7 @@ function ZoneSegment({
   here: boolean;
   exploring: boolean;
   onExplore?: (zoneId: string) => void;
+  onFace?: (gate: RoadGate) => void;
   onLayout?: (zoneId: string, y: number) => void;
 }) {
   const fill = segmentFill(zone, next, leagues);
@@ -108,7 +114,7 @@ function ZoneSegment({
       </View>
 
       {zone.gates.map((gate) => (
-        <GateNode key={gate.gateId} gate={gate} leagues={leagues} />
+        <GateNode key={gate.gateId} gate={gate} leagues={leagues} onFace={onFace} />
       ))}
 
       {/*
@@ -128,11 +134,26 @@ function ZoneSegment({
   );
 }
 
-function GateNode({ gate, leagues }: { gate: RoadGate; leagues: number }) {
+function GateNode({
+  gate,
+  leagues,
+  onFace,
+}: {
+  gate: RoadGate;
+  leagues: number;
+  onFace?: (gate: RoadGate) => void;
+}) {
   const remaining = gate.leagueThreshold - leagues;
+  const faceable = onFace !== undefined && gate.state !== 'locked';
 
   return (
-    <View style={styles.node} accessibilityLabel={`${gate.displayName}, ${STATE_COPY[gate.state]}`}>
+    <Pressable
+      style={({ pressed }) => [styles.node, pressed && faceable ? styles.nodePressed : null]}
+      accessibilityRole={faceable ? 'button' : undefined}
+      accessibilityLabel={`${gate.displayName}, ${STATE_COPY[gate.state]}`}
+      disabled={!faceable}
+      onPress={() => onFace?.(gate)}
+    >
       <Text style={[styles.glyph, stateTone[gate.state]]}>{GLYPH[gate.state]}</Text>
 
       <View style={styles.nodeText}>
@@ -151,7 +172,11 @@ function GateNode({ gate, leagues }: { gate: RoadGate; leagues: number }) {
           {gate.isHardGate ? ' · the road stops here' : ' · you may walk on'}
         </Text>
       </View>
-    </View>
+
+      {faceable ? (
+        <Text style={styles.face}>{gate.state === 'defeated' ? 'Face again ›' : 'Face ›'}</Text>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -213,7 +238,9 @@ const styles = StyleSheet.create({
     color: colors.gold,
   },
 
-  node: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  node: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: MIN_TOUCH_TARGET },
+  nodePressed: { opacity: 0.7 },
+  face: { ...type.small, color: colors.accent, fontWeight: '600' },
   glyph: { fontSize: 18, width: 22, textAlign: 'center' },
   nodeText: { flex: 1 },
   nodeName: { ...type.body, color: colors.text },

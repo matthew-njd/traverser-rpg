@@ -31,6 +31,7 @@ export default function MapScreen() {
 
   const scroll = useRef<ScrollView>(null);
   const offsets = useRef(new Map<string, number>());
+  const roadY = useRef(0);
 
   const reload = useCallback(() => {
     const db = getDatabase();
@@ -81,7 +82,7 @@ export default function MapScreen() {
 
     // ↯ Not `scrollTo(0)`. The Waymarker is usually *not* at the top — by Imperion the player's
     // frontier is two segments down, and snapping to the origin is the opposite of returning.
-    scroll.current?.scrollTo({ y: y ?? 0, animated: true });
+    scroll.current?.scrollTo({ y: roadY.current + (y ?? 0), animated: true });
   };
 
   return (
@@ -102,34 +103,6 @@ export default function MapScreen() {
             )}
           </View>
 
-          {/*
-            T2 §1.3 — sync delivers grants, not battles, so these are spendable with the API off.
-            Above the Road rather than inside a segment: an encounter earned by walking belongs to
-            no particular node, and burying it in the segment it names would hide it.
-          */}
-          {encounters.length === 0 ? null : (
-            <Card>
-              <Heading>
-                {encounters.length === 1
-                  ? 'Something waits on the road'
-                  : `${encounters.length} wait on the road`}
-              </Heading>
-
-              {encounters.map((encounter) => (
-                <Button
-                  key={encounter.grantId}
-                  label={encounter.displayName}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/battle',
-                      params: { enemyId: encounter.enemyId, grantId: encounter.grantId },
-                    })
-                  }
-                />
-              ))}
-            </Card>
-          )}
-
           <ScrollView
             ref={scroll}
             contentContainerStyle={styles.viewport}
@@ -143,12 +116,51 @@ export default function MapScreen() {
               />
             }
           >
-            <Road
-              state={road}
-              exploring={exploring}
-              onExplore={explore}
-              onZoneLayout={(zoneId, y) => offsets.current.set(zoneId, y)}
-            />
+            {/*
+              T2 §1.3 — sync delivers grants, not battles, so these are spendable with the API off.
+              Above the Road rather than inside a segment: an encounter earned by walking belongs to
+              no particular node, and burying it in the segment it names would hide it. Inside the
+              scroll view, because outside it a long queue took the whole screen and froze the Road.
+            */}
+            {encounters.length === 0 ? null : (
+              <Card>
+                <Heading>
+                  {encounters.length === 1
+                    ? 'Something waits on the road'
+                    : `${encounters.length} wait on the road`}
+                </Heading>
+
+                {encounters.map((encounter) => (
+                  <Button
+                    key={encounter.grantId}
+                    label={encounter.displayName}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/battle',
+                        params: { enemyId: encounter.enemyId, grantId: encounter.grantId },
+                      })
+                    }
+                  />
+                ))}
+              </Card>
+            )}
+
+            {/* Segment offsets are relative to the Road, so its own offset is added on return. */}
+            <View onLayout={(event) => (roadY.current = event.nativeEvent.layout.y)}>
+              <Road
+                state={road}
+                exploring={exploring}
+                onExplore={explore}
+                onFace={(gate) =>
+                  router.push({
+                    pathname: '/battle',
+                    // A hard gate is a zone's final boss (GDD 9 §4.2); `rulesFor` makes both unfleeable.
+                    params: { enemyId: gate.enemyId, kind: gate.isHardGate ? 'zone_boss' : 'mini_boss' },
+                  })
+                }
+                onZoneLayout={(zoneId, y) => offsets.current.set(zoneId, y)}
+              />
+            </View>
           </ScrollView>
 
           <Button label="Return to the Road" onPress={returnToTheRoad} />

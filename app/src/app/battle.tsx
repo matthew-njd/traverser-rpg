@@ -1,5 +1,6 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { BackHandler } from 'react-native';
 
 import { getDatabase } from '@/db/open';
 import { mintUuidV7 } from '@/health/deltaId';
@@ -71,6 +72,36 @@ export default function Battle() {
 
     leave();
   };
+
+  const finishRef = useRef(finish);
+
+  finishRef.current = finish;
+
+  /**
+   * ↯ tech-04 §4.2's "what does hardware back do here". `gestureEnabled: false` only stops iOS's
+   * swipe — Android's back still popped this route mid-fight, leaving the battle open, and every
+   * later encounter tap resumed it instead (a Cyclops tap opened an abandoned Harpy). Mid-fight,
+   * back does nothing; once the outcome is in, it is Done.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        const snapshot = useBattleStore.getState().snapshot;
+
+        if (snapshot === null) {
+          return false;
+        }
+
+        if (snapshot.state.outcome !== null) {
+          finishRef.current();
+        }
+
+        return true;
+      });
+
+      return () => subscription.remove();
+    }, []),
+  );
 
   if (failed !== null) {
     return (

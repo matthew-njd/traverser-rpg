@@ -88,6 +88,8 @@ describe('ending the battle', () => {
 
     expect(() => battle.take({ kind: 'flee' })).toThrow(/cannot be fled/);
     expect(rulesFor('zone_boss').fleeable).toBe(false);
+    // GDD 2 §9 — none of the six bosses, mid-bosses included.
+    expect(rulesFor('mini_boss').fleeable).toBe(false);
   });
 
   /** Terminal and idempotent — what makes a resumed-then-completed battle safe to submit once. */

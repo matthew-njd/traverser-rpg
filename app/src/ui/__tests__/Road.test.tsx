@@ -147,6 +147,40 @@ describe('the Road', () => {
   });
 
   /**
+   * GDD 9 §4.2 — tapping a reached gate starts the fight, and a beaten one is a rematch (GDD 5 §5).
+   * A locked gate must not answer: its fight is unreachable until the Waymarker gets there.
+   */
+  it('faces a reached gate and a beaten one, never a locked one', async () => {
+    const onFace = jest.fn();
+
+    await render(
+      <Road
+        state={state({
+          zones: [
+            zone({
+              gates: [
+                gate({ state: 'available' }),
+                gate({ gateId: 'gate_cerberus', displayName: 'Cerberus', state: 'defeated' }),
+                gate({ gateId: 'gate_fenrir', displayName: 'Fenrir', state: 'locked' }),
+              ],
+            }),
+          ],
+        })}
+        onFace={onFace}
+      />,
+    );
+
+    await fireEvent.press(screen.getByText('Face ›'));
+    await fireEvent.press(screen.getByText('Face again ›'));
+    await fireEvent.press(screen.getByText('Fenrir'));
+
+    expect(onFace.mock.calls.map(([faced]) => (faced as RoadGate).gateId)).toEqual([
+      'gate_cyclops',
+      'gate_cerberus',
+    ]);
+  });
+
+  /**
    * ↯ The roll is the server's (T2 §4 step 8), so the button cannot report an outcome — only that
    * the tap is away. A second press while the first is in flight would spend a second roll.
    */
