@@ -3,6 +3,7 @@ import type { MintedDelta } from '../health/deltas';
 import {
   type ActivityDay,
   type AllocationPayload,
+  type EquipPayload,
   type ExplorePayload,
   type PlayerProfile,
   type Registration,
@@ -16,6 +17,7 @@ import {
   parseRegistration,
   parseSyncResponse,
   toWireAllocation,
+  toWireEquip,
   toWireRegistration,
   toWireRestDay,
   toWireSettings,
@@ -95,6 +97,7 @@ export interface TraverserApi {
   updateSettings(payload: SettingsPayload): Promise<void>;
   /** GDD 11 §3.1's tag, which is also GDD 2 §6's Vigor restore. */
   tagRestDay(payload: RestDayPayload): Promise<void>;
+  equipGear(payload: EquipPayload): Promise<void>;
 }
 
 async function problemCode(response: Response): Promise<string | null> {
@@ -207,6 +210,13 @@ export function createApi(options: ApiOptions): TraverserApi {
       await request(options, '/players/me/rest-days', {
         method: 'POST',
         body: JSON.stringify(toWireRestDay(payload)),
+      });
+    },
+
+    async equipGear(payload) {
+      await request(options, `/players/me/gear/${encodeURIComponent(payload.playerGearId)}/equipped`, {
+        method: 'PUT',
+        body: JSON.stringify(toWireEquip(payload)),
       });
     },
   };

@@ -1,12 +1,17 @@
+import { readEquippedGear, readOwnedGear } from '../../battle/mirror';
+import { seedEmbeddedContent } from '../../content/store';
 import { count, peek } from '../../db/outbox';
 import type { SqliteDatabase } from '../../db/types';
 import { recordingDatabase } from '../../health/__tests__/fixtures';
+import { effectiveStats } from '../../progression/stats';
 import { isRestTagged, readBirthYear, readPlayer } from '../mirror';
 import {
   AllocationError,
+  EquipError,
   NO_STATS,
   allocateStatPoints,
   changeSettings,
+  equipGear,
   requestExplore,
   tagRestDay,
 } from '../writes';
@@ -203,6 +208,93 @@ describe('the Rest Day tag', () => {
     tagRestDay(db, '2026-12-25', NOW);
 
     expect(isRestTagged(db, '2026-12-25')).toBe(true);
+  });
+});
+
+describe('equipping gear', () => {
+  const gearDatabase = (vigorCurrent = 20) => {
+    const db = registeredDatabase({ vigor_current: vigorCurrent });
+
+    seedEmbeddedContent(db);
+
+    const playerId = readPlayer(db)?.playerId ?? '';
+    const own = (id: string, gearDefId: string, bonus: number, slot: string | null) =>
+      db.runSync(
+        `INSERT INTO player_gear (id, player_id, gear_def_id, equipped_slot, level_at_drop, bonus_primary, acquired_at)
+         VALUES (?, ?, ?, ?, 1, ?, '2026-08-01T00:00:00Z')`,
+        [id, playerId, gearDefId, slot, bonus],
+      );
+
+    own('blade', 'gear_weapon_mortal', 1, 'weapon');
+    own('sword', 'gear_weapon_heroic', 4, null);
+    own('charm', 'gear_accessory_mortal', 3, 'accessory');
+
+    return db;
+  };
+
+  const might = (db: SqliteDatabase) => {
+    const player = readPlayer(db);
+
+    return player === null ? 0 : effectiveStats(player, readEquippedGear(db)).might;
+  };
+
+  const worn = (db: SqliteDatabase) =>
+    Object.fromEntries(readOwnedGear(db).map((gear) => [gear.playerGearId, gear.equippedSlot]));
+
+  it('wears the piece in its own slot, displaces the occupant, and queues one replay', () => {
+    const db = gearDatabase();
+
+    expect(equipGear(db, 'sword', true, NOW)).toEqual({
+      playerGearId: 'sword',
+      equippedSlot: 'weapon',
+      vigorAfter: null,
+    });
+    expect(worn(db)).toMatchObject({ sword: 'weapon', blade: null });
+    expect(peek(db, 10).map((entry) => entry.kind)).toEqual(['equip']);
+  });
+
+  /** Gear never touches the stored allocation, so the round trip is lossless (tech-01 §4). */
+  it('moves effective stats with an equip and back with an unequip', () => {
+    const db = gearDatabase();
+    const before = might(db);
+
+    equipGear(db, 'sword', true, NOW);
+    expect(might(db)).toBe(before - 1 + 4);
+
+    equipGear(db, 'sword', false, NOW);
+    expect(might(db)).toBe(before - 1);
+    expect(worn(db).sword).toBeNull();
+  });
+
+  it('clamps Vigor when unequipping leaves it above the new max, and sends the clamp', () => {
+    const db = gearDatabase(23);
+
+    expect(equipGear(db, 'charm', false, NOW).vigorAfter).toBe(20);
+    expect(readPlayer(db)?.vigorCurrent).toBe(20);
+  });
+
+  it('leaves Vigor alone when it is already within the new max', () => {
+    const db = gearDatabase(12);
+
+    expect(equipGear(db, 'charm', false, NOW).vigorAfter).toBeNull();
+    expect(readPlayer(db)?.vigorCurrent).toBe(12);
+  });
+
+  /** Drills note 13's shape: a fight holds its own stat block and writes Vigor back on settle. */
+  it('refuses while a battle is open, and changes nothing', () => {
+    const db = gearDatabase();
+
+    db.runSync(
+      `INSERT INTO battle_snapshot (one_row, client_battle_id, snapshot, updated_at) VALUES (1, 'b', '{}', '')`,
+    );
+
+    expect(() => equipGear(db, 'sword', true, NOW)).toThrow(EquipError);
+    expect(worn(db)).toMatchObject({ sword: null, blade: 'weapon' });
+    expect(count(db)).toBe(0);
+  });
+
+  it('refuses gear the player does not own', () => {
+    expect(() => equipGear(gearDatabase(), 'nope', true, NOW)).toThrow(EquipError);
   });
 });
 

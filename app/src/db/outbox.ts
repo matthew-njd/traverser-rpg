@@ -13,7 +13,8 @@ export type OutboxKind =
   | 'settings'
   | 'battle'
   | 'rest_day'
-  | 'explore';
+  | 'explore'
+  | 'equip';
 
 export interface OutboxEntry {
   readonly clientOpId: string;

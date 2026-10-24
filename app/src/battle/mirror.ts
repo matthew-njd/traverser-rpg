@@ -69,6 +69,38 @@ export function readEquippedGear(db: SqliteDatabase): EquippedBonus[] {
   ).map((row) => ({ equippedSlot: row.equipped_slot, bonusPrimary: row.bonus_primary }));
 }
 
+export interface OwnedGear {
+  readonly playerGearId: string;
+  readonly gearDefId: string;
+  /** The slot the piece's `gear_def` fits — not where it is worn. */
+  readonly slot: string;
+  readonly equippedSlot: string | null;
+  readonly bonusPrimary: number;
+}
+
+/** Every owned piece, for the equip control. Newest first within a slot. */
+export function readOwnedGear(db: SqliteDatabase): OwnedGear[] {
+  return db
+    .getAllSync<{
+      id: string;
+      gear_def_id: string;
+      slot: string;
+      equipped_slot: string | null;
+      bonus_primary: number;
+    }>(
+      `SELECT pg.id, pg.gear_def_id, gd.slot, pg.equipped_slot, pg.bonus_primary
+         FROM player_gear pg JOIN gear_def gd ON gd.id = pg.gear_def_id
+        ORDER BY gd.slot, pg.acquired_at DESC, pg.id`,
+    )
+    .map((row) => ({
+      playerGearId: row.id,
+      gearDefId: row.gear_def_id,
+      slot: row.slot,
+      equippedSlot: row.equipped_slot,
+      bonusPrimary: row.bonus_primary,
+    }));
+}
+
 export function readBestiary(db: SqliteDatabase, enemyId: string): BestiaryEntry {
   const row = db.getFirstSync<{ encounter_count: number; defeat_count: number }>(
     'SELECT encounter_count, defeat_count FROM player_bestiary WHERE enemy_id = ?',

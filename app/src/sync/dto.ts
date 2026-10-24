@@ -518,3 +518,16 @@ export interface RestDayPayload {
 export function toWireRestDay(payload: RestDayPayload): Json {
   return { activity_date: payload.activityDate, vigor_after: payload.vigorAfter };
 }
+
+/** GDD 8 §2's equip. Set, not added, so no operation id (T2 §6.3). */
+export interface EquipPayload {
+  readonly playerGearId: string;
+  /** Null unequips. */
+  readonly equippedSlot: string | null;
+  /** Only when unequipping left current Vigor above the new max; null leaves Vigor alone. */
+  readonly vigorAfter: number | null;
+}
+
+export function toWireEquip(payload: EquipPayload): Json {
+  return { equipped_slot: payload.equippedSlot, vigor_after: payload.vigorAfter };
+}

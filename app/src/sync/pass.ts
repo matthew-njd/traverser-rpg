@@ -21,7 +21,7 @@ import {
 } from '../health/provider';
 import { ApiStatusError, ApiUnreachableError, type TraverserApi } from './api';
 import { backfillActivity, needsHistoryRepair } from './history';
-import type { AllocationPayload, RestDayPayload, SettingsPayload } from './dto';
+import type { AllocationPayload, EquipPayload, RestDayPayload, SettingsPayload } from './dto';
 import { type ExplorePayload, type LevelUp, type SyncSession, WireFormatError } from './dto';
 import {
   applySyncResponse,
@@ -266,6 +266,7 @@ async function replayWrites(db: SqliteDatabase, api: TraverserApi): Promise<void
     ...peek(db, MAX_BATCH, 'allocation'),
     ...peek(db, MAX_BATCH, 'settings'),
     ...peek(db, MAX_BATCH, 'rest_day'),
+    ...peek(db, MAX_BATCH, 'equip'),
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.clientOpId.localeCompare(b.clientOpId));
 
   for (const entry of queued) {
@@ -274,6 +275,8 @@ async function replayWrites(db: SqliteDatabase, api: TraverserApi): Promise<void
         await api.allocate(JSON.parse(entry.payload) as AllocationPayload);
       } else if (entry.kind === 'rest_day') {
         await api.tagRestDay(JSON.parse(entry.payload) as RestDayPayload);
+      } else if (entry.kind === 'equip') {
+        await api.equipGear(JSON.parse(entry.payload) as EquipPayload);
       } else {
         await api.updateSettings(JSON.parse(entry.payload) as SettingsPayload);
       }

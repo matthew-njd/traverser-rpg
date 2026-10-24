@@ -18,7 +18,7 @@ export const BASE_STATS: StatDeltas = {
  * ↯ **No slot maps to Stride, and none ever will** (GDD 1 §5, CLAUDE.md). The rule is enforced by
  * this table having no entry rather than by a check, so there is no branch anyone can "fix".
  */
-const SLOT_STAT = {
+export const SLOT_STAT = {
   weapon: 'might',
   armor: 'resolve',
   accessory: 'vigor',

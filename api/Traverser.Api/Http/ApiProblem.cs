@@ -32,6 +32,9 @@ internal static class ApiProblem
     /// </summary>
     public const string InsufficientStatPoints = "insufficient_stat_points";
 
+    /// <summary>No gear with that id belongs to this player — discarded, or never theirs.</summary>
+    public const string GearNotFound = "gear_not_found";
+
     public static IResult Unauthorized(string code, string detail) =>
         Create(StatusCodes.Status401Unauthorized, code, "Unauthorized", detail);
 

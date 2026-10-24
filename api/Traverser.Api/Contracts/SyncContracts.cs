@@ -252,3 +252,14 @@ public sealed record UpdateSettingsRequest(int? DailyStepGoal, int? BirthYear);
 /// payload is (T5 §1.6).
 /// </param>
 public sealed record TagRestDayRequest(DateOnly ActivityDate, int VigorAfter);
+
+/// <summary>
+/// <c>PUT /api/v1/players/me/gear/{player_gear_id}/equipped</c> — GDD 8 §2. Set, not added, so a
+/// replay lands the same result and needs no operation id (T2 §6.3).
+/// </summary>
+/// <param name="EquippedSlot">The slot to wear the piece in, or null to unequip it.</param>
+/// <param name="VigorAfter">
+/// Sent only when unequipping Vigor gear left current Vigor above the new max, so the client clamped
+/// it. Null leaves Vigor alone. The client's number, as on a Rest Day (T5 §1.6).
+/// </param>
+public sealed record EquipGearRequest(GearSlot? EquippedSlot, int? VigorAfter);

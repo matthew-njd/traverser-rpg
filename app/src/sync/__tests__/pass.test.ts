@@ -104,6 +104,7 @@ function fakeApi(
     allocate: async () => undefined,
     updateSettings: async () => undefined,
     tagRestDay: async () => undefined,
+    equipGear: async () => undefined,
     ...overrides,
   };
 }
@@ -417,6 +418,29 @@ describe('the online pass', () => {
 
     expect(api.sent[0]?.map((delta) => delta.clientDeltaId)).not.toContain('allocation-1');
     expect(allocated.map((payload) => payload.operationId)).toEqual(['allocation-1']);
+    expect(count(db)).toBe(0);
+  });
+
+  /** Without its own branch an equip falls through to `updateSettings` and is dropped on the 4xx. */
+  it('replays a queued equip to its own endpoint and acknowledges it', async () => {
+    const db = registeredDatabase();
+    const payload = { playerGearId: 'sword', equippedSlot: 'weapon', vigorAfter: null };
+
+    enqueue(db, { clientOpId: 'equip-1', kind: 'equip', payload, createdAt: '2026-08-01T00:00:00.000Z' });
+
+    const equipped: unknown[] = [];
+    const api = fakeApi({
+      equipGear: async (sent) => {
+        equipped.push(sent);
+      },
+      updateSettings: async () => {
+        throw new Error('an equip was sent as settings');
+      },
+    });
+
+    await run(db, { api });
+
+    expect(equipped).toEqual([payload]);
     expect(count(db)).toBe(0);
   });
 

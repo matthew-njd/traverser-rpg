@@ -3,16 +3,18 @@ import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getDatabase } from '@/db/open';
-import { readEquippedGear, readSnapshot } from '@/battle/mirror';
+import { type OwnedGear, readEquippedGear, readOwnedGear, readSnapshot } from '@/battle/mirror';
+import { type Labels, loadLabels } from '@/content/labels';
 import { type EquippedBonus, effectiveStats } from '@/progression/stats';
 import { syncNow } from '@/runtime';
 import type { ActivityDay } from '@/sync/dto';
 import { deviceLocalDates } from '@/health/localDate';
 import { type MirrorPlayer, isRestTagged, readActivityDays, readPlayer } from '@/sync/mirror';
-import { type StatDeltas, allocateStatPoints, tagRestDay } from '@/sync/writes';
+import { EquipError, type StatDeltas, allocateStatPoints, equipGear, tagRestDay } from '@/sync/writes';
 import { useAppStore } from '@/state/appStore';
 import { usePlayerStore } from '@/state/playerStore';
 import { ActivityLog } from '@/ui/ActivityLog';
+import { GearRack } from '@/ui/GearRack';
 import { HealthBanner } from '@/ui/HealthBanner';
 import { Button, Card, Heading, Screen, SegmentedControl } from '@/ui/primitives';
 import { RestDay } from '@/ui/RestDay';
@@ -35,6 +37,8 @@ export default function Character() {
   const [view, setView] = useState<'avatar' | 'stats'>('avatar');
   const [player, setPlayer] = useState<MirrorPlayer | null>(null);
   const [equipped, setEquipped] = useState<readonly EquippedBonus[]>([]);
+  const [owned, setOwned] = useState<readonly OwnedGear[]>([]);
+  const [labels, setLabels] = useState<Labels>(new Map());
   const [days, setDays] = useState<readonly ActivityDay[]>([]);
   const [allocating, setAllocating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,6 +54,8 @@ export default function Character() {
 
     setPlayer(readPlayer(db));
     setEquipped(readEquippedGear(db));
+    setOwned(readOwnedGear(db));
+    setLabels(loadLabels(db));
     setDays(readActivityDays(db, ACTIVITY_LOG_LIMIT));
     setRested(isRestTagged(db, deviceLocalDates.dateOf(Date.now())));
     setFighting(readSnapshot(db) !== null);
@@ -123,6 +129,23 @@ export default function Character() {
     void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
   };
 
+  /** GDD 8 §2. Local first, like every write here; the replay is best-effort. */
+  const equip = (playerGearId: string, wear: boolean) => {
+    try {
+      equipGear(getDatabase(), playerGearId, wear, Date.now());
+    } catch (error) {
+      // A fight opened or the piece left since the last render. The rack re-reads either way.
+      if (!(error instanceof EquipError)) {
+        throw error;
+      }
+    }
+
+    usePlayerStore.getState().hydrate(getDatabase());
+    reload();
+
+    void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
+  };
+
   return (
     <Screen tabbed>
       <View style={styles.header}>
@@ -176,6 +199,16 @@ export default function Character() {
           <Avatar leagues={slice.leagues} lifetimeSteps={slice.lifetimeSteps} />
 
           <RestDay name={slice.traverserName} tagged={rested} fighting={fighting} onTag={rest} />
+
+          {player === null ? null : (
+            <GearRack
+              gear={owned}
+              labels={labels}
+              stats={effectiveStats(player, equipped)}
+              fighting={fighting}
+              onEquip={equip}
+            />
+          )}
         </ScrollView>
       </View>
 

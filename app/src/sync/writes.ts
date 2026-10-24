@@ -3,7 +3,14 @@ import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
 import { mintUuidV7 } from '../health/deltaId';
 import { maxVigorFor, restoreVigor } from '../progression/vigor';
-import type { AllocationPayload, ExplorePayload, RestDayPayload, SettingsPayload } from './dto';
+import { readOwnedGear, readSnapshot } from '../battle/mirror';
+import type {
+  AllocationPayload,
+  EquipPayload,
+  ExplorePayload,
+  RestDayPayload,
+  SettingsPayload,
+} from './dto';
 import { readPlayer, writeRestTag, writeSettings, writeVigor } from './mirror';
 
 /**
@@ -172,6 +179,80 @@ export function tagRestDay(
     enqueue(db, {
       clientOpId: mintUuidV7(db, now),
       kind: 'rest_day',
+      payload,
+      createdAt: new Date(now).toISOString(),
+    });
+  });
+
+  return payload;
+}
+
+export class EquipError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EquipError';
+  }
+}
+
+/**
+ * GDD 8 §2 — wear a piece in the slot its `gear_def` fits, displacing the occupant, or take it off.
+ *
+ * ↯ **Refused while a battle is open.** A fight reads the stat block once when it is built, so a
+ * mid-fight equip would be invisible to it and its settle would write back Vigor computed from the
+ * old gear — the Rest Day defect's shape (drills note 13), and the same `battle_snapshot` signal.
+ *
+ * Unequipping Vigor gear can leave current above the new max; it is clamped, and the clamp rides the
+ * payload so the server's next player block does not restore the old number.
+ */
+export function equipGear(
+  db: SqliteDatabase,
+  playerGearId: string,
+  equip: boolean,
+  now: number,
+): EquipPayload {
+  let payload: EquipPayload = { playerGearId, equippedSlot: null, vigorAfter: null };
+
+  transact(db, () => {
+    const player = readPlayer(db);
+
+    if (player === null) {
+      throw new EquipError('No player to equip.');
+    }
+
+    if (readSnapshot(db) !== null) {
+      throw new EquipError('A fight is still open.');
+    }
+
+    const piece = readOwnedGear(db).find((gear) => gear.playerGearId === playerGearId);
+
+    if (piece === undefined) {
+      throw new EquipError(`No owned gear ${playerGearId}.`);
+    }
+
+    const slot = equip ? piece.slot : null;
+
+    // Occupant first: the slot index is unique and checked per statement.
+    if (slot !== null) {
+      db.runSync('UPDATE player_gear SET equipped_slot = NULL WHERE equipped_slot = ? AND id <> ?', [
+        slot,
+        playerGearId,
+      ]);
+    }
+
+    db.runSync('UPDATE player_gear SET equipped_slot = ? WHERE id = ?', [slot, playerGearId]);
+
+    const max = maxVigorFor(db, player);
+    const vigorAfter = player.vigorCurrent > max ? max : null;
+
+    if (vigorAfter !== null) {
+      writeVigor(db, vigorAfter, new Date(now).toISOString());
+    }
+
+    payload = { playerGearId, equippedSlot: slot, vigorAfter };
+
+    enqueue(db, {
+      clientOpId: mintUuidV7(db, now),
+      kind: 'equip',
       payload,
       createdAt: new Date(now).toISOString(),
     });

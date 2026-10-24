@@ -43,6 +43,74 @@ public static class ProgressionEndpoints
         routes.MapPost("/players/me/rest-days", TagRestDayAsync)
             .WithName("TagRestDay")
             .WithSummary("Tag a local date as a Rest Day; restores Vigor to full (GDD 11 §3.1, GDD 2 §6).");
+
+        routes.MapPut("/players/me/gear/{playerGearId:guid}/equipped", EquipGearAsync)
+            .WithName("EquipGear")
+            .WithSummary("Wear a piece in its slot, displacing the current one, or unequip it (GDD 8 §2).");
+    }
+
+    /// <summary>
+    /// GDD 8 §2. Equipping into an occupied slot displaces the occupant rather than failing, so two
+    /// queued equips replay in order to the same result the device already shows.
+    /// </summary>
+    private static async Task<IResult> EquipGearAsync(
+        Guid playerGearId,
+        EquipGearRequest request,
+        CurrentPlayer current,
+        TraverserDbContext db,
+        CancellationToken ct)
+    {
+        if (request.VigorAfter < 0)
+        {
+            return ApiProblem.BadRequest(ApiProblem.ValidationFailed, "vigor_after cannot be negative.");
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+
+        var gear = await db.PlayerGear
+            .Include(g => g.GearDef)
+            .FirstOrDefaultAsync(g => g.Id == playerGearId && g.PlayerId == current.PlayerId, ct);
+
+        if (gear is null)
+        {
+            return ApiProblem.Create(
+                StatusCodes.Status404NotFound, ApiProblem.GearNotFound, "Not Found", "No such gear for this player.");
+        }
+
+        if (request.EquippedSlot is GearSlot slot && slot != gear.GearDef.Slot)
+        {
+            return ApiProblem.BadRequest(
+                ApiProblem.ValidationFailed,
+                $"{gear.GearDefId} fits the {gear.GearDef.Slot} slot, not {slot}.");
+        }
+
+        // ↯ Its own statement, before the save: the partial unique index is checked per statement,
+        // and EF does not promise to clear the occupant before it sets the newcomer.
+        if (request.EquippedSlot is not null)
+        {
+            await db.PlayerGear
+                .Where(g => g.PlayerId == current.PlayerId && g.EquippedSlot == request.EquippedSlot && g.Id != gear.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(g => g.EquippedSlot, (GearSlot?)null), ct);
+        }
+
+        gear.EquippedSlot = request.EquippedSlot;
+
+        if (request.VigorAfter is int vigor)
+        {
+            var player = await db.Players.FirstAsync(p => p.Id == current.PlayerId, ct);
+
+            player.VigorCurrent = vigor;
+            player.VigorAnchorAt = DateTime.UtcNow;
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        var profile = await PlayerProfile.LoadAsync(db, current.PlayerId, ct)
+            ?? throw new InvalidOperationException($"Profile for {current.PlayerId} vanished mid-equip.");
+
+        await transaction.CommitAsync(ct);
+
+        return Results.Ok(profile);
     }
 
     /// <summary>
