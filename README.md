@@ -516,6 +516,34 @@ sync loses nothing. Adding any of the three would be a regression (tech-06 §8.4
 
 ---
 
+## M4 is complete
+
+**All eleven exit criteria verified on the Pixel, 2026-10-24** (`traverser-m4-plan.md` §5, §7, and
+the ten drills in `traverser-m4-drills.md`).
+
+The loop pays off. Dropped gear can be worn, and taking off Vigour gear clamps the bar. Character
+shows Vigour, every skill slot names its category, and the stat panel says what each stat does before
+a point is spent. The streak counts, with Rest Days and Auto Sync Grace, and resets quietly. Every
+gate on the Road starts its boss fight.
+
+**Boss ceilings were measured for the first time.** Geared, a wild fight cost 14% of the bar against
+GDD 2 §7's 30%, Cyclops 31% against 75%, and the two zone bosses 56% and 58% against 85%. Fenrir's 94%
+came from seeding the fight two levels below his gate, and the model reproduces it.
+
+**The device found ten defects, and all are fixed.** At P1, the heart-rate read fetched its first
+page fifty times, and an Explore tap fell from 63 s to 1.6 s. At P6, a long encounter list froze the
+Road, Android back abandoned a fight, and the victory screen clipped its drops. The drills found six
+more. The largest was the first-kill Rare: DECISIONS 2026-08-01 assigned it to the engine, and
+nothing ever tested it. A hot reload could also replace an unrecorded win, and the tab relabel
+decided in August had never been built.
+
+The app now uses Canadian spelling for everything a player reads. IDs, code and the specs stay as
+written.
+
+The close-out review missed three inherited deferrals on its first pass and corrected them at the
+wrap-up (`traverser-m4-plan.md` §7.2). The kickoff's M5 is now two milestones:
+`traverser-m5-plan.md` finishes the game, and M6 dresses it.
+
 ## M3 is complete
 
 **All eleven exit criteria verified on the Pixel, 2026-09-01** (`traverser-m3-plan.md` §5, §7, and

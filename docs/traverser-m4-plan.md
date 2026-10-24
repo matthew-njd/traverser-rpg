@@ -266,3 +266,52 @@ Verified at P7, before the wrap-up. M4 is done when, on the Pixel:
 - **Note 2 (encounters never expire) remains spec-correct and unaddressed.** GDD 9 §5 caps the rate,
   not the pile, and M3's drill 9 relied on a banked grant being legitimate. If a week away banking 35
   fights ever feels wrong, that is a GDD change and not a bug.
+
+---
+
+## 7. Packets, as delivered
+
+| Plan packet | Commit(s) | Date | Contents |
+|---|---|---|---|
+| **P1** | `4496510`, `cccf220` | 10-24 | Note 4 measured first (§3.5): a defect, not a cost — a null `pageToken` looped the heart-rate read, 63 s → 1.6 s. Then the equip write path, the Gear card on Character, and the Vigour clamp on unequip. |
+| **P2** | `c583683` | 10-24 | The Vigour readout on Character, derived on focus. |
+| **P3** | `f6ec04d` | 10-24 | Category and type on every skill slot. Physical reads as a word, not a blank. |
+| **P4** | `3852d2d` | 10-24 | One guidance line per stat at allocation, with Vigour set apart. |
+| **P5** | `2e136df` | 10-24 | T2 §4 step 9: the streak, Auto Sync Grace, Rest Day credit, the yesterday tag, and a one-time backfill. T2 amended twice. |
+| **P6** | `3e05b4d` | 10-24 | Gate nodes start boss fights. Three hardware defects fixed alongside: the frozen Road, Android back abandoning a fight, and the clipped victory screen. |
+| **P7** | `6fbf3eb` | 10-24 | Ten drills, all eleven exit criteria pass. Six defects found and fixed. Canadian spelling, the four stat groups and the flame icon added at Matthew's request. T5 §4.1 amended. Two layout packets scheduled for M5. |
+| **P8** | *this packet* | 10-24 | Close-out review, ten items. First pass: ten passed. Corrected at P9: item 5 failed and item 8 passed for the wrong reason — see §7.2. |
+| **P9** | *this packet* | 10-24 | Wrap-up: this section, T2 amended for the equip endpoint, the README, `traverser-m5-plan.md`, and the M5/M6 split. |
+
+### 7.1 Where the delivery diverged from the intent
+
+- **The largest packet was the smallest change.** §4 sized P6 as the biggest packet and put it last. The engine already refused to flee a boss, `dropKindFor` already chose the boss tables, and the server already opened zones — all with tests since M2 and M3 — so the build was one tap (DECISIONS 2026-10-24). The work was in what surrounded the fight: three layout and navigation defects on the way in and out, and two loot defects at the end. *Lesson: a feature whose core is already built is sized by its edges, and the edges are only visible on the device.*
+
+- **A guarantee assigned in a decision line sat untested for three milestones.** DECISIONS 2026-08-01 gave the first-kill Rare to the engine. No test pinned it, and the engine drew every item at random until drill 7's Cerberus kill dropped no Fleet Omen. In the same roll, the pool merged the first-kill and repeat lists. *Lesson: an assignment in `DECISIONS.md` is not an implementation. A rule with no test is a rule nobody has checked.*
+
+- **Three GDD 13 departures were found by using the app, not by any review.** P1 put the Gear card on Character where §5.1 puts it on the Satchel tab. M3 shipped per-zone Explore buttons where §4 specifies one floating button. And the 2026-08-14 tab relabel to Road and Satchel was amended into GDD 13 and never built. The relabel was decided inside M1's P10 review, so it fell between milestones: each close-out's item 1 checks only that milestone's own amendments. Matthew found all three by asking what a screen was for.
+
+- **The P1 packet's id rule was wrong as written.** It said the equip payload names an id "the device's, minted at drop". Gear never enters the mirror from a drop, only from the profile document, so every id the client holds is already the server's (DECISIONS 2026-10-24).
+
+- **A hot reload exposed a real invariant gap.** Saving a file while a won fight sat on its victory panel restarted the battle route, which opened a new fight over the unrecorded win. A dev reload was only the trigger. The defect was that a fight counted as finished once it had an outcome, when it is only recorded at settle (DECISIONS 2026-10-24).
+
+- **Boss ceilings were measured for the first time, and one drill was seeded wrong.** Every fight came in under GDD 2 §7's ungeared ceilings, most by 15–30 points: wild 14%, Cyclops 31%, Cerberus 56%, Jörmungandr 58%. Fenrir cost 94% against 75% because the seed put the fight at L20, two levels below his L22 gate. The model reproduces 90% at L20 and predicts 68% at L22, where a Power 80 Physical skill unlocks — a cliff worth a look in M5. *Lesson: seed a boss drill to the gate's own level, or the reading measures the seed.*
+
+- **The drills absorbed polish, as M1's P10 absorbed a design pass.** Canadian spelling throughout the app, the four stat groups and the drawn flame all landed inside P7 at Matthew's request. Each was small and wanted, and none was a defect. The close-out review stayed a gate (item 9); the drills did not.
+
+### 7.2 Close-out review (P8) result
+
+Ten items, M3's checklist unchanged. **The first pass reported ten passes. Gathering M5's inputs at P9 showed one failure and one pass for the wrong reason**, both corrected here.
+
+| # | Item | Result |
+|---|---|---|
+| 1 | Every spec amendment has code behind it | PASS. T2 twice at P5 and T5 §4.1 at P7, each with code. The 2026-08-14 GDD 13 §2.1 relabel was owed since M1 and built at P7. T2's equip row was silent on three behaviours and is amended at P9. |
+| 2 | Tests assert against fixtures | PASS. Every packet's stated tests exist. P6's three were already covered by M2–M3 tests; P6 added the mid-boss flee assertion. |
+| 3 | In-scope T2 §4 steps built | PASS. Step 9 at P5; steps 10 and 11 move to M5. |
+| 4 | Obligations discharged | PASS. The backup task ran unattended through M4 (Drive dumps 09-14 and 10-24, last result 0). |
+| 5 | Nothing deferred silently | **FAILED, corrected at P9.** Three inherited items had no row and no decision line: M3's note 16 (no beat at the actor change), T2 §5's backoff schedule and coalescing cap (assigned to M5 by M1 and M2, then dropped from M3's and M4's §2.2), and GDD 12, which no plan has ever scheduled. All three are in `traverser-m5-plan.md`. The first pass checked M4's own deferrals and not the ones it inherited. |
+| 6 | `dotnet test`, `tsc --noEmit`, jest green, tree clean | PASS. 245 API, 688 client, `tsc` exit 0, clean at `6fbf3eb`. |
+| 7 | `⟨verify⟩` markers resolved | PASS. M4 introduced none. |
+| 8 | The visual style has a named owner | **PASS, for a different reason than first given.** GDD 13 §11 has owned the app's skin since 2026-08-16 (M2/P1). This plan's §2.2 row and §6 flag, and M3's item 8, were stale. What has no milestone is GDD 13 §10's **art phase** — sprites, tier art, iconography — which `traverser-m5-plan.md` assigns to M6. |
+| 9 | The review takes no new work | PASS. The T2 amendment is owed documentation, not scope. |
+| 10 | One row of real production data reconciled | PASS. Drill 9, six claims on the Jörmungandr win, all matched. |

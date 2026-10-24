@@ -84,6 +84,14 @@ All of these apply optimistically to the mirror and replay to the server; all ar
 > ↯ **`vigor_after` is sent by the client, not computed here.** 100% of max Vigor needs the equipped gear and GDD 8's tier bonuses, which is the same reason a battle payload carries its own `vigor_after` (T5 §1.6).
 >
 > **Amended 2026-10-24 (M4/P5).** The retroactive tag has landed as "Tag yesterday as a Rest Day" on Character, and the window is checked at the tap. `rest_day_window_expired` stays unimplemented, because a tag made in time and replayed late from the outbox must not be refused. The endpoint also sets `streak_credit_method = 'rest_day_tag'` on a day with no credit yet.
+
+> **Amended 2026-10-24 (M4/P1, written at P9). The equip endpoint displaces the slot's occupant, carries `vigor_after`, and has no operation ID.** Three things the table row above leaves out.
+>
+> - **Equipping into an occupied slot unequips the occupant**, in its own statement before the save, rather than failing on the partial unique index. A queued equip then replays in order to the loadout the device already shows. The index still guarantees one piece per slot.
+> - **The body is `{ "equipped_slot": <slot> | null, "vigor_after": <int> | null }`.** A null slot unequips. A slot the piece's `gear_def` does not fit is rejected with `validation_failed`, and another player's piece returns `gear_not_found`.
+> - **`vigor_after` carries the clamp** when taking off Vigour gear leaves current Vigour above the new max (DECISIONS 2026-10-24), for the same reason as the Rest Day's: the client holds the gear and tier numbers. Null leaves Vigour alone.
+>
+> No operation ID, because the write sets state rather than adding to it (§6.3), the same as the rest-days endpoint above.
 | • `POST` | `/api/v1/players/me/explore` | Queue an Explore request against a zone. Offline this records intent only; the grant is issued by the next sync (§1.3). |
 
 ### Reads
