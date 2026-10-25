@@ -16,21 +16,14 @@ import { colors, radius, space, tabular, type } from './theme';
 export function ActivityLog({
   days,
   refreshControl,
-  header,
 }: {
   days: readonly ActivityDay[];
-  /** Pull-to-sync, supplied by the screen so both sub-views share one refresh handler. */
+  /** Pull-to-sync, supplied by the screen so every sub-view shares one refresh handler. */
   refreshControl?: ReactElement<RefreshControlProps>;
-  /**
-   * Anything above the log goes here, not beside the list, so the sub-view is one scroll host. A
-   * card beside the list leaves the top of the screen a plain `View` and the pull never reaches it.
-   */
-  header?: ReactElement;
 }) {
   return (
     <FlatList
       data={days}
-      ListHeaderComponent={header}
       keyExtractor={(day) => day.activityDate}
       refreshControl={refreshControl}
       // ↯ Without `flex: 1` the list sizes to content, so a near-empty log is a thin strip and the

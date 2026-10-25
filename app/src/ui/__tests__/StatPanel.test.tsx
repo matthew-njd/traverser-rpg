@@ -112,6 +112,21 @@ describe('StatPanel', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  /** The Vigour card previews its max from this; a draft left standing after Reset would lie. */
+  it('reports the draft as it changes, and the cleared draft after Reset', async () => {
+    const onDraftChange = jest.fn();
+
+    await render(
+      <StatPanel unspent={3} current={CURRENT} onConfirm={jest.fn()} onDraftChange={onDraftChange} />,
+    );
+
+    await add('Vigour', 2);
+    expect(onDraftChange).toHaveBeenLastCalledWith(expect.objectContaining({ vigor: 2 }));
+
+    await fireEvent.press(screen.getByText('Reset'));
+    expect(onDraftChange).toHaveBeenLastCalledWith(expect.objectContaining({ vigor: 0 }));
+  });
+
   it('resets a draft without spending anything', async () => {
     const onConfirm = jest.fn();
 

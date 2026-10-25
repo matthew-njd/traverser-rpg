@@ -1,6 +1,14 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { type ReactElement, type ReactNode, useCallback, useState } from 'react';
+import {
+  Pressable,
+  RefreshControl,
+  type RefreshControlProps,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { getDatabase } from '@/db/open';
 import { loadBattleContent } from '@/battle/content';
@@ -30,13 +38,14 @@ import { colors, radius, space, tabular, type } from '@/ui/theme';
 /**
  * GDD 13 §3 — the Character tab, and M1's default landing screen.
  *
- * Avatar and Stats are sub-views, not routes (tech-04 §4.3) — one route, both panes mounted.
+ * Avatar, Stats, Skills and Activity are sub-views, not routes (tech-04 §4.3) — one route, every
+ * pane mounted (§3, amended 2026-10-25).
  */
 const ACTIVITY_LOG_LIMIT = 90;
 
 export default function Character() {
   const router = useRouter();
-  const [view, setView] = useState<'avatar' | 'stats'>('avatar');
+  const [view, setView] = useState<'avatar' | 'stats' | 'skills' | 'activity'>('avatar');
   const [player, setPlayer] = useState<MirrorPlayer | null>(null);
   const [equipped, setEquipped] = useState<readonly EquippedBonus[]>([]);
   const [days, setDays] = useState<readonly ActivityDay[]>([]);
@@ -47,6 +56,7 @@ export default function Character() {
   const [fighting, setFighting] = useState(false);
   const [vigor, setVigor] = useState<{ current: number; max: number } | null>(null);
   const [loadout, setLoadout] = useState<Loadout | null>(null);
+  const [pendingVigor, setPendingVigor] = useState(0);
   const [labels, setLabels] = useState<Labels>(new Map());
 
   const slice = usePlayerStore();
@@ -189,17 +199,18 @@ export default function Character() {
         options={[
           { value: 'avatar', label: 'Avatar' },
           { value: 'stats', label: 'Stats' },
+          { value: 'skills', label: 'Skills' },
+          { value: 'activity', label: 'Activity' },
         ]}
         value={view}
         onChange={setView}
       />
 
       {/*
-        Both panes stay mounted; `display: none` hides the inactive one without unmounting it. This
-        is what makes the switch free — and it is why the activity log keeps its scroll position.
-      */}
-      {/*
-        The Avatar pane has nothing to scroll, but a `RefreshControl` needs a scrollable host —
+        Every pane stays mounted; `display: none` hides the inactive ones without unmounting them.
+        This is what makes the switch free — and it is why the activity log keeps its scroll position.
+
+        A short pane has nothing to scroll, but a `RefreshControl` needs a scrollable host —
         `alwaysBounceVertical` is what makes a short screen still pull. This is the divergence from
         web: there is no page-level scroll to attach a gesture to, so "pull to refresh" is a property
         of a specific scroll view rather than of the screen.
@@ -209,71 +220,80 @@ export default function Character() {
         follows. A `View` hides properly, so the pane wrapper stays a `View` and the scroll view
         lives inside it.
       */}
-      <View style={[styles.pane, view === 'avatar' ? null : styles.hidden]}>
-        <ScrollView
-          contentContainerStyle={styles.paneContent}
-          refreshControl={pull}
-          alwaysBounceVertical
-        >
-          <Avatar leagues={slice.leagues} lifetimeSteps={slice.lifetimeSteps} />
+      <Pane shown={view === 'avatar'} pull={pull}>
+        <Avatar leagues={slice.leagues} lifetimeSteps={slice.lifetimeSteps} />
 
-          <Streak current={slice.streak.current} longest={slice.streak.longest} />
+        <Streak current={slice.streak.current} longest={slice.streak.longest} />
 
-          <RestDay
-            name={slice.traverserName}
-            tagged={rested}
-            fighting={fighting}
-            onTag={() => rest(false)}
-            onTagYesterday={yesterdayOpen ? () => rest(true) : undefined}
-          />
-
-          {vigor === null ? null : (
-            <Card>
-              <Heading>Vigour</Heading>
-              <VigorBar side="player" vigor={vigor.current} vigorMax={vigor.max} />
-            </Card>
-          )}
-        </ScrollView>
-      </View>
-
-      {/*
-        ↯ One scroll host for the whole pane, with the stat panel as the list's header. Rendering the
-        card beside the list instead leaves the top of the screen — where a pull actually starts — as
-        a plain `View`, so the gesture never reaches the list and only the strip below the heading
-        responds. Wrapping both in a `ScrollView` would fix the gesture and nest a VirtualizedList,
-        which trades a dead gesture for a broken list.
-      */}
-      <View style={[styles.statsPane, view === 'stats' ? null : styles.hidden]}>
-        <ActivityLog
-          days={days}
-          refreshControl={pull}
-          header={
-            <View style={styles.statsHeader}>
-              {player === null ? null : (
-                <StatPanel
-                  unspent={player.unspentStatPoints}
-                  current={effectiveStats(player, equipped)}
-                  busy={allocating}
-                  onConfirm={confirm}
-                />
-              )}
-
-              {loadout === null ? null : (
-                <SkillsCard
-                  available={loadout.available}
-                  equipped={loadout.skills}
-                  labels={labels}
-                  fighting={fighting}
-                  onSet={equipSkills}
-                />
-              )}
-
-              <Heading>Activity</Heading>
-            </View>
-          }
+        <RestDay
+          name={slice.traverserName}
+          tagged={rested}
+          fighting={fighting}
+          onTag={() => rest(false)}
+          onTagYesterday={yesterdayOpen ? () => rest(true) : undefined}
         />
+      </Pane>
+
+      <Pane shown={view === 'stats'} pull={pull}>
+        {vigor === null ? null : (
+          <Card>
+            <Heading>Vigour</Heading>
+            <VigorBar side="player" vigor={vigor.current} vigorMax={vigor.max} />
+            {/* Allocation raises the max only, so current stays put — say so before the confirm. */}
+            {pendingVigor > 0 ? (
+              <Text style={styles.pending}>
+                Max {vigor.max} → {vigor.max + pendingVigor} when confirmed
+              </Text>
+            ) : null}
+          </Card>
+        )}
+
+        {player === null ? null : (
+          <StatPanel
+            unspent={player.unspentStatPoints}
+            current={effectiveStats(player, equipped)}
+            busy={allocating}
+            onConfirm={confirm}
+            onDraftChange={(draft) => setPendingVigor(draft.vigor)}
+          />
+        )}
+      </Pane>
+
+      <Pane shown={view === 'skills'} pull={pull}>
+        {loadout === null ? null : (
+          <SkillsCard
+            available={loadout.available}
+            equipped={loadout.skills}
+            labels={labels}
+            fighting={fighting}
+            onSet={equipSkills}
+          />
+        )}
+      </Pane>
+
+      {/* The log is its own scroll host — a FlatList inside a ScrollView breaks virtualisation. */}
+      <View style={[styles.pane, view === 'activity' ? null : styles.hidden]}>
+        <ActivityLog days={days} refreshControl={pull} />
       </View>
     </Screen>
+  );
+}
+
+function Pane({
+  shown,
+  pull,
+  children,
+}: {
+  shown: boolean;
+  pull: ReactElement<RefreshControlProps>;
+  children: ReactNode;
+}) {
+  return (
+    <View style={[styles.pane, shown ? null : styles.hidden]}>
+      <ScrollView contentContainerStyle={styles.paneContent} refreshControl={pull} alwaysBounceVertical>
+        {children}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -302,8 +322,6 @@ const styles = StyleSheet.create({
 
   pane: { flex: 1 },
   paneContent: { gap: space.md, paddingBottom: space.md },
-  statsPane: { flex: 1 },
-  statsHeader: { gap: space.md, paddingBottom: space.md },
   hidden: { display: 'none' },
 
   avatarPane: { flex: 1, gap: space.lg, alignItems: 'stretch' },
@@ -320,6 +338,7 @@ const styles = StyleSheet.create({
   spriteGlyph: { fontSize: 72, color: colors.accent },
 
 
+  pending: { ...type.small, ...tabular, color: colors.gold },
   stat: { ...type.display, ...tabular, color: colors.gold },
   statNote: { ...type.small, ...tabular, color: colors.textDim },
 });

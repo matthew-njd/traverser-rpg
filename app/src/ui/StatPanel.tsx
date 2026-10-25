@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { StatDeltas } from '../sync/writes';
@@ -62,15 +62,20 @@ export function StatPanel({
   unspent,
   current,
   onConfirm,
+  onDraftChange,
   busy = false,
 }: {
   unspent: number;
   /** Effective values before this draft — base plus everything already allocated. */
   current: StatDeltas;
   onConfirm: (deltas: StatDeltas) => void;
+  /** The unconfirmed draft, for previews elsewhere on the screen (the Vigour card's max). */
+  onDraftChange?: (draft: StatDeltas) => void;
   busy?: boolean;
 }) {
   const [draft, setDraft] = useState<StatDeltas>(NO_STATS);
+
+  useEffect(() => onDraftChange?.(draft), [draft]);
   const spent = totalPoints(draft);
   const remaining = unspent - spent;
 
