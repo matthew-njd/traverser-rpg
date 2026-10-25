@@ -31,7 +31,7 @@ import { space } from '@/ui/theme';
 
 /**
  * GDD 13 §5 — the Satchel. Gear and Items are sub-views, not routes (tech-04 §4.3); the Bestiary
- * joins them at M5/P5.
+ * lives on the Road (GDD 13 §5.3, amended at M5/P5).
  */
 export default function Inventory() {
   const [view, setView] = useState<'gear' | 'items'>('gear');

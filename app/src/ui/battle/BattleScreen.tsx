@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { BattleContext, BattleEvent, BattleState } from '../../battle/state';
 import type { Move } from '../../battle/types';
 import { type Labels, labelFor } from '../../content/labels';
+import type { BattleLore } from '../../content/lore';
 import { Button, Screen } from '../primitives';
 import { RevealCard } from '../RevealCard';
+import { TapThrough } from '../TapThrough';
 import type { Reveal } from './reveal';
 import { colors, radius, space, tabular, type } from '../theme';
 import { ActionMenu, type ItemOption } from './ActionMenu';
@@ -48,6 +50,7 @@ export function BattleScreen({
   traverserName,
   chevronsUnlocked,
   script = null,
+  lore = NO_LORE,
   resolving = false,
   onBegin,
   onMove,
@@ -75,6 +78,8 @@ export function BattleScreen({
    * tutorial is a *configured instance* of this screen, not a second one (M2 plan §3.4).
    */
   script?: BattleScript | null;
+  /** GDD 12's beats for this fight. None for the tutorial. */
+  lore?: BattleLore;
   resolving?: boolean;
   onBegin: () => void;
   onMove: (moveId: string) => void;
@@ -115,6 +120,21 @@ export function BattleScreen({
   const callout = latestCallout(events);
   const over = state.outcome !== null;
   const beat = script?.beat ?? null;
+
+  // Session state, not the snapshot: a fight resumed after the app died shows its beat again.
+  const [opened, setOpened] = useState(lore.opening.length === 0);
+  const [closed, setClosed] = useState(lore.defeat.length === 0);
+  const [walked, setWalked] = useState(lore.narrative.length === 0);
+  const won = state.outcome === 'win';
+
+  // GDD 12 §2: the next zone's screens follow the defeat text, before the victory panel.
+  if (won && closed && !walked) {
+    return (
+      <Screen>
+        <TapThrough lines={lore.narrative} onDone={() => setWalked(true)} />
+      </Screen>
+    );
+  }
 
   return (
     <Screen style={styles.screen}>
@@ -174,8 +194,12 @@ export function BattleScreen({
         </View>
       )}
 
-      {state.phase === 'enemy_intro' ? (
+      {state.phase === 'enemy_intro' && !opened ? (
+        <Dialogue lines={lore.opening} onDone={() => setOpened(true)} />
+      ) : state.phase === 'enemy_intro' ? (
         <Button label="Begin" onPress={onBegin} />
+      ) : won && !closed ? (
+        <Dialogue lines={lore.defeat} onDone={() => setClosed(true)} />
       ) : over ? (
         <View style={styles.outcome}>
           <Text style={styles.outcomeLabel}>{OUTCOME_COPY[state.outcome ?? 'flee']}</Text>
@@ -219,6 +243,22 @@ export function BattleScreen({
         />
       )}
     </Screen>
+  );
+}
+
+const NO_LORE: BattleLore = { opening: [], defeat: [], narrative: [] };
+
+/** GDD 13 §6.4's dialogue box: one beat's lines together, one tap to continue. */
+function Dialogue({ lines, onDone }: { lines: readonly string[]; onDone: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onDone} style={styles.dialogue}>
+      {lines.map((line) => (
+        <Text key={line} style={styles.dialogueLine}>
+          {line}
+        </Text>
+      ))}
+      <Text style={styles.dialogueHint}>Tap to continue</Text>
+    </Pressable>
   );
 }
 
@@ -298,4 +338,15 @@ const styles = StyleSheet.create({
   // No flexShrink here: a content container that shrinks to the viewport has nothing left to scroll.
   revealList: { gap: space.sm },
   outcomeLabel: { ...type.heading, color: colors.text, textAlign: 'center' },
+
+  dialogue: {
+    gap: space.sm,
+    padding: space.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dialogueLine: { ...type.body, color: colors.text, fontStyle: 'italic', lineHeight: 22 },
+  dialogueHint: { ...type.small, color: colors.textDim, textAlign: 'right' },
 });

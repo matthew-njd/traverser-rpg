@@ -15,6 +15,7 @@ import {
 import { DEFAULT_SKILL_LOCKED, type BattleScript, BattleScreen } from '../BattleScreen';
 import { RESISTED, SUPER_EFFECTIVE } from '../log';
 import type { Reveal } from '../reveal';
+import type { BattleLore } from '../../../content/lore';
 
 /**
  * M2 plan P6: **RNTL over the event queue with a stubbed engine.** The engine is already proven as
@@ -112,6 +113,7 @@ async function show(
     script?: BattleScript;
     chevronsUnlocked?: boolean;
     reveals?: readonly Reveal[];
+    lore?: BattleLore;
     handlers?: Partial<Record<'onBegin' | 'onMove' | 'onItem' | 'onFlee' | 'onDone', jest.Mock>>;
   } = {},
 ) {
@@ -136,6 +138,7 @@ async function show(
       chevronsUnlocked={overrides.chevronsUnlocked ?? true}
       reveals={overrides.reveals ?? []}
       script={overrides.script ?? null}
+      lore={overrides.lore}
       {...handlers}
     />,
   );
@@ -481,6 +484,47 @@ describe('the action menu', () => {
     await fireEvent.press(screen.getByText('Flee'));
 
     expect(handlers.onFlee).toHaveBeenCalled();
+  });
+});
+
+/** GDD 12 §2's beats, in the order the fight reaches them. */
+describe('the lore beats', () => {
+  const LORE: BattleLore = {
+    opening: ['Three heads turn toward you at once.', '"The road ends here."'],
+    defeat: ['All three heads go still.'],
+    narrative: ['Now the gate is open.', 'The road continues. Keep walking.'],
+  };
+
+  it('shows the intro before Begin, then Begin', async () => {
+    const handlers = await show({ state: { phase: 'enemy_intro' }, lore: LORE });
+
+    expect(screen.queryByText('Begin')).toBeNull();
+    expect(screen.getByText('"The road ends here."')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Three heads turn toward you at once.'));
+
+    await fireEvent.press(screen.getByText('Begin'));
+    expect(handlers.onBegin).toHaveBeenCalled();
+  });
+
+  it('shows the defeat text, then the narrative, then the victory panel', async () => {
+    await show({ state: { phase: 'victory', outcome: 'win' }, lore: LORE });
+
+    expect(screen.queryByText('Continue')).toBeNull();
+    await fireEvent.press(screen.getByText('All three heads go still.'));
+
+    await fireEvent.press(screen.getByText('Now the gate is open.'));
+    await fireEvent.press(screen.getByText('The road continues. Keep walking.'));
+
+    expect(screen.getByText('The road remembers this.')).toBeTruthy();
+  });
+
+  /** A defeat is not a defeat of the boss: its text belongs to a win only. */
+  it('shows no defeat text when the player loses', async () => {
+    await show({ state: { phase: 'defeat', outcome: 'loss' }, lore: LORE });
+
+    expect(screen.queryByText('All three heads go still.')).toBeNull();
+    expect(screen.getByText('Continue')).toBeTruthy();
   });
 });
 

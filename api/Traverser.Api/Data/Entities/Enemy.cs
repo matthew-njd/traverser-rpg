@@ -15,6 +15,16 @@ public class Enemy
 
     public EnemyRole Role { get; set; }
 
+    /// <summary>GDD 12 §8. Wild enemies only.</summary>
+    public string? Flavor { get; set; }
+
+    /// <summary>GDD 12 §5–7, bosses only. Each beat's lines are separated by a newline.</summary>
+    public string? Intro { get; set; }
+
+    public string? DefeatFirst { get; set; }
+
+    public string? DefeatRepeat { get; set; }
+
     public Zone? Zone { get; set; }
 
     public GameType? Type { get; set; }

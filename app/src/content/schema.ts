@@ -13,9 +13,10 @@
 
 /**
  * `dec` is a decimal **string** at the column's scale, stored verbatim and parsed at the point of
- * use (tech-02 §2). `bool` crosses as a JSON boolean and stores as SQLite's 0/1.
+ * use (tech-02 §2). `bool` crosses as a JSON boolean and stores as SQLite's 0/1. `lines?` is a
+ * nullable string array, stored as JSON text because SQLite has no array type.
  */
-export type ColumnKind = 'text' | 'text?' | 'int' | 'int?' | 'bool' | 'dec';
+export type ColumnKind = 'text' | 'text?' | 'int' | 'int?' | 'bool' | 'dec' | 'lines?';
 
 export interface TableSpec {
   /** The array's field name in the bundle payload, where it differs from the table name. */
@@ -34,7 +35,13 @@ export const CONTENT_TABLES = {
   },
   zone: {
     field: 'zones',
-    columns: { id: 'text', display_name: 'text', ordinal: 'int', is_released: 'bool' },
+    columns: {
+      id: 'text',
+      display_name: 'text',
+      ordinal: 'int',
+      is_released: 'bool',
+      entry_narrative: 'lines?',
+    },
   },
   zone_gate: {
     field: 'zone_gates',
@@ -56,6 +63,10 @@ export const CONTENT_TABLES = {
       zone_id: 'text?',
       type_id: 'text?',
       role: 'text',
+      flavor: 'text?',
+      intro: 'text?',
+      defeat_first: 'text?',
+      defeat_repeat: 'text?',
     },
   },
   enemy_stat_scaling: {

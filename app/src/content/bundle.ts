@@ -24,7 +24,7 @@ export interface ContentBundle {
 
 function coerce(value: unknown, kind: ColumnKind, field: string): string | number | null {
   if (value === null || value === undefined) {
-    if (kind === 'text?' || kind === 'int?') {
+    if (kind === 'text?' || kind === 'int?' || kind === 'lines?') {
       return null;
     }
 
@@ -55,6 +55,13 @@ function coerce(value: unknown, kind: ColumnKind, field: string): string | numbe
       }
 
       return value;
+
+    case 'lines?':
+      if (!Array.isArray(value) || !value.every((line) => typeof line === 'string')) {
+        throw new WireFormatError(field);
+      }
+
+      return JSON.stringify(value);
 
     default:
       if (typeof value !== 'string') {

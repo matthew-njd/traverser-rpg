@@ -24,14 +24,14 @@ internal static partial class ContentSeed
     /// and re-downloads only when it moved (tech-01 §3) — a content change that forgets to bump it is
     /// invisible to every already-installed client.
     /// </summary>
-    private const int Version = 4;
+    private const int Version = 5;
 
     /// <summary>
     /// <c>content_version.generated_at</c>. <c>HasData</c> requires a constant, so the store default
     /// of <c>now()</c> can't apply: this is the date the seed was authored and it moves with
     /// <see cref="Version"/>.
     /// </summary>
-    private static readonly DateTime GeneratedAt = new(2026, 10, 24, 0, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime GeneratedAt = new(2026, 10, 25, 0, 0, 0, DateTimeKind.Utc);
 
     internal static void Apply(ModelBuilder modelBuilder)
     {
@@ -95,7 +95,7 @@ internal static partial class ContentSeed
         // data rather than a hardcoded special case.
         modelBuilder.Entity<Zone>().HasData(
             new Zone { Id = Ids.Zone.Olympion, DisplayName = "Olympion", Ordinal = 0, IsReleased = true },
-            new Zone { Id = Ids.Zone.Valheon, DisplayName = "Valheon", Ordinal = 1, IsReleased = true },
-            new Zone { Id = Ids.Zone.Imperion, DisplayName = "Imperion", Ordinal = 2, IsReleased = true },
+            new Zone { Id = Ids.Zone.Valheon, DisplayName = "Valheon", Ordinal = 1, IsReleased = true, EntryNarrative = EntryNarratives[Ids.Zone.Valheon] },
+            new Zone { Id = Ids.Zone.Imperion, DisplayName = "Imperion", Ordinal = 2, IsReleased = true, EntryNarrative = EntryNarratives[Ids.Zone.Imperion] },
             new Zone { Id = Ids.Zone.EgyptTbd, DisplayName = "The Road Ahead", Ordinal = 3, IsReleased = false });
 }

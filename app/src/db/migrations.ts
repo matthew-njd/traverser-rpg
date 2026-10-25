@@ -481,6 +481,16 @@ const V11_PENDING_REWARD: readonly string[] = [
    )`,
 ];
 
+/** Version 12 — GDD 12's lore, carried on the content rows it describes (T1, amended at M5/P5). */
+const V12_LORE: readonly string[] = [
+  'ALTER TABLE enemy ADD COLUMN flavor TEXT',
+  'ALTER TABLE enemy ADD COLUMN intro TEXT',
+  'ALTER TABLE enemy ADD COLUMN defeat_first TEXT',
+  'ALTER TABLE enemy ADD COLUMN defeat_repeat TEXT',
+  // A JSON array of strings, one per screen.
+  'ALTER TABLE zone ADD COLUMN entry_narrative TEXT',
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
@@ -493,6 +503,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 9, statements: [...V9_EQUIPPED_SKILL] },
   { version: 10, statements: [...V10_FRESH_REWARD] },
   { version: 11, statements: [...V11_PENDING_REWARD] },
+  { version: 12, statements: [...V12_LORE] },
 ];
 
 /** The version a fully-migrated database reports. */

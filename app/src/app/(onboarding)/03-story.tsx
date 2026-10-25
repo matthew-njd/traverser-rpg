@@ -1,9 +1,7 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, space, type } from '@/ui/theme';
 import { Screen } from '@/ui/primitives';
+import { TapThrough } from '@/ui/TapThrough';
 
 /**
  * GDD 10 screen 3 — four lines, tap to advance, not skippable on first launch (§4). The Skip link
@@ -18,42 +16,10 @@ const LINES = [
 
 export default function Story() {
   const router = useRouter();
-  const [index, setIndex] = useState(0);
-
-  const advance = () => {
-    if (index + 1 < LINES.length) {
-      setIndex(index + 1);
-
-      return;
-    }
-
-    router.push('/04-name');
-  };
 
   return (
     <Screen>
-      <Pressable accessibilityRole="button" onPress={advance} style={styles.page}>
-        <Text style={styles.line}>{LINES[index]}</Text>
-
-        <View style={styles.footer}>
-          <View style={styles.dots}>
-            {LINES.map((line, dot) => (
-              <View key={line} style={[styles.dot, dot === index && styles.dotOn]} />
-            ))}
-          </View>
-          <Text style={styles.hint}>Tap to continue</Text>
-        </View>
-      </Pressable>
+      <TapThrough lines={LINES} onDone={() => router.push('/04-name')} />
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  page: { flex: 1, justifyContent: 'space-between', paddingVertical: space.xl },
-  line: { ...type.title, color: colors.text, lineHeight: 32, flex: 1, textAlignVertical: 'center' },
-  footer: { alignItems: 'center', gap: space.md },
-  dots: { flexDirection: 'row', gap: space.sm },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
-  dotOn: { backgroundColor: colors.accent },
-  hint: { ...type.small, color: colors.textDim },
-});

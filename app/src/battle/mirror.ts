@@ -168,6 +168,17 @@ export function readBestiary(db: SqliteDatabase, enemyId: string): BestiaryEntry
     : { encounterCount: row.encounter_count, defeatCount: row.defeat_count };
 }
 
+/** Every enemy this device has fought, for the bestiary (GDD 13 §5.3). */
+export function readBestiaryBook(db: SqliteDatabase): Map<string, BestiaryEntry> {
+  return new Map(
+    db
+      .getAllSync<{ enemy_id: string; encounter_count: number; defeat_count: number }>(
+        'SELECT enemy_id, encounter_count, defeat_count FROM player_bestiary',
+      )
+      .map((row) => [row.enemy_id, { encounterCount: row.encounter_count, defeatCount: row.defeat_count }]),
+  );
+}
+
 /**
  * Mirrors T2 §4 step 2's increment: `encounter_count` for every battle, `defeat_count` for a win
  * only. Called once per settled battle, in the transaction that queues it.

@@ -2,12 +2,16 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { type BestiaryEntry, readBestiaryBook } from '@/battle/mirror';
+import { type Labels, loadLabels } from '@/content/labels';
+import { type EnemyLore, readRoster } from '@/content/lore';
 import { getDatabase } from '@/db/open';
 import { deviceLocalDates } from '@/health/localDate';
 import { type PendingEncounter, type RoadState, readEncounters, readRoad } from '@/progression/road';
 import { syncNow } from '@/runtime';
 import { requestExplore } from '@/sync/writes';
-import { Button, Card, Heading, Screen, Title } from '@/ui/primitives';
+import { Bestiary } from '@/ui/Bestiary';
+import { Button, Card, Heading, Screen, SegmentedControl, Title } from '@/ui/primitives';
 import { Road, waymarkerZone } from '@/ui/Road';
 import { colors, space, tabular, type } from '@/ui/theme';
 
@@ -21,6 +25,9 @@ import { colors, space, tabular, type } from '@/ui/theme';
  * The Viewport scrolls freely to any segment behind the Waymarker (§4.3); "Return to the Road"
  * snaps it back. Explore (§4.3) is offered per unlocked segment, and the encounters sync has
  * already granted are spendable from here whether or not the API is reachable (T2 §1.3).
+ *
+ * The Bestiary is the second sub-view (GDD 13 §5.3, amended at M5/P5): enemies are met on the Road
+ * and grouped by its zones.
  */
 export default function MapScreen() {
   const router = useRouter();
@@ -28,6 +35,10 @@ export default function MapScreen() {
   const [encounters, setEncounters] = useState<readonly PendingEncounter[]>([]);
   const [exploring, setExploring] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [view, setView] = useState<'path' | 'bestiary'>('path');
+  const [roster, setRoster] = useState<readonly EnemyLore[]>([]);
+  const [met, setMet] = useState<ReadonlyMap<string, BestiaryEntry>>(new Map());
+  const [labels, setLabels] = useState<Labels>(new Map());
 
   const scroll = useRef<ScrollView>(null);
   const offsets = useRef(new Map<string, number>());
@@ -38,6 +49,9 @@ export default function MapScreen() {
 
     setRoad(readRoad(db));
     setEncounters(readEncounters(db));
+    setRoster(readRoster(db));
+    setMet(readBestiaryBook(db));
+    setLabels(loadLabels(db));
   }, []);
 
   useFocusEffect(reload);
@@ -89,8 +103,23 @@ export default function MapScreen() {
     <Screen tabbed>
       <Title>The Road</Title>
 
+      <SegmentedControl
+        options={[
+          { value: 'path', label: 'Path' },
+          { value: 'bestiary', label: 'Bestiary' },
+        ]}
+        value={view}
+        onChange={setView}
+      />
+
+      <View style={[styles.pane, view === 'bestiary' ? null : styles.hidden]}>
+        <ScrollView contentContainerStyle={styles.viewport}>
+          <Bestiary roster={roster} met={met} labels={labels} />
+        </ScrollView>
+      </View>
+
       {road === null ? null : (
-        <>
+        <View style={[styles.pane, view === 'path' ? null : styles.hidden]}>
           <View style={styles.counter}>
             <Text style={styles.leagues}>{road.leagues.toLocaleString()} Leagues</Text>
 
@@ -164,7 +193,7 @@ export default function MapScreen() {
           </ScrollView>
 
           <Button label="Return to the Road" onPress={returnToTheRoad} />
-        </>
+        </View>
       )}
     </Screen>
   );
@@ -175,4 +204,6 @@ const styles = StyleSheet.create({
   leagues: { ...type.display, ...tabular, color: colors.accent },
   toNext: { ...type.small, ...tabular, color: colors.textDim },
   viewport: { gap: space.md, paddingBottom: space.md },
+  pane: { flex: 1, gap: space.sm },
+  hidden: { display: 'none' },
 });

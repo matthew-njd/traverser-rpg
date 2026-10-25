@@ -68,7 +68,8 @@ create table zone (
   id           text primary key,            -- olympion, valheon, imperion, egypt_tbd
   display_name text not null,
   ordinal      int  not null unique,
-  is_released  boolean not null default true
+  is_released  boolean not null default true,
+  entry_narrative text[]                    -- GDD 12 §4, one element per screen; valheon and imperion only
 );
 ```
 `egypt_tbd` seeds with `is_released = false` so the Map's locked terminus (GDD 9 §3.1) is data, not a hardcoded special case.
@@ -79,9 +80,17 @@ create table enemy (
   display_name text not null,
   zone_id      text references zone,        -- null for enemy_waystone_wisp
   type_id      text references game_type,   -- null for enemy_waystone_wisp
-  role         text not null check (role in ('wild','mid_boss','zone_boss','tutorial'))
+  role         text not null check (role in ('wild','mid_boss','zone_boss','tutorial')),
+  flavor        text,                       -- GDD 12 §8, wild enemies only
+  intro         text,                       -- GDD 12 §5–7, bosses only; a newline between lines
+  defeat_first  text,                       -- bosses only
+  defeat_repeat text                        -- bosses only
 );
+```
 
+> **Amended 2026-10-25 (M5/P5).** The lore columns on `enemy` and `zone` hold GDD 12's text, keyed by IDs that already exist, the way `item_def.flavor` does. Nothing reads them on the server; they travel in the content bundle.
+
+```sql
 create table enemy_stat_scaling (
   enemy_id text not null references enemy,
   stat     text not null check (stat in ('vigor','might','resolve','favor','aegis','stride')),

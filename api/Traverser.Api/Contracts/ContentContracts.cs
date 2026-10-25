@@ -45,7 +45,7 @@ public sealed record TypeEffectivenessResponse(
     string DefenderTypeId,
     string Multiplier);
 
-public sealed record ZoneResponse(string Id, string DisplayName, int Ordinal, bool IsReleased);
+public sealed record ZoneResponse(string Id, string DisplayName, int Ordinal, bool IsReleased, string[]? EntryNarrative);
 
 public sealed record ZoneGateResponse(
     string Id,
@@ -63,7 +63,11 @@ public sealed record EnemyResponse(
     string DisplayName,
     string? ZoneId,
     string? TypeId,
-    EnemyRole Role);
+    EnemyRole Role,
+    string? Flavor,
+    string? Intro,
+    string? DefeatFirst,
+    string? DefeatRepeat);
 
 public sealed record EnemyStatScalingResponse(
     string EnemyId,

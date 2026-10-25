@@ -79,7 +79,7 @@ validates any slot against the piece's `gear_def`. What is missing is the code t
 
 These are not decided here (DECISIONS records a decision only after Matthew picks).
 
-1. **Where lore text lives.** No table and no manifest IDs exist for it. The recommendation is a
+1. ~~**Where lore text lives.**~~ **Closed 2026-10-25 (P5): columns on `enemy` and `zone`.** No table and no manifest IDs exist for it. The recommendation is a
    content table in the seed, keyed by manifest IDs, so text arrives with the bundle like every other
    display string. That means manifest IDs and a T1 amendment **before** code (CLAUDE.md: never
    invent IDs).
@@ -168,19 +168,36 @@ drop; a kept pending reward lands once.
 
 ### P5 — Story and lore (GDD 12)
 
-- Answer §3.2's two questions first, then the manifest IDs and the T1 amendment.
+- §3.2 answered 2026-10-25: the text lives in columns on `enemy` and `zone`, keyed by IDs that
+  already exist, so no manifest IDs are added. T1 is amended for the columns.
 - Boss intro lines at fight start, defeat text at the end, with the shortened line on a repeat kill.
 - A zone-entry narrative after a final boss's first defeat text (GDD 12 §2's timing), Valheon and
   Imperion only.
-- Wild flavour text on first sighting, viewable again from the bestiary.
+- Wild flavour text on first sighting, in the boss-intro box at the start of the first fight, and
+  viewable again from the bestiary.
+- The bestiary, as the Road's second sub-tab beside Path (GDD 13 §5.3, amended; DECISIONS).
 - ↯ Every beat is skippable after its first viewing and none gates anything (GDD 12 §1).
 
 **Tests:** each beat fires on its trigger and only there; a narrative shows once; every enemy and
 boss in the roster has its text.
 
+### P5b — The two one-time screens (GDD 10 §7.2, GDD 13 §6.4)
+
+Split from P5 on 2026-10-25 (DECISIONS).
+
+- GDD 10 §7.2's Level 6 type screen, before the next battle. Never built and never scheduled; a
+  player already past Level 6 sees it once.
+- The secondary-effect overlay, the first time a Divine move is in the loadout at battle start. The
+  copy comes from GDD 3 §4.3's table, and GDD 13 §6.4 is amended with it.
+- Both share one mechanism: a device flag per screen, so each shows once.
+
+**Tests:** each screen shows once and only on its trigger; neither shows during the tutorial.
+
 ### P6 — The Road layout (GDD 13 §4)
 
 - The encounters card collapses by default to a count, **Face the next ›** and **Show all ▾**.
+- The Road now has two sub-views, Path and Bestiary (P5). Everything below is Path's, and the
+  Explore button shows on Path only.
 - **One floating Explore button at the bottom left, acting on a selected zone**, replacing the
   per-zone buttons. Decided 2026-10-25 (DECISIONS):
   - The target defaults to the zone the Waymarker is in, the stretch of road being walked.

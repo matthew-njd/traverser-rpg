@@ -14,4 +14,7 @@ public class Zone
     public int Ordinal { get; set; }
 
     public bool IsReleased { get; set; } = true;
+
+    /// <summary>GDD 12 §4, one element per screen. Valheon and Imperion only.</summary>
+    public string[]? EntryNarrative { get; set; }
 }

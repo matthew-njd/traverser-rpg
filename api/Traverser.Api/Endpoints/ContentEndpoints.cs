@@ -94,7 +94,7 @@ public static class ContentEndpoints
 
             Zones: await db.Zones.AsNoTracking()
                 .OrderBy(z => z.Ordinal)
-                .Select(z => new ZoneResponse(z.Id, z.DisplayName, z.Ordinal, z.IsReleased))
+                .Select(z => new ZoneResponse(z.Id, z.DisplayName, z.Ordinal, z.IsReleased, z.EntryNarrative))
                 .ToListAsync(ct),
 
             ZoneGates: await db.ZoneGates.AsNoTracking()
@@ -105,7 +105,8 @@ public static class ContentEndpoints
 
             Enemies: await db.Enemies.AsNoTracking()
                 .OrderBy(e => e.Id)
-                .Select(e => new EnemyResponse(e.Id, e.DisplayName, e.ZoneId, e.TypeId, e.Role))
+                .Select(e => new EnemyResponse(
+                    e.Id, e.DisplayName, e.ZoneId, e.TypeId, e.Role, e.Flavor, e.Intro, e.DefeatFirst, e.DefeatRepeat))
                 .ToListAsync(ct),
 
             EnemyStatScaling: (await db.EnemyStatScaling.AsNoTracking()

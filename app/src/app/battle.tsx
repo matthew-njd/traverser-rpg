@@ -1,7 +1,9 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler } from 'react-native';
 
+import { readBestiary } from '@/battle/mirror';
+import { battleLore } from '@/content/lore';
 import { getDatabase } from '@/db/open';
 import { mintUuidV7 } from '@/health/deltaId';
 import { deviceLocalDates } from '@/health/localDate';
@@ -29,6 +31,18 @@ export default function Battle() {
 
   const enemyId = params.enemyId;
   const kind = (params.kind ?? 'wild') as EncounterKind;
+
+  // Read once per fight, before settling moves the bestiary counts that pick first-kill text.
+  const fighting = store.snapshot?.state.enemyId;
+  const lore = useMemo(() => {
+    if (fighting === undefined) {
+      return undefined;
+    }
+
+    const db = getDatabase();
+
+    return battleLore(db, fighting, readBestiary(db, fighting));
+  }, [fighting]);
 
   useEffect(() => {
     // No enemy means this route was reached by boot resuming a fight, not by starting one.
@@ -133,6 +147,7 @@ export default function Battle() {
       items={store.items}
       reveals={revealsFor(store.snapshot.state.drops, store.labels, store.revealDetails)}
       chevronsUnlocked={store.chevronsUnlocked}
+      lore={lore}
       onBegin={() => store.dispatch(getDatabase(), { kind: 'begin' })}
       onMove={(moveId) => store.dispatch(getDatabase(), { kind: 'move', moveId })}
       onItem={(item) =>

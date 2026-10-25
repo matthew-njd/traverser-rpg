@@ -200,8 +200,16 @@ internal static partial class ContentSeed
                 Ids.Item.Stormveil, Ids.Item.Thundercrack, Ids.Item.TravelersSalve, Ids.Item.Blindveil),
         ]);
 
-    private static Enemy Foe(string id, string displayName, string? zoneId, string? typeId, EnemyRole role) =>
-        new() { Id = id, DisplayName = displayName, ZoneId = zoneId, TypeId = typeId, Role = role };
+    private static Enemy Foe(string id, string displayName, string? zoneId, string? typeId, EnemyRole role)
+    {
+        var lore = EnemyLore.GetValueOrDefault(id) ?? new Lore();
+
+        return new()
+        {
+            Id = id, DisplayName = displayName, ZoneId = zoneId, TypeId = typeId, Role = role,
+            Flavor = lore.Flavor, Intro = lore.Intro, DefeatFirst = lore.DefeatFirst, DefeatRepeat = lore.DefeatRepeat,
+        };
+    }
 
     /// <summary>Physical: Might vs. Resolve, never typed, never subject to the type chart.</summary>
     private static EnemyMove Physical(string id, string displayName, string enemyId, int power, int aiWeight) =>

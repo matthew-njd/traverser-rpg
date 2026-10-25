@@ -150,6 +150,8 @@ Three sub-tabs sharing one top-level destination, resolving Section 8's "distinc
 
 ### 5.3 Bestiary (resolves Section 12's open question)
 
+> **Amended 2026-10-25 (M5/P5). The Bestiary is the Road tab's second sub-view, beside Path, not the Inventory tab's third.** It is lore rather than inventory: enemies are met on the Road, and the grid is grouped by the Road's own zones. It stays a sub-view, so §2.1's three tabs and the reasoning below about a fourth still hold. The Inventory tab keeps Gear and Items. The grid, the "???" entries, the discovery triggers and the type tag below are unchanged.
+
 **Decision: folds into the Inventory tab as a third sub-tab, rather than becoming a standalone screen.** Section 12 explicitly left this open, suggesting the Equip/Inventory screen as one option. A standalone fourth tab would break the 3-tab structure (§2.1) for a screen that's read-only and low-frequency (viewed on-demand, not part of the daily loop); folding it into Inventory keeps it discoverable without new navigation, and it shares the same "catalog of things you've found" conceptual frame as Gear and Items.
 
 - **Grid of all 6 wild encounters** (Harpy, Satyr, Draugr, Valkyrie, Strix, Lemures) **plus all 6 bosses** (Cyclops, Cerberus, Fenrir, Jörmungandr, Griffin, Cacus), grouped by zone with zone headers — matching Section 12 §8's own zone-grouping structure.
