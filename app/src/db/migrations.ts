@@ -491,6 +491,19 @@ const V12_LORE: readonly string[] = [
   'ALTER TABLE zone ADD COLUMN entry_narrative TEXT',
 ];
 
+/**
+ * Version 13 — the one-time screens already shown (GDD 10 §7.2, GDD 13 §6.4). Device-only, and keyed
+ * to the player so a restore onto this device starts them fresh.
+ */
+const V13_SEEN_SCREEN: readonly string[] = [
+  `CREATE TABLE seen_screen (
+     player_id TEXT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+     id        TEXT NOT NULL,
+     seen_at   TEXT NOT NULL,
+     PRIMARY KEY (player_id, id)
+   )`,
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
@@ -504,6 +517,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 10, statements: [...V10_FRESH_REWARD] },
   { version: 11, statements: [...V11_PENDING_REWARD] },
   { version: 12, statements: [...V12_LORE] },
+  { version: 13, statements: [...V13_SEEN_SCREEN] },
 ];
 
 /** The version a fully-migrated database reports. */

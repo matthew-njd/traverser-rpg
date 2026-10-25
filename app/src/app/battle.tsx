@@ -7,6 +7,7 @@ import { battleLore } from '@/content/lore';
 import { getDatabase } from '@/db/open';
 import { mintUuidV7 } from '@/health/deltaId';
 import { deviceLocalDates } from '@/health/localDate';
+import { markSeen, pendingFirsts } from '@/onboarding/firsts';
 import { syncNow } from '@/runtime';
 import { backAction, battleInProgress, useBattleStore } from '@/state/battleStore';
 import { usePlayerStore } from '@/state/playerStore';
@@ -14,6 +15,7 @@ import type { EncounterKind } from '@/battle/types';
 import { BattleScreen } from '@/ui/battle/BattleScreen';
 import { revealsFor } from '@/ui/battle/reveal';
 import { Body, Button, Screen } from '@/ui/primitives';
+import { TapThrough } from '@/ui/TapThrough';
 
 /**
  * The battle route. Per tech-04 §13 there is no logic here — it opens the encounter, forwards taps
@@ -43,6 +45,18 @@ export default function Battle() {
 
     return battleLore(db, fighting, readBestiary(db, fighting));
   }, [fighting]);
+
+  // GDD 10 §7.2 and GDD 13 §6.4 — before a fresh fight only, never over one already under way.
+  // Keyed on the fight alone: re-reading after Begin would drop a screen mid-way through.
+  const fresh = store.snapshot?.state.phase === 'enemy_intro';
+  const firsts = useMemo(() => {
+    if (fighting === undefined || !fresh) {
+      return [];
+    }
+
+    return pendingFirsts(getDatabase(), store.moves.map((move) => move.id));
+  }, [fighting]);
+  const [firstsDone, setFirstsDone] = useState(false);
 
   useEffect(() => {
     // No enemy means this route was reached by boot resuming a fight, not by starting one.
@@ -132,6 +146,20 @@ export default function Battle() {
     return (
       <Screen>
         <Body dim>Opening the encounter…</Body>
+      </Screen>
+    );
+  }
+
+  if (firsts.length > 0 && !firstsDone) {
+    return (
+      <Screen>
+        <TapThrough
+          lines={firsts.map((first) => first.text)}
+          onDone={() => {
+            markSeen(getDatabase(), firsts.map((first) => first.id), Date.now());
+            setFirstsDone(true);
+          }}
+        />
       </Screen>
     );
   }

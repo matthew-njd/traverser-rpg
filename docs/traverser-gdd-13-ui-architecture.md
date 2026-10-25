@@ -125,6 +125,8 @@ Tapping any Gate node (mid-boss or final-boss, locked or available) pushes a det
 
 ### 4.4 Zone Entry Narrative overlay
 
+> **Amended 2026-10-25 (M5/P5). The trigger is Section 12 §2's, not the Waymarker's crossing.** The narrative fires once, right after the previous zone's final boss first-kill defeat text is dismissed, before the player returns to the Road. Section 12 owns the story and states that timing deliberately: the road closing behind and the road opening ahead only make sense back to back. The Waymarker's forward animation this paragraph keys on was never built. The rest stands: full-bleed, tap-to-advance, onboarding's story-intro pages, and never re-triggered by scrolling the Viewport. Because it fires once per zone, the repeat-entry Skip has no repeat to serve.
+
 Fires automatically the first time the Waymarker's forward sync animation crosses into Valheon or Imperion (Section 12 §2). Full-bleed, tap-to-advance, 3–4 screens, using the same illustration-behind-text component as Section 10's onboarding story intro (Section 12 explicitly calls for this visual consistency). Skippable on any viewing after the first via a "Skip" tap target that appears only on repeat entry (Viewport-scroll re-visits do not re-trigger this — it's a one-time-per-zone event keyed to the Waymarker's forward crossing, not to viewing the segment).
 
 ---
@@ -206,6 +208,13 @@ All six share one underlying **Tooltip/Overlay component** with two size variant
 > **Amended 2026-08-22 (M3/P4a). These are two components, not one with two variants.** The split in the table is real and it is not a size: the first two are **inline hints on a control the player just tapped** and are already served by the action menu's own note slot, which the new layout keeps and which the skill slots now feed. The other four are **overlays that interrupt**, and all four are unbuilt — type intro, secondary effect, and Section 12's two boss dialogues.
 >
 > One component serving both would be written today against four consumers that do not exist, which is a guess wearing an abstraction's clothes. The dialogue overlay lands with boss dialogue at M4+, and if it turns out to share anything with the note slot then, that is when the sharing is knowable. DECISIONS 2026-08-20 assigned this decision to M3/P4a; this is it.
+
+> **Amended 2026-10-25 (M5/P5b). The secondary-effect screen's copy, which no section wrote.** It shows before a fresh battle whose moves include a Divine move, once per effect rather than once in all, because each of the four does something different and the first explained teaches nothing about the others. It uses the same tap-through pages as the Level 6 type screen (Section 10 §7.2), which shows first when both are owed. Each line comes from Section 3 §4.3's "What it does" column:
+>
+> - **Weaken:** *"[Move] carries Weaken. On a hit, the enemy's next attack deals 50% of its normal damage. It fires once, then it's gone."*
+> - **Fortify:** *"[Move] carries Fortify. On a hit, you take 50% of the normal damage from the next hit you receive. It fires once, then it's gone."*
+> - **Swift:** *"[Move] carries Swift. On a hit, you act first next round, whatever your Stride. It fires once, then it's gone."*
+> - **Rend:** *"[Move] carries Rend. On a hit, the enemy takes 150% of the normal damage from the next hit it receives. It fires once, then it's gone."*
 
 ### 6.5 Overactivity warning — rendering rule
 
