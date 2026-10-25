@@ -95,6 +95,7 @@ export function wireSyncResponse(overrides: Record<string, unknown> = {}): Recor
     unlocked_zone_ids: [],
     rewards_granted: [],
     pending_rewards: [],
+    warnings: [],
     ...overrides,
   };
 }

@@ -31,6 +31,8 @@ interface AppStore {
    * tab bar and the reveal re-read it from SQLite rather than holding a second copy.
    */
   readonly rewardsSeq: number;
+  /** GDD 11 §8 — up until dismissed. A later pass never clears it: step 11 reports a session once. */
+  readonly overactive: boolean;
 
   markBooted(registered: boolean): void;
   setRegistered(registered: boolean): void;
@@ -41,6 +43,7 @@ interface AppStore {
   syncAborted(): void;
   consumeLevelUps(): readonly LevelUp[];
   rewardsChanged(): void;
+  dismissOveractivity(): void;
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -52,6 +55,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   banner: null,
   pendingLevelUps: [],
   rewardsSeq: 0,
+  overactive: false,
 
   markBooted(registered) {
     set({ booted: true, registered });
@@ -77,11 +81,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
       banner,
       pendingLevelUps: [...state.pendingLevelUps, ...result.levelUps],
       rewardsSeq: state.rewardsSeq + 1,
+      overactive: state.overactive || result.overactive,
     }));
   },
 
   rewardsChanged() {
     set((state) => ({ rewardsSeq: state.rewardsSeq + 1 }));
+  },
+
+  dismissOveractivity() {
+    set({ overactive: false });
   },
 
   syncAborted() {

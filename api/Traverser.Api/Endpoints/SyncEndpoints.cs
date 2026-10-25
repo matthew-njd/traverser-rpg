@@ -12,12 +12,15 @@ namespace Traverser.Api.Endpoints;
 /// <summary>
 /// <c>POST /api/v1/sync</c> — T2 §4. The only endpoint that advances progression.
 /// <para>
-/// Steps 1–10 are built; step 11 (overactivity) is M5/P4's. The order
-/// is normative and steps 3–6 in particular cannot be reordered without changing outcomes.
+/// Steps 1–11. The order is normative, and steps 3–6 in particular cannot be reordered without
+/// changing outcomes.
 /// </para>
 /// </summary>
 public static class SyncEndpoints
 {
+    /// <summary>GDD 11 §8.1 — cumulative Tier 1+ minutes in one session.</summary>
+    private const int OveractivityMinutes = 90;
+
     public static void MapSync(this IEndpointRouteBuilder routes)
     {
         routes.MapPost("/sync", SyncAsync)
@@ -166,8 +169,9 @@ public static class SyncEndpoints
         var (unlockedZoneIds, zonesOpen) = await EvaluateGatesAsync(db, player, ct);
 
         // ---- Step 8. Encounter checkpoints ------------------------------------------------------
+        var sessions = await UpsertSessionsAsync(db, player, request.Sessions ?? [], ct);
         var grants = await IssueEncountersAsync(
-            db, player, request, stepsBefore, newDeltas, days, zonesOpen, rng, ct);
+            db, player, request, sessions, stepsBefore, newDeltas, days, zonesOpen, rng, ct);
 
         // ---- Step 9. Streak evaluation ----------------------------------------------------------
         if (request.LocalDate is { } today)
@@ -182,6 +186,21 @@ public static class SyncEndpoints
 
         // ---- Step 10. Deterministic rewards -----------------------------------------------------
         var (rewards, pending) = await SyncRewards.GrantAsync(db, player, touchedDates, rng, ct);
+
+        // ---- Step 11. Overactivity --------------------------------------------------------------
+        var warnings = new List<WarningResponse>();
+
+        foreach (var (session, _) in sessions)
+        {
+            if (session.OveractivityWarnedAt is null
+                && session.Tier1Minutes + session.Tier2Minutes + session.Tier3Minutes >= OveractivityMinutes)
+            {
+                session.OveractivityWarnedAt = DateTime.UtcNow;
+                warnings.Add(new WarningResponse("overactivity", session.ExternalSessionId!));
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
 
         var profile = await PlayerProfile.LoadAsync(db, player.Id, ct)
             ?? throw new InvalidOperationException($"Profile for {player.Id} vanished mid-sync.");
@@ -214,7 +233,8 @@ public static class SyncEndpoints
             EncounterGrants: grants,
             UnlockedZoneIds: unlockedZoneIds,
             RewardsGranted: rewards,
-            PendingRewards: pending));
+            PendingRewards: pending,
+            Warnings: warnings));
     }
 
     /// <summary>
@@ -646,6 +666,7 @@ public static class SyncEndpoints
         TraverserDbContext db,
         Player player,
         SyncRequest request,
+        IReadOnlyList<(HrSession Row, HrSessionRequest Sent)> sessions,
         long stepsBefore,
         IReadOnlyList<SyncDeltaRequest> newDeltas,
         Dictionary<DateOnly, ActivityDay> days,
@@ -653,7 +674,6 @@ public static class SyncEndpoints
         IRandomSource rng,
         CancellationToken ct)
     {
-        var sessions = await UpsertSessionsAsync(db, player, request.Sessions ?? [], ct);
         var explores = request.Explores ?? [];
         var travelRolls = EncounterCheckpoints.TravelRolls(stepsBefore, player.LifetimeSteps);
 

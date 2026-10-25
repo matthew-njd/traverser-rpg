@@ -51,7 +51,7 @@ const walked = (steps: number): HealthSnapshot => ({
 });
 
 /** One Tier 2 session, long enough to owe GDD 9 §5.1's bonus rolls. */
-const worked = (minutes: number): HealthSnapshot => {
+const worked = (minutes: number, open = false): HealthSnapshot => {
   const startedAt = NOW - minutes * 60_000;
 
   return {
@@ -67,7 +67,7 @@ const worked = (minutes: number): HealthSnapshot => {
         tier1Minutes: 0,
         tier2Minutes: minutes,
         tier3Minutes: 0,
-        open: false,
+        open,
       },
     ],
     consumedThrough: NOW,
@@ -397,6 +397,35 @@ describe('the online pass', () => {
     });
 
     expect(result.levelUps).toEqual([{ level: 12, statPointsAwarded: 3 }]);
+  });
+
+  describe('the overactivity warning (T3 §9)', () => {
+    const warned = (open: boolean) =>
+      run(registeredDatabase(), {
+        provider: fakeProvider({ read: async () => worked(95, open) }),
+        api: fakeApi({
+          sync: async (_deltas, _version, _battles, sessions) =>
+            response({ warnings: (sessions ?? []).map((session) => ({ code: 'overactivity', session_id: session.sessionId })) }),
+        }),
+      });
+
+    it('shows for a session still open', async () => {
+      expect((await warned(true)).overactive).toBe(true);
+    });
+
+    /** GDD 11 §8.2: never retroactively, even though the server already burned the session. */
+    it('drops the warning for a session that has closed', async () => {
+      expect((await warned(false)).overactive).toBe(false);
+    });
+
+    it('ignores a warning for a session this read did not send', async () => {
+      const result = await run(registeredDatabase(), {
+        provider: fakeProvider({ read: async () => worked(95, true) }),
+        api: fakeApi({ sync: async () => response({ warnings: [{ code: 'overactivity', session_id: 'hr:1' }] }) }),
+      });
+
+      expect(result.overactive).toBe(false);
+    });
   });
 
   it('reports a rejected sync without losing the queue', async () => {

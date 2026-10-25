@@ -3,6 +3,7 @@ import playersMe from './recorded/players-me.json';
 import sync from './recorded/sync.json';
 import syncAccepted from './recorded/sync-accepted.json';
 import syncReward from './recorded/sync-reward.json';
+import syncWarning from './recorded/sync-warning.json';
 
 import { parseContentVersion, parseProfile, parseSyncResponse } from '../dto';
 import { wireActivityDay, wireProfile, wireSyncResponse } from './fixtures';
@@ -25,6 +26,11 @@ describe('parsing recorded responses', () => {
     const [reward] = parseSyncResponse(syncReward).rewardsGranted;
 
     expect(reward).toMatchObject({ kind: 'item', defId: 'item_brinestone', source: 'daily_goal', bonusPrimary: null });
+  });
+
+  /** Step 11: one open session at 60 + 35 Tier 1+ minutes, past GDD 11 §8.1's 90. */
+  it('reads an overactivity warning', () => {
+    expect(parseSyncResponse(syncWarning).warnings).toEqual([{ code: 'overactivity', sessionId: 'hr:1792962868' }]);
   });
 
   it('reads the content version poll', () => {

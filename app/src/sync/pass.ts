@@ -95,6 +95,8 @@ export interface SyncPassResult {
   readonly contentStale: boolean;
   /** The only source of a level-up. Never projected (§8.4). */
   readonly levelUps: readonly LevelUp[];
+  /** GDD 11 §8 — step 11 fired for a session this read still found open (T3 §9). */
+  readonly overactive: boolean;
   /**
    * Entries the drain has given up on (§5). Non-zero means a defect the player cannot see and the
    * queue cannot clear on its own — Settings reports it and Sentry is told once per pass.
@@ -347,6 +349,7 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
     contentVersion,
     contentStale: contentVersion !== null && contentVersion > heldVersion(),
     levelUps: [],
+    overactive: false,
     parked: reportParked(db),
   });
 
@@ -458,6 +461,12 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
       contentVersion: response.contentVersion,
       contentStale: response.contentVersion > heldVersion(),
       levelUps: response.levelUps,
+      // A closed session's warning is dropped: GDD 11 §8.2 never fires it retroactively.
+      overactive: response.warnings.some(
+        (warning) =>
+          warning.code === 'overactivity' &&
+          sessions.some((session) => session.sessionId === warning.sessionId && session.endedAt === null),
+      ),
       parked: reportParked(db),
     };
   } catch (error) {

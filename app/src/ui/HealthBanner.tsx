@@ -1,8 +1,8 @@
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking } from 'react-native';
 
 import { BANNER_COPY, type BannerKind } from '../health/banner';
 import { healthConnectProvider } from '../health/healthconnect';
-import { colors, radius, space, type } from './theme';
+import { Banner } from './primitives';
 
 /**
  * GDD 10 §3.2 / GDD 13 §3.1 — the low-key, persistent banner.
@@ -42,25 +42,5 @@ export function HealthBanner({
     onOpenAppSettings?.();
   };
 
-  return (
-    <Pressable accessibilityRole="button" onPress={open} style={styles.banner}>
-      <View style={styles.text}>
-        <Text style={styles.message}>{content.message}</Text>
-        <Text style={styles.action}>{content.action}</Text>
-      </View>
-    </Pressable>
-  );
+  return <Banner message={content.message} action={content.action} onPress={open} />;
 }
-
-const styles = StyleSheet.create({
-  banner: {
-    backgroundColor: colors.notice,
-    borderColor: colors.noticeBorder,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    padding: space.md,
-  },
-  text: { gap: space.xs },
-  message: { ...type.body, color: colors.text, lineHeight: 21 },
-  action: { ...type.small, color: colors.accent, fontWeight: '600' },
-});

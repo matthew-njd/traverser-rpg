@@ -1,0 +1,74 @@
+{
+  "server_time": "2026-10-25T22:49:29.3056522Z",
+  "content_version": 4,
+  "player": {
+    "player_id": "4fee2aa1-6df4-49a9-89b3-6a4e7de8b5df",
+    "traverser_name": "WireProbe",
+    "timezone": "America/Toronto",
+    "created_at": "2026-10-25T22:49:28.660043Z",
+    "level": 1,
+    "xp_current": 0,
+    "xp_to_next": 100,
+    "xp_lifetime": 0,
+    "unspent_stat_points": 0,
+    "alloc_vigor": 0,
+    "alloc_might": 0,
+    "alloc_resolve": 0,
+    "alloc_favor": 0,
+    "alloc_aegis": 0,
+    "alloc_stride": 0,
+    "vigor_current": 20,
+    "vigor_anchor_at": "2026-10-25T22:49:28.464504Z",
+    "lifetime_steps": 0,
+    "daily_step_goal": 7000,
+    "tutorial_completed_at": null
+  },
+  "leagues": 0,
+  "streak": {
+    "current": 0,
+    "longest": 0,
+    "last_credited_date": null
+  },
+  "level_ups": [],
+  "activity_days": [
+    {
+      "activity_date": "2026-10-25",
+      "steps": 0,
+      "tier1_minutes": 0,
+      "tier2_minutes": 0,
+      "tier3_minutes": 0,
+      "xp_awarded": 0,
+      "step_goal_snapshot": 7000,
+      "goal_met": false,
+      "streak_credit_method": null,
+      "rest_tagged_at": null
+    }
+  ],
+  "accepted_delta_ids": [],
+  "duplicate_delta_ids": [],
+  "encounter_grants": [
+    {
+      "grant_id": "01a17541-3108-7e65-bf0a-19d515a17894",
+      "zone_id": "olympion",
+      "enemy_id": "enemy_satyr",
+      "source": "workout",
+      "activity_date": "2026-10-25"
+    },
+    {
+      "grant_id": "01a17541-311b-768e-b499-95057e408684",
+      "zone_id": "olympion",
+      "enemy_id": "enemy_harpy",
+      "source": "workout",
+      "activity_date": "2026-10-25"
+    }
+  ],
+  "unlocked_zone_ids": [],
+  "rewards_granted": [],
+  "pending_rewards": [],
+  "warnings": [
+    {
+      "code": "overactivity",
+      "session_id": "hr:1792962868"
+    }
+  ]
+}

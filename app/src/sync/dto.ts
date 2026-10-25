@@ -235,6 +235,14 @@ export interface SyncResponse {
   readonly rewardsGranted: readonly RewardGranted[];
   /** Every unresolved reward parked past a cap — the whole list, so it replaces the mirror's. */
   readonly pendingRewards: readonly PendingReward[];
+  /** Step 11. A threshold crossed, not a banner to show — that needs a live session (T3 §9). */
+  readonly warnings: readonly Warning[];
+}
+
+export interface Warning {
+  readonly code: string;
+  /** The `external_session_id` this device sent. */
+  readonly sessionId: string;
 }
 
 export interface PendingReward {
@@ -420,6 +428,14 @@ export function parseSyncResponse(value: unknown): SyncResponse {
         bonusPrimary: nullableInt(reward.bonus_primary, `${at}.bonus_primary`),
         bonusSecondary: nullableInt(reward.bonus_secondary, `${at}.bonus_secondary`),
         createdAt: text(reward.created_at, `${at}.created_at`),
+      };
+    }),
+    warnings: array(body.warnings, 'warnings').map((entry, index) => {
+      const warning = object(entry, `warnings[${index}]`);
+
+      return {
+        code: text(warning.code, `warnings[${index}].code`),
+        sessionId: text(warning.session_id, `warnings[${index}].session_id`),
       };
     }),
   };

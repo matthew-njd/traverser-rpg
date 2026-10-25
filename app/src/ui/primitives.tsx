@@ -131,6 +131,16 @@ export function Field({
   );
 }
 
+/** GDD 13 §3.1 and §6.5 share this: low-key, never an alert colour. */
+export function Banner({ message, action, onPress }: { message: string; action: string; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={styles.banner}>
+      <Text style={styles.bannerMessage}>{message}</Text>
+      <Text style={styles.bannerAction}>{action}</Text>
+    </Pressable>
+  );
+}
+
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
@@ -178,6 +188,17 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   screenBody: { flex: 1, padding: space.md, gap: space.md },
   scrollContent: { flexGrow: 1 },
+
+  banner: {
+    gap: space.xs,
+    backgroundColor: colors.notice,
+    borderColor: colors.noticeBorder,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: space.md,
+  },
+  bannerMessage: { ...type.body, color: colors.text, lineHeight: 21 },
+  bannerAction: { ...type.small, color: colors.accent, fontWeight: '600' },
 
   title: { ...type.title, color: colors.text },
   heading: { ...type.heading, color: colors.text },

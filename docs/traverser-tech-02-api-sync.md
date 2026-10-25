@@ -230,7 +230,7 @@ Daily-goal item, level milestones, streak milestones, zone-entry grants. **Every
 > - **The response gains `rewards_granted`**: `[{ "kind": "item" | "gear", "id", "def_id", "source", "level_at_drop", "bonus_primary", "bonus_secondary", "acquired_at" }]`, with the server's ids. ↯ It is the only way a reward reaches the device, because the response carries no inventory. **`pending_rewards`** lists every unresolved pending row in the same shape, with `created_at`.
 
 **11. Overactivity check.**
-For each session in the payload, if cumulative Tier 1+ minutes ≥ 90 and `overactivity_warned_at is null`, set it and flag the warning in the response. At most once per session (GDD 11 §8.3). In-app banner only, never a push. Sessions that ended before the player opened the app do not fire it retroactively (GDD 11 §8.2) — the client decides that by checking whether the session is live, and the server simply reports threshold-crossed.
+For each session in the payload, if cumulative Tier 1+ minutes ≥ 90 and `overactivity_warned_at is null`, set it and flag the warning in the response, naming the session by the device's `external_session_id` (the only key it can match on). At most once per session (GDD 11 §8.3). In-app banner only, never a push. Sessions that ended before the player opened the app do not fire it retroactively (GDD 11 §8.2) — the client decides that by checking whether the session is live, and the server simply reports threshold-crossed.
 
 ### Response
 

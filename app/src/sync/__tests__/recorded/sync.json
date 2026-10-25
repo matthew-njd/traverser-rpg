@@ -38,5 +38,6 @@
   "encounter_grants": [],
   "unlocked_zone_ids": [],
   "rewards_granted": [],
-  "pending_rewards": []
+  "pending_rewards": [],
+  "warnings": []
 }

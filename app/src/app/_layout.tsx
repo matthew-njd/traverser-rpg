@@ -1,13 +1,15 @@
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AppState, type AppStateStatus, View } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { bootRuntime, syncNow } from '@/runtime';
 import { initSentry, wrapRoot } from '@/sentry';
 import { useAppStore } from '@/state/appStore';
-import { colors } from '@/ui/theme';
+import { useBattleStore } from '@/state/battleStore';
+import { Banner } from '@/ui/primitives';
+import { colors, space } from '@/ui/theme';
 
 // Before anything else renders, so a crash during first paint is still reported (tech-06 §9).
 initSentry();
@@ -80,7 +82,29 @@ function RootLayout() {
           }}
         />
       </Stack>
+      <OveractivityBanner />
     </SafeAreaProvider>
+  );
+}
+
+/** GDD 13 §6.5 — over whichever screen is frontmost when the sync lands (tech-04 §4.4). */
+function OveractivityBanner() {
+  const overactive = useAppStore((state) => state.overactive);
+  const fighting = useBattleStore((state) => state.snapshot !== null);
+  const insets = useSafeAreaInsets();
+
+  if (!overactive || fighting) {
+    return null;
+  }
+
+  return (
+    <View style={{ position: 'absolute', top: insets.top + space.sm, left: space.md, right: space.md }}>
+      <Banner
+        message="You've been at it a while — the road will still be here after you rest."
+        action="Dismiss"
+        onPress={() => useAppStore.getState().dismissOveractivity()}
+      />
+    </View>
   );
 }
 

@@ -173,7 +173,16 @@ public sealed record SyncResponse(
     /// </summary>
     IReadOnlyList<RewardResponse> RewardsGranted,
     /// <summary>Every unresolved reward parked past a cap (GDD 4 §5.2, GDD 8 §5.5).</summary>
-    IReadOnlyList<PendingRewardResponse> PendingRewards);
+    IReadOnlyList<PendingRewardResponse> PendingRewards,
+    /// <summary>
+    /// Step 11. A threshold crossing, not an instruction to show anything: the device renders it only
+    /// for a session still live (T3 §9).
+    /// </summary>
+    IReadOnlyList<WarningResponse> Warnings);
+
+/// <param name="Code">Only <c>overactivity</c> so far.</param>
+/// <param name="SessionId">The device's <c>external_session_id</c>, the only key it can match on.</param>
+public sealed record WarningResponse(string Code, string SessionId);
 
 /// <param name="Kind"><c>item</c> or <c>gear</c>.</param>
 /// <param name="Source">The <c>player_item.source</c> or <c>player_gear.source</c> it was stored with.</param>
