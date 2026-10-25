@@ -11,6 +11,8 @@ import {
   type SettingsPayload,
   type SkillsPayload,
   type SyncResponse,
+  type DiscardPayload,
+  type ResolveRewardPayload,
   type SyncSession,
   type UseItemPayload,
   parseActivityDays,
@@ -24,6 +26,7 @@ import {
   toWireRestDay,
   toWireSettings,
   toWireSkills,
+  toWireResolveReward,
   toWireSyncRequest,
   toWireUseItem,
 } from './dto';
@@ -106,6 +109,9 @@ export interface TraverserApi {
   equipGear(payload: EquipPayload): Promise<void>;
   useItem(payload: UseItemPayload): Promise<void>;
   setSkills(payload: SkillsPayload): Promise<void>;
+  discardItem(payload: DiscardPayload): Promise<void>;
+  discardGear(payload: DiscardPayload): Promise<void>;
+  resolveReward(payload: ResolveRewardPayload): Promise<void>;
 }
 
 async function problemCode(response: Response): Promise<string | null> {
@@ -227,6 +233,21 @@ export function createApi(options: ApiOptions): TraverserApi {
       await request(options, `/players/me/gear/${encodeURIComponent(payload.playerGearId)}/equipped`, {
         method: 'PUT',
         body: JSON.stringify(toWireEquip(payload)),
+      });
+    },
+
+    async discardItem(payload) {
+      await request(options, `/players/me/items/${encodeURIComponent(payload.id)}/discard`, { method: 'POST' });
+    },
+
+    async discardGear(payload) {
+      await request(options, `/players/me/gear/${encodeURIComponent(payload.id)}/discard`, { method: 'POST' });
+    },
+
+    async resolveReward(payload) {
+      await request(options, `/players/me/pending-rewards/${encodeURIComponent(payload.rewardId)}`, {
+        method: 'POST',
+        body: JSON.stringify(toWireResolveReward(payload)),
       });
     },
 

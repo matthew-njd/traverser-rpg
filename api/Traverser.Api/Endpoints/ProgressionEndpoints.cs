@@ -52,10 +52,129 @@ public static class ProgressionEndpoints
             .WithName("UseItem")
             .WithSummary("Spend a healing item outside a battle (GDD 4 §4).");
 
+        routes.MapPost("/players/me/items/{playerItemId:guid}/discard", DiscardItemAsync)
+            .WithName("DiscardItem")
+            .WithSummary("Leave an item behind to make room (GDD 4 §5.2).");
+
+        routes.MapPost("/players/me/gear/{playerGearId:guid}/discard", DiscardGearAsync)
+            .WithName("DiscardGear")
+            .WithSummary("Leave a piece behind to make room (GDD 8 §5.5). Never a worn piece.");
+
+        routes.MapPost("/players/me/pending-rewards/{rewardId:guid}", ResolvePendingRewardAsync)
+            .WithName("ResolvePendingReward")
+            .WithSummary("Keep or discard a reward parked past a cap (GDD 4 §5.2).");
+
         routes.MapPut("/players/me/skills", SetSkillsAsync)
             .WithName("SetSkills")
             .WithSummary("Replace the 1–4 slot skill loadout (GDD 2 §5).");
     }
+
+    /// <summary>GDD 4 §5.2. Idempotent by primary key: a row already gone is a replay, not an error.</summary>
+    private static async Task<IResult> DiscardItemAsync(
+        Guid playerItemId,
+        CurrentPlayer current,
+        TraverserDbContext db,
+        CancellationToken ct)
+    {
+        await db.PlayerItems
+            .Where(i => i.Id == playerItemId && i.PlayerId == current.PlayerId)
+            .ExecuteDeleteAsync(ct);
+
+        return await ProfileAsync(db, current.PlayerId, ct);
+    }
+
+    /// <summary>GDD 8 §5.5. A worn piece is refused: the prompt never offers one, so asking is a bug.</summary>
+    private static async Task<IResult> DiscardGearAsync(
+        Guid playerGearId,
+        CurrentPlayer current,
+        TraverserDbContext db,
+        CancellationToken ct)
+    {
+        var gear = await db.PlayerGear
+            .FirstOrDefaultAsync(g => g.Id == playerGearId && g.PlayerId == current.PlayerId, ct);
+
+        if (gear is not null)
+        {
+            if (gear.EquippedSlot is not null)
+            {
+                return ApiProblem.BadRequest(ApiProblem.ValidationFailed, "A worn piece cannot be discarded.");
+            }
+
+            db.PlayerGear.Remove(gear);
+            await db.SaveChangesAsync(ct);
+        }
+
+        return await ProfileAsync(db, current.PlayerId, ct);
+    }
+
+    /// <summary>
+    /// GDD 4 §5.2. Idempotent on the reward's own <c>resolved_at</c> (T2 §3): once resolved, a replay
+    /// changes nothing. The cap is the device's to keep — it discards first, and that replays first.
+    /// </summary>
+    private static async Task<IResult> ResolvePendingRewardAsync(
+        Guid rewardId,
+        ResolvePendingRewardRequest request,
+        CurrentPlayer current,
+        TraverserDbContext db,
+        CancellationToken ct)
+    {
+        if (request.Resolution == PendingRewardResolution.Kept && request.NewId is null)
+        {
+            return ApiProblem.BadRequest(ApiProblem.ValidationFailed, "new_id is required to keep a reward.");
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+
+        var reward = await db.PendingRewards
+            .FirstOrDefaultAsync(r => r.Id == rewardId && r.PlayerId == current.PlayerId, ct);
+
+        if (reward is not null && reward.ResolvedAt is null)
+        {
+            reward.ResolvedAt = DateTime.UtcNow;
+            reward.Resolution = request.Resolution;
+
+            if (request.Resolution == PendingRewardResolution.Kept && request.NewId is Guid id)
+            {
+                if (reward.Kind == PendingRewardKind.Item)
+                {
+                    db.PlayerItems.Add(new PlayerItem
+                    {
+                        Id = id,
+                        PlayerId = reward.PlayerId,
+                        ItemDefId = reward.ItemDefId!,
+                        AcquiredAt = reward.CreatedAt,
+                        Source = SyncRewards.ItemSourceOf(reward.Source),
+                    });
+                }
+                else
+                {
+                    db.PlayerGear.Add(new PlayerGear
+                    {
+                        Id = id,
+                        PlayerId = reward.PlayerId,
+                        GearDefId = reward.GearDefId!,
+                        LevelAtDrop = reward.LevelAtDrop ?? 1,
+                        BonusPrimary = reward.BonusPrimary ?? 0,
+                        BonusSecondary = reward.BonusSecondary,
+                        AcquiredAt = reward.CreatedAt,
+                        Source = reward.Source,
+                    });
+                }
+            }
+
+            await db.SaveChangesAsync(ct);
+        }
+
+        var profile = await ProfileAsync(db, current.PlayerId, ct);
+
+        await transaction.CommitAsync(ct);
+
+        return profile;
+    }
+
+    private static async Task<IResult> ProfileAsync(TraverserDbContext db, Guid playerId, CancellationToken ct) =>
+        Results.Ok(await PlayerProfile.LoadAsync(db, playerId, ct)
+            ?? throw new InvalidOperationException($"Profile for {playerId} vanished."));
 
     /// <summary>
     /// GDD 2 §5 / GDD 3 §4.1 — every id must be an unlocked limited-use skill or the move of the

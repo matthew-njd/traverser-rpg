@@ -16,7 +16,10 @@ export type OutboxKind =
   | 'explore'
   | 'equip'
   | 'use_item'
-  | 'skills';
+  | 'skills'
+  | 'discard_item'
+  | 'discard_gear'
+  | 'resolve_reward';
 
 export interface OutboxEntry {
   readonly clientOpId: string;

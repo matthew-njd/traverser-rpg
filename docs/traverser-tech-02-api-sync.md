@@ -104,6 +104,12 @@ All of these apply optimistically to the mirror and replay to the server; all ar
 > - **No operation ID**, because it sets state (§6.3), like the equip endpoint.
 > - **The profile gains `equipped_skills`**, `[{ "slot": 1, "skill_id": "..." }]` ordered by slot, so a restore recovers the choice. Empty until the player chooses.
 
+> **Amended 2026-10-25 (M5/P3b). The overflow writes are built.**
+>
+> - **`POST /players/me/items/{id}/discard`** and a new **`POST /players/me/gear/{id}/discard`**. No body and no operation ID: a delete by primary key, so a replay deletes nothing. A worn piece is refused with `validation_failed`.
+> - **`POST /players/me/pending-rewards/{id}`** takes `{ "resolution": "kept" | "discarded", "new_id": <uuid> | null }`. On *kept*, `new_id` is the id the device minted for the row it already inserted, as a battle drop's is. Idempotent on `resolved_at`. The server does not check the cap: the device discards first, and that write replays first.
+> - **A gear or Trinket drop carries `player_gear_id`** (§4.1), minted on the device like an item's `player_item_id`, so a dropped piece can be discarded by id. ↯ **A drop whose battle is still queued is withdrawn from the queued payload rather than discarded**, because writes replay before the sync uploads battles: a discard would reach a server without the row, and the battle would then create it.
+
 | • `POST` | `/api/v1/players/me/explore` | Queue an Explore request against a zone. Offline this records intent only; the grant is issued by the next sync (§1.3). |
 
 ### Reads

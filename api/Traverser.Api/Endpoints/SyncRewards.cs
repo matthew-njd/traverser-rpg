@@ -34,7 +34,11 @@ internal static class SyncRewards
             .Where(g => g.Slot != GearSlot.Trinket)
             .ToDictionaryAsync(g => (g.Slot, g.Tier), g => g.Id, ct);
 
-        var items = await db.PlayerItems.CountAsync(i => i.PlayerId == player.Id, ct);
+        var held = await db.PlayerItems
+            .Where(i => i.PlayerId == player.Id)
+            .GroupBy(i => i.ItemDefId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count(), ct);
+        var items = held.Values.Sum();
         var owned = await db.PlayerGear
             .Where(g => g.PlayerId == player.Id)
             .Select(g => new { g.GearDef.Slot, g.GearDef.Tier })
@@ -49,7 +53,7 @@ internal static class SyncRewards
         {
             if (items >= Rewards.ItemCap)
             {
-                Park(new PendingReward { Kind = PendingRewardKind.Item, ItemDefId = itemDefId });
+                Park(new PendingReward { Kind = PendingRewardKind.Item, ItemDefId = itemDefId, Source = Snake(source) });
                 return;
             }
 
@@ -57,6 +61,7 @@ internal static class SyncRewards
 
             db.PlayerItems.Add(item);
             items++;
+            held[itemDefId] = held.GetValueOrDefault(itemDefId) + 1;
             granted.Add(new RewardResponse("item", item.Id, itemDefId, Snake(source), null, null, null, now));
         }
 
@@ -73,6 +78,7 @@ internal static class SyncRewards
                     GearDefId = defId,
                     LevelAtDrop = player.Level,
                     BonusPrimary = bonus,
+                    Source = source,
                 });
                 return;
             }
@@ -122,7 +128,7 @@ internal static class SyncRewards
             var commons = await db.ItemDefs.AsNoTracking()
                 .Where(i => i.Rarity == ItemRarity.Common)
                 .OrderBy(i => i.Id)
-                .Select(i => i.Id)
+                .Select(i => new { i.Id, i.MaxStack })
                 .ToListAsync(ct);
             var gearChance = await db.DropRates.AsNoTracking()
                 .Where(r => r.EncounterKind == DropEncounterKind.DailyGoal && r.RewardKind == DropRewardKind.Gear)
@@ -136,7 +142,14 @@ internal static class SyncRewards
                     continue;
                 }
 
-                GiveItem(commons[rng.Next(commons.Count)], ItemSource.DailyGoal);
+                // GDD 4 §5.1 — drawn only from commons below their maximum, so the guaranteed item stays
+                // guaranteed while any has room (DECISIONS 2026-10-25). Milestones skip this check.
+                var open = commons.Where(c => held.GetValueOrDefault(c.Id) < c.MaxStack).ToList();
+
+                if (open.Count > 0)
+                {
+                    GiveItem(open[rng.Next(open.Count)].Id, ItemSource.DailyGoal);
+                }
 
                 if ((decimal)rng.NextDouble() < gearChance)
                 {
@@ -243,6 +256,15 @@ internal static class SyncRewards
         MilestoneKind.Tutorial => "tutorial",
         MilestoneKind.DailyGoal => "daily_goal",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown milestone kind."),
+    };
+
+    /// <summary>The inverse of <see cref="Snake(ItemSource)"/>, for a parked item being kept.</summary>
+    public static ItemSource ItemSourceOf(string source) => source switch
+    {
+        "daily_goal" => ItemSource.DailyGoal,
+        "streak_overflow" => ItemSource.StreakOverflow,
+        "zone_entry" => ItemSource.ZoneEntry,
+        _ => ItemSource.LevelMilestone,
     };
 
     private static string Snake(ItemSource source) => source switch

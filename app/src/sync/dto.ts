@@ -233,6 +233,35 @@ export interface SyncResponse {
    * inventory, so a reward dropped here is in the server's satchel and not this one until a repair.
    */
   readonly rewardsGranted: readonly RewardGranted[];
+  /** Every unresolved reward parked past a cap — the whole list, so it replaces the mirror's. */
+  readonly pendingRewards: readonly PendingReward[];
+}
+
+export interface PendingReward {
+  readonly id: string;
+  readonly kind: 'item' | 'gear';
+  readonly defId: string;
+  readonly levelAtDrop: number | null;
+  readonly bonusPrimary: number | null;
+  readonly bonusSecondary: number | null;
+  readonly createdAt: string;
+}
+
+/** GDD 4 §5.2 — leave one row behind. Deleting by primary key, so a replay is harmless. */
+export interface DiscardPayload {
+  readonly id: string;
+}
+
+/** GDD 4 §5.2 — idempotent on the reward's own `resolved_at`, so no operation id. */
+export interface ResolveRewardPayload {
+  readonly rewardId: string;
+  readonly kept: boolean;
+  /** Kept only: the id the device minted for the row it already inserted. */
+  readonly newId: string | null;
+}
+
+export function toWireResolveReward(payload: ResolveRewardPayload): Json {
+  return { resolution: payload.kept ? 'kept' : 'discarded', new_id: payload.newId };
 }
 
 /** One reward row, with the server's id — mirrored verbatim like the profile's lists. */
@@ -372,6 +401,25 @@ export function parseSyncResponse(value: unknown): SyncResponse {
         bonusPrimary: nullableInt(reward.bonus_primary, `${at}.bonus_primary`),
         bonusSecondary: nullableInt(reward.bonus_secondary, `${at}.bonus_secondary`),
         acquiredAt: text(reward.acquired_at, `${at}.acquired_at`),
+      };
+    }),
+    pendingRewards: array(body.pending_rewards, 'pending_rewards').map((entry, index) => {
+      const at = `pending_rewards[${index}]`;
+      const reward = object(entry, at);
+      const kind = text(reward.kind, `${at}.kind`);
+
+      if (kind !== 'item' && kind !== 'gear') {
+        throw new Error(`${at}.kind: expected item or gear, got ${kind}`);
+      }
+
+      return {
+        id: text(reward.id, `${at}.id`),
+        kind,
+        defId: text(reward.def_id, `${at}.def_id`),
+        levelAtDrop: nullableInt(reward.level_at_drop, `${at}.level_at_drop`),
+        bonusPrimary: nullableInt(reward.bonus_primary, `${at}.bonus_primary`),
+        bonusSecondary: nullableInt(reward.bonus_secondary, `${at}.bonus_secondary`),
+        createdAt: text(reward.created_at, `${at}.created_at`),
       };
     }),
   };

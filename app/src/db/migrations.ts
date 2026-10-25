@@ -465,6 +465,22 @@ const V10_FRESH_REWARD: readonly string[] = [
    )`,
 ];
 
+/**
+ * Version 11 — step 10's rewards parked past a cap (T1 `pending_reward`), mirrored whole from every
+ * sync response so the keep/discard prompt can open with the API off (GDD 4 §5.2).
+ */
+const V11_PENDING_REWARD: readonly string[] = [
+  `CREATE TABLE pending_reward (
+     id              TEXT PRIMARY KEY NOT NULL,
+     kind            TEXT NOT NULL,
+     def_id          TEXT NOT NULL,
+     level_at_drop   INTEGER,
+     bonus_primary   INTEGER,
+     bonus_secondary INTEGER,
+     created_at      TEXT NOT NULL
+   )`,
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
@@ -476,6 +492,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 8, statements: [...V8_ENCOUNTER_GRANT] },
   { version: 9, statements: [...V9_EQUIPPED_SKILL] },
   { version: 10, statements: [...V10_FRESH_REWARD] },
+  { version: 11, statements: [...V11_PENDING_REWARD] },
 ];
 
 /** The version a fully-migrated database reports. */

@@ -523,6 +523,8 @@ public static class SyncEndpoints
 
                 db.PlayerGear.Add(new PlayerGear
                 {
+                    // The device's id when it sent one, for the same reason as an item's.
+                    Id = drop.PlayerGearId ?? Guid.CreateVersion7(),
                     PlayerId = player.Id,
                     GearDefId = drop.DefId,
                     // Stored as sent: frozen at drop time by design (T2 §4.1, tech-01 §4).

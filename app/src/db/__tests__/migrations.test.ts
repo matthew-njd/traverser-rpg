@@ -39,6 +39,7 @@ describe('schema migrations', () => {
         'hr_minute_watermark',
         'hr_session_ledger',
         'outbox',
+        'pending_reward',
         'read_watermark',
         'step_watermark',
         // tech-01 §3's content set (T4 §5.1), plus its version row.
@@ -84,6 +85,7 @@ describe('schema migrations', () => {
     const db = memoryDatabase();
 
     // Rewind to a device that is still on version 1 by dropping what came after it.
+    db.execSync('DROP TABLE pending_reward');
     db.execSync('DROP TABLE fresh_reward');
     db.execSync('DROP TABLE equipped_skill');
     db.execSync('DROP TABLE encounter_grant');

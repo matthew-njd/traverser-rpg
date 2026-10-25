@@ -181,10 +181,19 @@ boss in the roster has its text.
 ### P6 — The Road layout (GDD 13 §4)
 
 - The encounters card collapses by default to a count, **Face the next ›** and **Show all ▾**.
-- One floating Explore button at the bottom left, enabled when the Viewport is on an unlocked zone,
-  replacing the per-zone buttons.
+- **One floating Explore button at the bottom left, acting on a selected zone**, replacing the
+  per-zone buttons. Decided 2026-10-25 (DECISIONS):
+  - The target defaults to the zone the Waymarker is in, the stretch of road being walked.
+  - Tapping another unlocked zone card selects it: the card is highlighted and the button relabels.
+    A locked zone cannot be selected.
+  - The label names the target, "Explore Valheon", so no tap is a surprise.
+  - ↯ Not GDD 13 §4's "centred on the Viewport": the Road is a vertical list, and a target derived
+    from scroll position is the ambiguity DECISIONS 2026-08-22 rejected. The selection is explicit.
+  - Amend GDD 13 §4 when this is built.
 
-**Tests:** the card stays one row high with any number waiting; Explore is disabled on a locked zone.
+**Tests:** the card stays one row high with any number waiting; Explore targets the Waymarker's
+zone by default; selecting another unlocked zone retargets it and relabels the button; a locked zone
+cannot be selected.
 
 ### P7 — Polish and reliability
 

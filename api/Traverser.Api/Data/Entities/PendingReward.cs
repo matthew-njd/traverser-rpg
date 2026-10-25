@@ -27,6 +27,9 @@ public class PendingReward
 
     public int? BonusSecondary { get; set; }
 
+    /// <summary>The <c>player_item.source</c> or <c>player_gear.source</c> the row takes when kept.</summary>
+    public string Source { get; set; } = null!;
+
     public DateTime CreatedAt { get; set; }
 
     /// <summary>Once set, a replayed resolution returns the existing outcome (T2 §3).</summary>

@@ -5,6 +5,10 @@ import { Text, type ColorValue } from 'react-native';
 import { type FreshReward, clearFreshRewards, isRoadFind, readFreshRewards } from '@/battle/mirror';
 import { type Labels, type RevealDetail, loadLabels, loadRevealDetails } from '@/content/labels';
 import { getDatabase } from '@/db/open';
+import { type Overflow, readOverflow } from '@/progression/overflow';
+import { syncNow } from '@/runtime';
+import { discardGear, discardItem, resolvePendingReward } from '@/sync/writes';
+import { type OverflowPick, OverflowPrompt } from '@/ui/OverflowPrompt';
 import { useAppStore } from '@/state/appStore';
 import { useBattleStore } from '@/state/battleStore';
 import { RewardReveal } from '@/ui/RewardReveal';
@@ -32,18 +36,46 @@ export default function TabsLayout() {
   const [fresh, setFresh] = useState<readonly FreshReward[]>([]);
   const [labels, setLabels] = useState<Labels>(new Map());
   const [details, setDetails] = useState<ReadonlyMap<string, RevealDetail>>(new Map());
+  const [overflow, setOverflow] = useState<Overflow | null>(null);
 
+  // Re-read when a fight ends too: a battle drop is what most often passes a cap.
   useEffect(() => {
     const db = getDatabase();
     const rewards = readFreshRewards(db);
+    const owed = readOverflow(db);
 
     setFresh(rewards);
+    setOverflow(owed);
 
-    if (rewards.length > 0) {
+    if (rewards.length > 0 || owed !== null) {
       setLabels(loadLabels(db));
       setDetails(loadRevealDetails(db));
     }
-  }, [rewardsSeq]);
+  }, [rewardsSeq, fighting]);
+
+  /** GDD 4 §5.2 — local first; the replays are best-effort, like every write. */
+  const settleOverflow = (keep: boolean, pick: OverflowPick | null) => {
+    if (overflow === null) {
+      return;
+    }
+
+    const db = getDatabase();
+    const now = Date.now();
+    const discard = overflow.kind === 'item' ? discardItem : discardGear;
+
+    if (pick !== null && !pick.incoming) {
+      discard(db, pick.id, now);
+    }
+
+    if (overflow.pendingId !== null) {
+      resolvePendingReward(db, overflow.pendingId, keep || (pick !== null && !pick.incoming), now);
+    } else if (pick?.incoming && overflow.incoming.id !== null) {
+      discard(db, overflow.incoming.id, now);
+    }
+
+    useAppStore.getState().rewardsChanged();
+    void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
+  };
 
   const roadFinds = fresh.filter(isRoadFind).length;
   const reveal = fighting ? [] : fresh.filter((reward) => !isRoadFind(reward));
@@ -91,6 +123,13 @@ export default function TabsLayout() {
           useAppStore.getState().consumeLevelUps();
           useAppStore.getState().rewardsChanged();
         }}
+      />
+
+      <OverflowPrompt
+        overflow={fighting || reveal.length > 0 || levelUps.length > 0 ? null : overflow}
+        labels={labels}
+        onLeave={(pick) => settleOverflow(false, pick)}
+        onKeep={() => settleOverflow(true, null)}
       />
     </>
   );

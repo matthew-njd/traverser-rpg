@@ -107,6 +107,9 @@ function fakeApi(
     equipGear: async () => undefined,
     useItem: async () => undefined,
     setSkills: async () => undefined,
+    discardItem: async () => undefined,
+    discardGear: async () => undefined,
+    resolveReward: async () => undefined,
     ...overrides,
   };
 }

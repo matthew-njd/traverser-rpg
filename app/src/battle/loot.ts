@@ -226,9 +226,16 @@ export function rollDrops(input: {
   readonly level: number;
   /** The enemy's zone, which is what names its Trinket (GDD 8 §5.2). Null for the Wisp. */
   readonly zoneId: string | null;
+  /**
+   * GDD 4 §5.2 — room left per `item_def_id` under its maximum. An item with none is not dropped,
+   * but its draw is still taken, so the sequence the fixtures pin does not shift. An id absent here
+   * is unlimited.
+   */
+  readonly room?: ReadonlyMap<string, number>;
   readonly rng: Rng;
 }): Drops {
   const { encounterKind, tables, pool, level, zoneId, rng } = input;
+  const room = new Map(input.room);
 
   const rateFor = (rewardKind: string) =>
     tables.rates.find(
@@ -254,6 +261,20 @@ export function rollDrops(input: {
   const items: string[] = [];
   const gear: GearDrop[] = [];
   let trinket: GearDrop | null = null;
+
+  const take = (itemDefId: string) => {
+    const left = room.get(itemDefId);
+
+    if (left !== undefined && left <= 0) {
+      return;
+    }
+
+    if (left !== undefined) {
+      room.set(itemDefId, left - 1);
+    }
+
+    items.push(itemDefId);
+  };
 
   for (const { kind, rate } of granted) {
     if (kind !== 'item') {
@@ -303,13 +324,14 @@ export function rollDrops(input: {
     const drawFrom = guaranteed === undefined ? candidates : candidates.slice(1);
 
     if (guaranteed !== undefined) {
-      items.push(guaranteed.itemDefId);
+      take(guaranteed.itemDefId);
     }
 
     // qty_min..qty_max, one pool draw per item granted (T5 §4.1). The quantity itself is not a
     // draw — no fixture treats it as one, and §4.1's list does not include it.
-    for (let index = items.length; index < Math.max(1, rate.qtyMin); index += 1) {
-      items.push(weightedPick(drawFrom, (entry) => entry.weight, rng).itemDefId);
+    // ↯ Counted by draws, not by items kept: a skipped item must not buy an extra draw.
+    for (let index = guaranteed === undefined ? 0 : 1; index < Math.max(1, rate.qtyMin); index += 1) {
+      take(weightedPick(drawFrom, (entry) => entry.weight, rng).itemDefId);
     }
   }
 

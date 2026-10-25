@@ -35,6 +35,11 @@ export interface SettledBattle {
    * (T5 §10.3, amended 2026-08-22). Empty until `settleBattle` mints them.
    */
   readonly grantedItemIds: readonly string[];
+  /**
+   * The same for `[...drops.gear, drops.trinket]`, in that order (M5/P3b), so the overflow prompt
+   * can discard a dropped piece by the id both tiers hold. Absent on a payload queued before P3b.
+   */
+  readonly grantedGearIds?: readonly string[];
 }
 
 export function battlePayload(
@@ -65,6 +70,7 @@ export function battlePayload(
     itemsConsumed: state.itemsConsumed,
     drops: state.drops ?? { items: [], gear: [], trinket: null },
     grantedItemIds: [],
+    grantedGearIds: [],
   };
 }
 
@@ -75,15 +81,20 @@ export function battlePayload(
  * not: it is frozen at drop by design, so re-deriving it later would be the bug rather than the
  * check (T2 §4.1).
  */
-function wireGear(kind: 'gear' | 'trinket', drop: GearDrop): Record<string, unknown> {
+function wireGear(kind: 'gear' | 'trinket', drop: GearDrop, id: string | undefined): Record<string, unknown> {
   return {
     kind,
     def_id: drop.defId,
     level_at_drop: drop.levelAtDrop,
     bonus_primary: drop.bonusPrimary,
     bonus_secondary: drop.bonusSecondary,
+    player_gear_id: id ?? null,
   };
 }
+
+/** `[...gear, trinket]` — the order `grantedGearIds` pairs with. */
+export const droppedPieces = (drops: Drops): GearDrop[] =>
+  drops.trinket === null ? [...drops.gear] : [...drops.gear, drops.trinket];
 
 /** The wire shape of T2 §4.1's battle payload. Keys are the server's, as everywhere below `dto`. */
 export function toWireBattle(battle: SettledBattle): Record<string, unknown> {
@@ -107,8 +118,9 @@ export function toWireBattle(battle: SettledBattle): Record<string, unknown> {
         def_id: defId,
         player_item_id: battle.grantedItemIds[index] ?? null,
       })),
-      ...battle.drops.gear.map((drop) => wireGear('gear', drop)),
-      ...(battle.drops.trinket === null ? [] : [wireGear('trinket', battle.drops.trinket)]),
+      ...droppedPieces(battle.drops).map((drop, index) =>
+        wireGear(index < battle.drops.gear.length ? 'gear' : 'trinket', drop, battle.grantedGearIds?.[index]),
+      ),
     ],
   };
 }
@@ -139,11 +151,16 @@ export function settleBattle(
       id: mintUuidV7(db, now),
       itemDefId,
     }));
+    const pieces = droppedPieces(battle.drops).map((drop) => ({ id: mintUuidV7(db, now), drop }));
 
     enqueue(db, {
       clientOpId: battle.clientBattleId,
       kind: 'battle',
-      payload: { ...battle, grantedItemIds: granted.map((item) => item.id) },
+      payload: {
+        ...battle,
+        grantedItemIds: granted.map((item) => item.id),
+        grantedGearIds: pieces.map((piece) => piece.id),
+      },
       createdAt: new Date(now).toISOString(),
     });
 
@@ -151,6 +168,16 @@ export function settleBattle(
       db.runSync(
         'INSERT INTO player_item (id, player_id, item_def_id, acquired_at) VALUES (?, ?, ?, ?)',
         [item.id, playerId, item.itemDefId, acquiredAt],
+      );
+    }
+
+    // Gear too, so a piece past the 12-slot cap can be prompted on before the next sync (M5/P3b).
+    for (const { id, drop } of pieces) {
+      db.runSync(
+        `INSERT INTO player_gear (
+           id, player_id, gear_def_id, equipped_slot, level_at_drop, bonus_primary, bonus_secondary, acquired_at
+         ) VALUES (?, ?, ?, NULL, ?, ?, ?, ?)`,
+        [id, playerId, drop.defId, drop.levelAtDrop, drop.bonusPrimary, drop.bonusSecondary, acquiredAt],
       );
     }
 

@@ -2918,6 +2918,11 @@ namespace Traverser.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("resolved_at");
 
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
                     b.HasKey("Id")
                         .HasName("pk_pending_reward");
 

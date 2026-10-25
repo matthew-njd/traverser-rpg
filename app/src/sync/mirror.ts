@@ -323,6 +323,25 @@ export function applySyncResponse(db: SqliteDatabase, response: SyncResponse): v
       );
     }
 
+    // The whole unresolved list, so a reward resolved on the server leaves here too.
+    db.runSync('DELETE FROM pending_reward');
+
+    for (const reward of response.pendingRewards) {
+      db.runSync(
+        `INSERT INTO pending_reward (id, kind, def_id, level_at_drop, bonus_primary, bonus_secondary, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          reward.id,
+          reward.kind,
+          reward.defId,
+          reward.levelAtDrop,
+          reward.bonusPrimary,
+          reward.bonusSecondary,
+          reward.createdAt,
+        ],
+      );
+    }
+
     acknowledge(db, [...response.acceptedDeltaIds, ...response.duplicateDeltaIds]);
   });
 }

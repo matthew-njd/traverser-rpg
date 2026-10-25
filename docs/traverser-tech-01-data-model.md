@@ -527,6 +527,8 @@ create table milestone_grant (
 ```
 One row per one-time grant. This is what makes every deterministic reward exactly-once across re-syncs and offline replays — without it, a client that syncs twice across a level-up boundary grants the L30 Warhex twice. `overflow_fallback` records Section 11 §5.3's 2× Herald's Draft substitution when all three slots already exceed the milestone tier.
 
+> **Amended 2026-10-25 (M5/P3b). `pending_reward` gains `source text not null`**, the `player_item.source` or `player_gear.source` the row takes when kept, so a kept daily-goal item is still recorded as one. Rows parked before the column existed backfill as `level_milestone`.
+
 > **Amended 2026-10-25 (M5/P3). A new content table, `zone_entry_reward (zone_id, item_def_id, quantity)`,** seeded with GDD 4 §6.3's two zone grants: Valheon's Herald's Draft, Thundercrack and Shadowbind, and Imperion's Herald's Draft, Undertow and Blindveil. It keeps step 10 reading content rather than naming item ids in code. Server-only: the device learns of the grant from the sync response, so it is not in the bundle.
 
 > **Amended 2026-10-25 (M5/P3).** Two changes. **`milestone_kind` gains `daily_goal`**, keyed by the `activity_date`: the daily-goal item is a one-time grant per day, and the CHECK had no kind for it. **The fallback fires when all three slots are already Mythic**, not when they exceed the milestone's tier (GDD 11 §5.3; fixtures §7, amended). `pending_reward` now backs only the overflow prompt: the daily "road find" goes straight into the satchel, flagged new (GDD 13 §5.2).

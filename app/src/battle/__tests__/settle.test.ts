@@ -76,6 +76,7 @@ describe('the payload', () => {
     const wire = toWireBattle({
       ...battlePayload(wonBattle().state, META),
       grantedItemIds: ['019fd954-0745-7748-9892-000000000001'],
+      grantedGearIds: ['019fd954-0745-7748-9892-00000000000a', '019fd954-0745-7748-9892-00000000000b'],
       drops: {
         items: ['item_stormveil'],
         gear: [
@@ -102,6 +103,7 @@ describe('the payload', () => {
         level_at_drop: 15,
         bonus_primary: 2,
         bonus_secondary: null,
+        player_gear_id: '019fd954-0745-7748-9892-00000000000a',
       },
       {
         kind: 'trinket',
@@ -109,6 +111,7 @@ describe('the payload', () => {
         level_at_drop: 15,
         bonus_primary: 2,
         bonus_secondary: 2,
+        player_gear_id: '019fd954-0745-7748-9892-00000000000b',
       },
     ]);
 

@@ -56,6 +56,8 @@ export function contextFor(
     enemy: definition,
     moves,
     items: itemsFromBundle(),
+    satchel: new Map(),
+    maxStack: new Map(TABLES.item_def.map((row) => [String(row.id), Number(row.max_stack)])),
     tables: DROP_TABLES,
     pool: TABLES.enemy_drop_pool
       .filter((row) => row.enemy_id === enemyId)

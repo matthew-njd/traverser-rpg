@@ -203,3 +203,27 @@ describe('a zone boss first kill', () => {
     }
   });
 });
+
+describe('the per-item maximum (GDD 4 §5.2)', () => {
+  /** Item die 0.0 drops, gear die 0.99 does not, and the pool draw 0.0 lands on the first common. */
+  const draws = [0.0, 0.99, 0.0];
+
+  const wild = (room: ReadonlyMap<string, number>) => {
+    const rng = scriptedRng(draws);
+    const drops = rollDrops({ encounterKind: 'wild', tables: DROPS, pool: [], level: 15, zoneId: 'olympion', room, rng });
+
+    return { drops, rng };
+  };
+
+  it('drops an item that has room', () => {
+    expect(wild(new Map([['item_battlebrand', 1]])).drops.items).toEqual(['item_battlebrand']);
+  });
+
+  /** The mutation this guards: skipping the draw too, which shifts every later draw in the fight's sequence. */
+  it('does not drop an item at its maximum, and still takes its draw', () => {
+    const { drops, rng } = wild(new Map([['item_battlebrand', 0]]));
+
+    expect(drops.items).toEqual([]);
+    expect(rng.taken).toBe(3);
+  });
+});

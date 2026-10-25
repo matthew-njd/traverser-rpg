@@ -381,6 +381,19 @@ public class BattleSyncTests(TraverserApiFixture api)
     /// drop before this sync happened — and <c>items_consumed</c> can then name a row that exists on
     /// both tiers. A server-minted id would leave the two disagreeing about the same object.
     /// </summary>
+    /// <summary>M5/P3b — the overflow prompt discards a dropped piece by the id the device holds.</summary>
+    [Fact]
+    public async Task A_gear_drop_keeps_the_id_the_device_minted()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var gearId = Guid.CreateVersion7();
+        var drop = new { kind = "gear", def_id = "gear_armor_mortal", level_at_drop = 15, bonus_primary = 2, player_gear_id = gearId };
+
+        await SyncAsync(api.CreateAuthenticatedClient(token), [Battle(Guid.CreateVersion7(), drops: [drop])]);
+
+        Assert.True(await ReadAsync(db => db.PlayerGear.Any(g => g.PlayerId == playerId && g.Id == gearId)));
+    }
+
     [Fact]
     public async Task An_item_drop_keeps_the_id_the_device_minted()
     {

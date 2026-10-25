@@ -1,7 +1,7 @@
 import { grantItem, readEquippedGear, readOwnedGear, readSatchel, readStoredLoadout } from '../../battle/mirror';
 import { edtDates } from '../../health/__tests__/fixtures';
 import { seedEmbeddedContent } from '../../content/store';
-import { count, peek } from '../../db/outbox';
+import { count, enqueue, peek } from '../../db/outbox';
 import type { SqliteDatabase } from '../../db/types';
 import { recordingDatabase } from '../../health/__tests__/fixtures';
 import { effectiveStats } from '../../progression/stats';
@@ -13,7 +13,10 @@ import {
   allocateStatPoints,
   changeSettings,
   consumeItem,
+  discardGear,
+  discardItem,
   equipGear,
+  resolvePendingReward,
   setSkills,
   requestExplore,
   tagRestDay,
@@ -444,5 +447,97 @@ describe('setting the skill loadout', () => {
     expect(setSkills(db, ['skill_iron_advance'], NOW)).toBeNull();
     expect(readStoredLoadout(db)).toEqual([]);
     expect(count(db)).toBe(0);
+  });
+});
+
+describe('leaving things behind (GDD 4 §5.2, GDD 8 §5.5)', () => {
+  const satchelDatabase = () => {
+    const db = registeredDatabase();
+
+    seedEmbeddedContent(db);
+
+    const playerId = readPlayer(db)?.playerId ?? '';
+
+    grantItem(db, { playerItemId: 'old', playerId, itemDefId: 'item_travelers_salve', acquiredAt: '' });
+    grantItem(db, { playerItemId: 'dropped', playerId, itemDefId: 'item_stormveil', acquiredAt: '' });
+
+    // A won battle still in the queue, whose drop is `dropped`.
+    enqueue(db, {
+      clientOpId: 'battle-1',
+      kind: 'battle',
+      payload: {
+        drops: { items: ['item_stormveil'], gear: [], trinket: null },
+        grantedItemIds: ['dropped'],
+        grantedGearIds: [],
+      },
+      createdAt: '2026-08-04T09:00:00.000Z',
+    });
+
+    return db;
+  };
+
+  const queuedBattle = (db: SqliteDatabase) => JSON.parse(peek(db, 10, 'battle')[0]?.payload ?? '{}');
+
+  it('discards an item the server already holds by replaying a discard', () => {
+    const db = satchelDatabase();
+
+    expect(discardItem(db, 'old', NOW)).toEqual({ id: 'old' });
+    expect(readSatchel(db).map((item) => item.playerItemId)).toEqual(['dropped']);
+    expect(peek(db, 10, 'discard_item')).toHaveLength(1);
+  });
+
+  /**
+   * The mutation this guards: replaying a discard for a drop whose battle has not uploaded. The
+   * discard would reach a server without the row, then the battle would create it.
+   */
+  it('withdraws a drop from its queued battle instead of replaying a discard', () => {
+    const db = satchelDatabase();
+
+    discardItem(db, 'dropped', NOW);
+
+    expect(queuedBattle(db).drops.items).toEqual([]);
+    expect(queuedBattle(db).grantedItemIds).toEqual([]);
+    expect(peek(db, 10, 'discard_item')).toEqual([]);
+  });
+
+  it('never discards a worn piece', () => {
+    const db = satchelDatabase();
+    const playerId = readPlayer(db)?.playerId ?? '';
+
+    db.runSync(
+      `INSERT INTO player_gear (id, player_id, gear_def_id, equipped_slot, level_at_drop, bonus_primary, acquired_at)
+       VALUES ('worn', ?, 'gear_weapon_mortal', 'weapon', 1, 1, '')`,
+      [playerId],
+    );
+
+    expect(discardGear(db, 'worn', NOW)).toBeNull();
+    expect(readOwnedGear(db).map((gear) => gear.playerGearId)).toContain('worn');
+  });
+
+  it('keeps a parked reward under a minted id, and queues the resolution', () => {
+    const db = satchelDatabase();
+
+    db.runSync(
+      `INSERT INTO pending_reward (id, kind, def_id, level_at_drop, bonus_primary, bonus_secondary, created_at)
+       VALUES ('r1', 'item', 'item_sunder_oil', NULL, NULL, NULL, '2026-08-04T00:00:00Z')`,
+    );
+
+    const payload = resolvePendingReward(db, 'r1', true, NOW);
+
+    expect(readSatchel(db).map((item) => item.playerItemId)).toContain(payload?.newId);
+    expect(db.getAllSync('SELECT id FROM pending_reward')).toEqual([]);
+    expect(peek(db, 10, 'resolve_reward')).toHaveLength(1);
+  });
+
+  it('discards a parked reward without granting it', () => {
+    const db = satchelDatabase();
+
+    db.runSync(
+      `INSERT INTO pending_reward (id, kind, def_id, level_at_drop, bonus_primary, bonus_secondary, created_at)
+       VALUES ('r1', 'item', 'item_sunder_oil', NULL, NULL, NULL, '2026-08-04T00:00:00Z')`,
+    );
+
+    expect(resolvePendingReward(db, 'r1', false, NOW)).toEqual({ rewardId: 'r1', kept: false, newId: null });
+    expect(readSatchel(db)).toHaveLength(2);
   });
 });

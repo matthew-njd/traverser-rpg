@@ -1,10 +1,11 @@
-import { enqueue } from '../db/outbox';
+import { enqueue, peek } from '../db/outbox';
 import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
 import { mintUuidV7 } from '../health/deltaId';
 import type { LocalDateResolver } from '../health/localDate';
 import { maxVigorFor, recoverVigor, restoreVigor } from '../progression/vigor';
 import { readOwnedGear, readSnapshot, spendItems } from '../battle/mirror';
+import { type SettledBattle, droppedPieces } from '../battle/settle';
 import type {
   AllocationPayload,
   EquipPayload,
@@ -13,6 +14,8 @@ import type {
   SettingsPayload,
   SkillsPayload,
   UseItemPayload,
+  DiscardPayload,
+  ResolveRewardPayload,
 } from './dto';
 import { readPlayer, writeRestTag, writeSettings, writeStoredLoadout, writeVigor } from './mirror';
 
@@ -380,6 +383,158 @@ export function requestExplore(
     kind: 'explore',
     payload,
     createdAt: new Date(now).toISOString(),
+  });
+
+  return payload;
+}
+
+/**
+ * ↯ **A drop from a battle still in the queue leaves with the payload, not by a discard.** Writes
+ * replay before the sync uploads battles, so a discard would reach a server that does not have the
+ * row yet; the battle would then create it, and the post-upload profile read would bring it back.
+ * Editing the queued payload means the drop never leaves the device. True when the id was one.
+ */
+function withdrawDrop(db: SqliteDatabase, id: string): boolean {
+  for (const entry of peek(db, 1_000, 'battle')) {
+    const battle = JSON.parse(entry.payload) as SettledBattle;
+    const item = battle.grantedItemIds.indexOf(id);
+    const piece = battle.grantedGearIds?.indexOf(id) ?? -1;
+
+    if (item < 0 && piece < 0) {
+      continue;
+    }
+
+    const pieces = droppedPieces(battle.drops);
+    const gearCount = battle.drops.gear.length;
+    const next: SettledBattle =
+      item >= 0
+        ? {
+            ...battle,
+            drops: { ...battle.drops, items: battle.drops.items.filter((_, index) => index !== item) },
+            grantedItemIds: battle.grantedItemIds.filter((_, index) => index !== item),
+          }
+        : {
+            ...battle,
+            drops: {
+              ...battle.drops,
+              gear: pieces.slice(0, gearCount).filter((_, index) => index !== piece),
+              trinket: piece === gearCount ? null : battle.drops.trinket,
+            },
+            grantedGearIds: battle.grantedGearIds?.filter((_, index) => index !== piece),
+          };
+
+    db.runSync('UPDATE outbox SET payload = ? WHERE client_op_id = ?', [JSON.stringify(next), entry.clientOpId]);
+
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * GDD 4 §5.2 — leave an item behind to make room. Null, and nothing written, while a fight is open:
+ * the fight's own satchel is the one it was built with.
+ */
+export function discardItem(db: SqliteDatabase, playerItemId: string, now: number): DiscardPayload | null {
+  let payload: DiscardPayload | null = null;
+
+  transact(db, () => {
+    if (readSnapshot(db) !== null) {
+      return;
+    }
+
+    payload = { id: playerItemId };
+    db.runSync('DELETE FROM player_item WHERE id = ?', [playerItemId]);
+
+    if (!withdrawDrop(db, playerItemId)) {
+      enqueue(db, { clientOpId: mintUuidV7(db, now), kind: 'discard_item', payload, createdAt: new Date(now).toISOString() });
+    }
+  });
+
+  return payload;
+}
+
+/** GDD 8 §5.5 — the same for a piece. Never a worn one: the server refuses it, and so does this. */
+export function discardGear(db: SqliteDatabase, playerGearId: string, now: number): DiscardPayload | null {
+  let payload: DiscardPayload | null = null;
+
+  transact(db, () => {
+    const piece = readOwnedGear(db).find((gear) => gear.playerGearId === playerGearId);
+
+    if (readSnapshot(db) !== null || piece === undefined || piece.equippedSlot !== null) {
+      return;
+    }
+
+    payload = { id: playerGearId };
+    db.runSync('DELETE FROM player_gear WHERE id = ?', [playerGearId]);
+
+    if (!withdrawDrop(db, playerGearId)) {
+      enqueue(db, { clientOpId: mintUuidV7(db, now), kind: 'discard_gear', payload, createdAt: new Date(now).toISOString() });
+    }
+  });
+
+  return payload;
+}
+
+/**
+ * GDD 4 §5.2 — keep or discard a reward step 10 parked past a cap. Kept lands at once under an id
+ * minted here, which the server adopts. Making room first is the caller's: discard, then keep.
+ */
+export function resolvePendingReward(
+  db: SqliteDatabase,
+  rewardId: string,
+  kept: boolean,
+  now: number,
+): ResolveRewardPayload | null {
+  let payload: ResolveRewardPayload | null = null;
+
+  transact(db, () => {
+    const player = readPlayer(db);
+    const reward = db.getFirstSync<{
+      kind: string;
+      def_id: string;
+      level_at_drop: number | null;
+      bonus_primary: number | null;
+      bonus_secondary: number | null;
+      created_at: string;
+    }>('SELECT kind, def_id, level_at_drop, bonus_primary, bonus_secondary, created_at FROM pending_reward WHERE id = ?', [
+      rewardId,
+    ]);
+
+    if (player === null || reward === null) {
+      return;
+    }
+
+    const newId = kept ? mintUuidV7(db, now) : null;
+
+    if (newId !== null && reward.kind === 'item') {
+      db.runSync('INSERT INTO player_item (id, player_id, item_def_id, acquired_at) VALUES (?, ?, ?, ?)', [
+        newId,
+        player.playerId,
+        reward.def_id,
+        reward.created_at,
+      ]);
+    } else if (newId !== null) {
+      db.runSync(
+        `INSERT INTO player_gear (
+           id, player_id, gear_def_id, equipped_slot, level_at_drop, bonus_primary, bonus_secondary, acquired_at
+         ) VALUES (?, ?, ?, NULL, ?, ?, ?, ?)`,
+        [
+          newId,
+          player.playerId,
+          reward.def_id,
+          reward.level_at_drop ?? player.level,
+          reward.bonus_primary ?? 0,
+          reward.bonus_secondary,
+          reward.created_at,
+        ],
+      );
+    }
+
+    db.runSync('DELETE FROM pending_reward WHERE id = ?', [rewardId]);
+
+    payload = { rewardId, kept, newId };
+    enqueue(db, { clientOpId: mintUuidV7(db, now), kind: 'resolve_reward', payload, createdAt: new Date(now).toISOString() });
   });
 
   return payload;

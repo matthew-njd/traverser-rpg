@@ -111,13 +111,15 @@ public sealed record BattleRequest(
 /// <c>items_consumed</c> then names a row that exists on both tiers. Null falls back to a
 /// server-minted id, which is what an M2-era client sends.
 /// </param>
+/// <param name="PlayerGearId">The same, for gear and Trinket drops (M5/P3b), so a dropped piece can be discarded by id.</param>
 public sealed record BattleDropRequest(
     string Kind,
     string DefId,
     int? LevelAtDrop = null,
     int? BonusPrimary = null,
     int? BonusSecondary = null,
-    Guid? PlayerItemId = null);
+    Guid? PlayerItemId = null,
+    Guid? PlayerGearId = null);
 
 /// <param name="ClientDeltaId">
 /// ↯ A UUIDv7 minted on-device when the delta was created and never regenerated on retry (T2 §5).
@@ -305,3 +307,14 @@ public sealed record UseItemRequest(int VigorAfter);
 /// </summary>
 /// <param name="SkillIds">Slot order, at most four. Skills and worn Trinket moves alike (GDD 3 §4.1).</param>
 public sealed record SetSkillsRequest(IReadOnlyList<string> SkillIds);
+
+/// <summary>
+/// <c>POST /api/v1/players/me/pending-rewards/{id}</c> — GDD 4 §5.2's keep/discard, for a reward
+/// step 10 parked past a cap.
+/// </summary>
+/// <param name="Resolution"><c>kept</c> or <c>discarded</c>.</param>
+/// <param name="NewId">
+/// Kept only: the id the device minted for the row it already inserted, so both tiers name the same
+/// object, as a battle drop's does.
+/// </param>
+public sealed record ResolvePendingRewardRequest(PendingRewardResolution Resolution, Guid? NewId);

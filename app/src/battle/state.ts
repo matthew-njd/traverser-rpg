@@ -115,6 +115,10 @@ export interface BattleContext {
   readonly tables: DropTables;
   readonly pool: readonly { itemDefId: string; weight: number; ordinal: number }[];
   readonly dropEncounterKind: DropEncounterKind | null;
+  /** `player_item_id` → `item_def_id`, as held when the context was built. */
+  readonly satchel: ReadonlyMap<string, string>;
+  /** GDD 4 §5.1's per-item maximum, by `item_def_id`. */
+  readonly maxStack: ReadonlyMap<string, number>;
 }
 
 function combatant(side: BattleSide, state: CombatantState, typeId: string | null): Combatant {
@@ -350,6 +354,23 @@ function useItem(state: BattleState, item: BattleItem, playerItemId: string): Re
   };
 }
 
+/**
+ * GDD 4 §5.1 — how many more of each item the satchel may take: the maximum, less what is held and
+ * not spent this fight. A resumed context is built from a satchel the spends already left, so a
+ * spent id it does not hold simply counts for nothing.
+ */
+function roomFor(context: BattleContext, consumed: readonly string[]): Map<string, number> {
+  const room = new Map(context.maxStack);
+
+  for (const [playerItemId, itemDefId] of context.satchel) {
+    if (!consumed.includes(playerItemId)) {
+      room.set(itemDefId, (room.get(itemDefId) ?? 0) - 1);
+    }
+  }
+
+  return room;
+}
+
 function settle(
   state: BattleState,
   context: BattleContext,
@@ -368,6 +389,7 @@ function settle(
       // bonus freezes against — and it is history, not a live value (T1 §4).
       level: state.enemyLevel,
       zoneId: context.enemy.zoneId,
+      room: roomFor(context, state.itemsConsumed),
       rng,
     });
 

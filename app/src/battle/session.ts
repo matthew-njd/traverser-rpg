@@ -185,6 +185,8 @@ export function buildContext(
     enemy,
     moves,
     items: itemsFrom(rows),
+    satchel: new Map(readSatchel(db).map((held) => [held.playerItemId, held.itemDefId])),
+    maxStack: new Map(rows('item_def').map((row) => [String(row.id), Number(row.max_stack)])),
     tables: dropTablesFrom(rows),
     // By drop kind as well as enemy: a zone boss has separate first-kill and repeat lists, and
     // merging them gave a first kill repeat-only items and a repeat kill the first-kill Rare.
