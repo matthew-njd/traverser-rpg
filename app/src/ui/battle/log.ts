@@ -82,6 +82,14 @@ export function chevronFor(
  * until its `damage_dealt` lands rather than printed on its own — a hit that killed the target
  * still emits both, so nothing is stranded.
  */
+/** GDD 3 §4.3's effect table, for the Trinket move that leaves one behind. */
+const EFFECT_LINES: Readonly<Record<string, string>> = {
+  rend: 'Rend — the next hit it takes deals 150%.',
+  weaken: 'Weaken — its next attack deals half damage.',
+  fortify: 'Fortify — the next hit you take deals half damage.',
+  swift: 'Swift — you act first next round.',
+};
+
 export function logLines(events: readonly BattleEvent[], labels: Labels): string[] {
   const lines: string[] = [];
   let pending: string | null = null;
@@ -93,7 +101,7 @@ export function logLines(events: readonly BattleEvent[], labels: Labels): string
     }
   };
 
-  for (const event of events) {
+  events.forEach((event, index) => {
     switch (event.type) {
       case 'move_used':
         flush();
@@ -123,6 +131,18 @@ export function logLines(events: readonly BattleEvent[], labels: Labels): string
         );
         break;
 
+      case 'effect_applied': {
+        // ↯ An item's effect is announced by its own `item_used`, which follows it directly; only a
+        // Trinket move's effect needs a line.
+        const line = EFFECT_LINES[event.effect];
+
+        if (events[index + 1]?.type !== 'item_used' && line !== undefined) {
+          flush();
+          lines.push(line);
+        }
+        break;
+      }
+
       case 'loot_rolled':
         // The log stays silent: GDD 13 §6.3's Reveal Card announces the drop on the outcome panel,
         // and saying it twice in two registers is worse than saying it once well.
@@ -132,7 +152,7 @@ export function logLines(events: readonly BattleEvent[], labels: Labels): string
       default:
         break;
     }
-  }
+  });
 
   flush();
 

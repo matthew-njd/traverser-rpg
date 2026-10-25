@@ -6,7 +6,13 @@ import { type MirrorPlayer, readPlayer } from '../sync/mirror';
 import type { StatDeltas } from '../sync/writes';
 import { type BattleContent, loadBattleContent } from './content';
 import { type DropEncounterKind, dropTablesFrom } from './loot';
-import { readBestiary, readEquippedGear, readSatchel } from './mirror';
+import {
+  readBestiary,
+  readEquippedGear,
+  readSatchel,
+  readStoredLoadout,
+  readTrinketMove,
+} from './mirror';
 import { SNAPSHOT_SCHEMA_VERSION, type BattleSnapshot } from './snapshot';
 import { type BattleContext, type BattleEvent, type BattleItem, beginBattle } from './state';
 import { type EncounterKind, type Move, rulesFor } from './types';
@@ -50,38 +56,87 @@ export function dropKindFor(
   }
 }
 
-/**
- * The moves the player may pick from: Basic Attack plus every unlocked Skill (GDD 2 §5).
- *
- * *Unlocked* is derivable — `level >= unlock_level`, never stored (T1 §4). GDD 2 §5's four-slot
- * equipped loadout is not applied here: equipping is a gear-screen flow and lands at M3, so until
- * then every unlocked Skill is offered.
- */
-export function availableMoves(
-  content: BattleContent,
-  level: number,
-): { attack: Move; skills: readonly Move[] } {
-  const unlocked = content.skills.filter((skill) => skill.unlockLevel <= level);
-  const attack = unlocked.find((skill) => skill.uses === null);
+/** GDD 2 §5 — four skill slots, plus Basic Attack, which never takes one. */
+export const LOADOUT_SLOTS = 4;
+
+export type LimitedMove = Move & { readonly uses: number };
+
+export interface Loadout {
+  readonly attack: Move;
+  /** Slot order, at most {@link LOADOUT_SLOTS}. */
+  readonly skills: readonly LimitedMove[];
+  /** Everything the slots may hold, in unlock order with a Trinket move last (GDD 3 §4.1). */
+  readonly available: readonly LimitedMove[];
+}
+
+function basicAttack(content: BattleContent): Move {
+  const attack = content.skills.find((skill) => skill.uses === null);
 
   if (attack === undefined) {
     throw new Error('the content bundle has no unlimited-use skill to serve as Basic Attack');
   }
 
-  return { attack, skills: unlocked.filter((skill) => skill !== attack) };
+  return attack;
 }
 
-/** Per-battle use budgets, reset at the start of every battle (T5 §7.2). */
-export function usesFor(content: BattleContent, level: number): Record<string, number> {
-  const uses: Record<string, number> = {};
+/**
+ * GDD 2 §5 / GDD 3 §4.1 — the stored choices still available, then empty slots filled from the
+ * rest in unlock order (GDD 10 §7.1), a worn Trinket's move last.
+ *
+ * *Unlocked* is derivable — `level >= unlock_level`, never stored (T1 §4). A stored id that is no
+ * longer available (its Trinket came off) simply drops out, and the fill takes its slot.
+ */
+export function loadoutFor(
+  content: BattleContent,
+  level: number,
+  trinketMoveId: string | null,
+  stored: readonly string[],
+): Loadout {
+  const skills = content.skills
+    .filter((skill): skill is LimitedMove & typeof skill => skill.uses !== null && skill.unlockLevel <= level)
+    .sort((a, b) => a.unlockLevel - b.unlockLevel || a.id.localeCompare(b.id));
+  const gear = trinketMoveId === null ? undefined : content.gearMoves.get(trinketMoveId);
+  const pool: LimitedMove[] = gear === undefined ? skills : [...skills, gear];
 
-  for (const skill of content.skills) {
-    if (skill.uses !== null && skill.unlockLevel <= level) {
-      uses[skill.id] = skill.uses;
+  const equipped = [...new Set(stored)]
+    .map((id) => pool.find((move) => move.id === id))
+    .filter((move) => move !== undefined)
+    .slice(0, LOADOUT_SLOTS);
+
+  for (const move of pool) {
+    if (equipped.length < LOADOUT_SLOTS && !equipped.includes(move)) {
+      equipped.push(move);
     }
   }
 
-  return uses;
+  return {
+    attack: basicAttack(content),
+    skills: equipped,
+    available: pool,
+  };
+}
+
+export function readLoadout(db: SqliteDatabase, content: BattleContent, level: number): Loadout {
+  return loadoutFor(content, level, readTrinketMove(db), readStoredLoadout(db));
+}
+
+/** Per-battle use budgets for the equipped moves, in slot order, reset every battle (T5 §7.2). */
+export function usesFor(moves: readonly LimitedMove[]): Record<string, number> {
+  return Object.fromEntries(moves.map((move) => [move.id, move.uses]));
+}
+
+/**
+ * What the action menu offers: Basic Attack, then the moves this fight was built with.
+ *
+ * Read from the state's use budgets rather than the stored loadout, so a resumed fight offers what
+ * it started with.
+ */
+export function offeredMoves(context: BattleContext, uses: Readonly<Record<string, number>>): Move[] {
+  const equipped = Object.keys(uses)
+    .map((id) => context.moves.get(id))
+    .filter((move) => move !== undefined);
+
+  return [basicAttack(context.content), ...equipped];
 }
 
 function itemsFrom(rows: (table: ContentTable) => readonly ContentRow[]): Map<string, BattleItem> {
@@ -197,7 +252,9 @@ export function startEncounter(
     playerStats,
     // The pool the player actually walks in with (GDD 2 §6) — Vigor persists between battles.
     playerVigor: Math.max(1, Math.min(playerStats.vigor, player.vigorCurrent)),
-    uses: usesFor(context.content, player.level),
+    // ↯ Frozen here, like the stat block. The Trinket and the loadout cannot change mid-fight, and a
+    // resume reads these keys rather than the stored loadout (`offeredMoves`).
+    uses: usesFor(readLoadout(db, context.content, player.level).skills),
     firstKill: bestiary.defeatCount === 0,
   });
 

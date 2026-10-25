@@ -106,6 +106,7 @@ function fakeApi(
     tagRestDay: async () => undefined,
     equipGear: async () => undefined,
     useItem: async () => undefined,
+    setSkills: async () => undefined,
     ...overrides,
   };
 }
@@ -459,6 +460,28 @@ describe('the online pass', () => {
     await run(db, { api });
 
     expect(equipped).toEqual([payload]);
+    expect(count(db)).toBe(0);
+  });
+
+  it('replays a queued loadout to its own endpoint and acknowledges it', async () => {
+    const db = registeredDatabase();
+    const payload = { skillIds: ['skill_titans_reach'] };
+
+    enqueue(db, { clientOpId: 'skills-1', kind: 'skills', payload, createdAt: '2026-08-01T00:00:00.000Z' });
+
+    const set: unknown[] = [];
+    const api = fakeApi({
+      setSkills: async (sent) => {
+        set.push(sent);
+      },
+      updateSettings: async () => {
+        throw new Error('a loadout was sent as settings');
+      },
+    });
+
+    await run(db, { api });
+
+    expect(set).toEqual([payload]);
     expect(count(db)).toBe(0);
   });
 

@@ -11,9 +11,10 @@ import type {
   ExplorePayload,
   RestDayPayload,
   SettingsPayload,
+  SkillsPayload,
   UseItemPayload,
 } from './dto';
-import { readPlayer, writeRestTag, writeSettings, writeVigor } from './mirror';
+import { readPlayer, writeRestTag, writeSettings, writeStoredLoadout, writeVigor } from './mirror';
 
 /**
  * tech-02 §3's progression writes — the endpoints marked `•`, which **apply optimistically to the
@@ -255,6 +256,36 @@ export function equipGear(
     enqueue(db, {
       clientOpId: mintUuidV7(db, now),
       kind: 'equip',
+      payload,
+      createdAt: new Date(now).toISOString(),
+    });
+  });
+
+  return payload;
+}
+
+/**
+ * GDD 2 §5 — replace the skill loadout, sent whole. Null, and nothing written, while a fight is
+ * open: the fight already froze its moves (`startEncounter`). The caller passes what
+ * `loadoutFor` offered, so the server's own check is the backstop.
+ */
+export function setSkills(db: SqliteDatabase, skillIds: readonly string[], now: number): SkillsPayload | null {
+  let payload: SkillsPayload | null = null;
+
+  transact(db, () => {
+    const player = readPlayer(db);
+
+    if (player === null || readSnapshot(db) !== null) {
+      return;
+    }
+
+    payload = { skillIds };
+
+    writeStoredLoadout(db, player.playerId, skillIds);
+
+    enqueue(db, {
+      clientOpId: mintUuidV7(db, now),
+      kind: 'skills',
       payload,
       createdAt: new Date(now).toISOString(),
     });

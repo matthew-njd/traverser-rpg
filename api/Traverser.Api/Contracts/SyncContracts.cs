@@ -270,3 +270,10 @@ public sealed record EquipGearRequest(GearSlot? EquippedSlot, int? VigorAfter);
 /// needs the equipped gear (T5 §1.6).
 /// </param>
 public sealed record UseItemRequest(int VigorAfter);
+
+/// <summary>
+/// <c>PUT /api/v1/players/me/skills</c> — GDD 2 §5's loadout, sent whole. Set, not added, so a replay
+/// lands the same result and needs no operation id (T2 §6.3).
+/// </summary>
+/// <param name="SkillIds">Slot order, at most four. Skills and worn Trinket moves alike (GDD 3 §4.1).</param>
+public sealed record SetSkillsRequest(IReadOnlyList<string> SkillIds);

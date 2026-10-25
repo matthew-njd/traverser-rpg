@@ -433,6 +433,22 @@ const V8_ENCOUNTER_GRANT: readonly string[] = [
    )`,
 ];
 
+/**
+ * Version 9 — the chosen skill loadout (GDD 2 §5, T1 `player_equipped_skill`).
+ *
+ * Holds a `player_skill_def` or a `gear_move` id (GDD 3 §4.1), so no foreign key to either. Empty
+ * until the player chooses; `loadoutFor` fills unchosen slots.
+ */
+const V9_EQUIPPED_SKILL: readonly string[] = [
+  `CREATE TABLE equipped_skill (
+     player_id TEXT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+     slot      INTEGER NOT NULL CHECK (slot BETWEEN 1 AND 4),
+     skill_id  TEXT NOT NULL,
+     PRIMARY KEY (player_id, slot),
+     UNIQUE (player_id, skill_id)
+   )`,
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
@@ -442,6 +458,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 6, statements: [...V6_GEAR] },
   { version: 7, statements: [...V7_VIGOR_ANCHOR] },
   { version: 8, statements: [...V8_ENCOUNTER_GRANT] },
+  { version: 9, statements: [...V9_EQUIPPED_SKILL] },
 ];
 
 /** The version a fully-migrated database reports. */

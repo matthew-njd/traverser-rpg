@@ -3108,9 +3108,6 @@ namespace Traverser.Api.Migrations
                     b.HasKey("PlayerId", "Slot")
                         .HasName("pk_player_equipped_skill");
 
-                    b.HasIndex("SkillId")
-                        .HasDatabaseName("ix_player_equipped_skill_skill_id");
-
                     b.HasIndex("PlayerId", "SkillId")
                         .IsUnique()
                         .HasDatabaseName("ix_player_equipped_skill_player_id_skill_id");
@@ -4708,16 +4705,7 @@ namespace Traverser.Api.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_player_equipped_skill_player_player_id");
 
-                    b.HasOne("Traverser.Api.Data.Entities.PlayerSkillDef", "Skill")
-                        .WithMany()
-                        .HasForeignKey("SkillId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired()
-                        .HasConstraintName("fk_player_equipped_skill_player_skill_def_skill_id");
-
                     b.Navigation("Player");
-
-                    b.Navigation("Skill");
                 });
 
             modelBuilder.Entity("Traverser.Api.Data.Entities.PlayerGear", b =>

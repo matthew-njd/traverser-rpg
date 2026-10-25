@@ -95,8 +95,6 @@ public partial class TraverserDbContext
 
             entity.HasOne(e => e.Player).WithMany()
                 .HasForeignKey(e => e.PlayerId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(e => e.Skill).WithMany()
-                .HasForeignKey(e => e.SkillId).OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<PlayerItem>(entity =>

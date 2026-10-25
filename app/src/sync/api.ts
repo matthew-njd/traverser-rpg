@@ -9,6 +9,7 @@ import {
   type Registration,
   type RestDayPayload,
   type SettingsPayload,
+  type SkillsPayload,
   type SyncResponse,
   type SyncSession,
   type UseItemPayload,
@@ -22,6 +23,7 @@ import {
   toWireRegistration,
   toWireRestDay,
   toWireSettings,
+  toWireSkills,
   toWireSyncRequest,
   toWireUseItem,
 } from './dto';
@@ -103,6 +105,7 @@ export interface TraverserApi {
   tagRestDay(payload: RestDayPayload): Promise<void>;
   equipGear(payload: EquipPayload): Promise<void>;
   useItem(payload: UseItemPayload): Promise<void>;
+  setSkills(payload: SkillsPayload): Promise<void>;
 }
 
 async function problemCode(response: Response): Promise<string | null> {
@@ -224,6 +227,13 @@ export function createApi(options: ApiOptions): TraverserApi {
       await request(options, `/players/me/gear/${encodeURIComponent(payload.playerGearId)}/equipped`, {
         method: 'PUT',
         body: JSON.stringify(toWireEquip(payload)),
+      });
+    },
+
+    async setSkills(payload) {
+      await request(options, '/players/me/skills', {
+        method: 'PUT',
+        body: JSON.stringify(toWireSkills(payload)),
       });
     },
 

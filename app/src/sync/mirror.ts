@@ -369,6 +369,7 @@ export function writeInventory(db: SqliteDatabase, profile: PlayerProfile): void
 
   db.runSync('DELETE FROM player_gear WHERE player_id = ?', [playerId]);
   db.runSync('DELETE FROM player_item WHERE player_id = ?', [playerId]);
+  writeStoredLoadout(db, playerId, profile.equippedSkillIds);
 
   for (const gear of profile.gear) {
     db.runSync(
@@ -395,6 +396,18 @@ export function writeInventory(db: SqliteDatabase, profile: PlayerProfile): void
       [item.id, playerId, item.itemDefId, item.acquiredAt],
     );
   }
+}
+
+export function writeStoredLoadout(db: SqliteDatabase, playerId: string, skillIds: readonly string[]): void {
+  db.runSync('DELETE FROM equipped_skill WHERE player_id = ?', [playerId]);
+
+  skillIds.forEach((skillId, index) => {
+    db.runSync('INSERT INTO equipped_skill (player_id, slot, skill_id) VALUES (?, ?, ?)', [
+      playerId,
+      index + 1,
+      skillId,
+    ]);
+  });
 }
 
 /**

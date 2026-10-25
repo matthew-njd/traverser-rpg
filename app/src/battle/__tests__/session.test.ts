@@ -2,7 +2,7 @@ import { seedEmbeddedContent } from '../../content/store';
 import type { SqliteDatabase } from '../../db/types';
 import { registeredDatabase } from '../../sync/__tests__/fixtures';
 import { recordBattle } from '../mirror';
-import { availableMoves, buildContext, dropKindFor, startEncounter, usesFor } from '../session';
+import { buildContext, dropKindFor, loadoutFor, startEncounter, usesFor } from '../session';
 import { CONTENT } from './fixtures';
 
 /**
@@ -44,34 +44,80 @@ describe('dropKindFor', () => {
   });
 });
 
-describe('availableMoves', () => {
+describe('loadoutFor', () => {
+  const ids = (moves: readonly { id: string }[]) => moves.map((move) => move.id);
+  const loadout = (level: number, trinket: string | null = null, stored: string[] = []) =>
+    loadoutFor(CONTENT, level, trinket, stored);
+
   /** *Unlocked* is derivable from `level >= unlock_level` and is never stored (T1 §4). */
   it('offers only what the level has unlocked', () => {
-    expect(availableMoves(CONTENT, 1).skills).toEqual([]);
-    expect(availableMoves(CONTENT, 4).skills.map((move) => move.id)).toEqual(['skill_iron_advance']);
+    expect(loadout(1).skills).toEqual([]);
+    expect(ids(loadout(4).skills)).toEqual(['skill_iron_advance']);
   });
 
-  it('always offers the unlimited move as Attack, at every level', () => {
-    expect(availableMoves(CONTENT, 1).attack.id).toBe('skill_basic_attack');
-    expect(availableMoves(CONTENT, 60).attack.id).toBe('skill_basic_attack');
+  it('always offers Basic Attack as Attack, never in a slot', () => {
+    expect(loadout(60).attack.id).toBe('skill_basic_attack');
+    expect(ids(loadout(60).skills)).not.toContain('skill_basic_attack');
   });
 
-  it('never lists Basic Attack among the Skills', () => {
-    expect(availableMoves(CONTENT, 60).skills.map((move) => move.id)).not.toContain(
-      'skill_basic_attack',
+  /** GDD 3 §2.4 — with nothing chosen, the first four by unlock order; the fifth is benched. */
+  it('fills unchosen slots in unlock order, not id order', () => {
+    expect(ids(loadout(22).skills)).toEqual([
+      'skill_iron_advance',
+      'skill_thunderers_wrath',
+      'skill_warlords_advance',
+      'skill_shadowstep',
+    ]);
+    expect(ids(loadout(22).available)).toContain('skill_titans_reach');
+    expect(ids(loadout(22).skills)).not.toContain('skill_titans_reach');
+  });
+
+  it('keeps a stored choice and fills around it', () => {
+    expect(ids(loadout(22, null, ['skill_titans_reach']).skills)).toEqual([
+      'skill_titans_reach',
+      'skill_iron_advance',
+      'skill_thunderers_wrath',
+      'skill_warlords_advance',
+    ]);
+  });
+
+  /** GDD 3 §4.1 — unequipping removes access, and the freed slot fills. */
+  it("drops a Trinket move whose Trinket is no longer worn", () => {
+    expect(ids(loadout(16, null, ['move_gatekeepers_ruse']).skills)).not.toContain('move_gatekeepers_ruse');
+    expect(loadout(16, null, ['move_gatekeepers_ruse']).skills).toHaveLength(4);
+  });
+
+  it('fills a free slot with a worn Trinket move, and benches it when the slots are full', () => {
+    expect(ids(loadout(10, 'move_gatekeepers_ruse').skills)).toContain('move_gatekeepers_ruse');
+    expect(ids(loadout(16, 'move_gatekeepers_ruse').skills)).not.toContain('move_gatekeepers_ruse');
+    expect(ids(loadout(16, 'move_gatekeepers_ruse').available).at(-1)).toBe('move_gatekeepers_ruse');
+    expect(ids(loadout(16, 'move_gatekeepers_ruse', ['move_gatekeepers_ruse']).skills)[0]).toBe(
+      'move_gatekeepers_ruse',
     );
+  });
+
+  it('never holds more than four, whatever was stored', () => {
+    const stored = ['skill_titans_reach', 'skill_shadowstep', 'skill_pale_sentence', 'skill_iron_advance', 'skill_warlords_advance'];
+
+    expect(loadout(30, null, stored).skills).toHaveLength(4);
   });
 });
 
 describe('usesFor', () => {
-  it('budgets each unlocked limited skill and leaves the unlimited one out', () => {
-    const uses = usesFor(CONTENT, 6);
+  /** GDD 8 §4.1 — a Mythic Trinket move has 4 uses, replenished each battle like every skill. */
+  it('budgets each equipped move in slot order', () => {
+    const uses = usesFor(loadoutFor(CONTENT, 10, 'move_gatekeepers_ruse', []).skills);
 
-    expect(uses).toEqual({ skill_iron_advance: 5, skill_thunderers_wrath: 4 });
+    expect(uses).toEqual({
+      skill_iron_advance: 5,
+      skill_thunderers_wrath: 4,
+      skill_warlords_advance: 4,
+      move_gatekeepers_ruse: 4,
+    });
   });
 
-  it('is empty at Level 1, where nothing limited is unlocked', () => {
-    expect(usesFor(CONTENT, 1)).toEqual({});
+  it('is empty when nothing is equipped', () => {
+    expect(usesFor([])).toEqual({});
   });
 });
 
@@ -170,5 +216,31 @@ describe('startEncounter', () => {
     const db = battleReady();
 
     expect(open(db).snapshot.contentVersion).toBeGreaterThan(0);
+  });
+});
+
+describe('the Trinket move in a real encounter', () => {
+  const withTrinket = (gearDefId: string) => {
+    const db = battleReady({ level: 10 });
+    const playerId = db.getFirstSync<{ id: string }>('SELECT id FROM player')?.id ?? '';
+
+    db.runSync(
+      `INSERT INTO player_gear (id, player_id, gear_def_id, equipped_slot, level_at_drop, bonus_primary, bonus_secondary, acquired_at)
+       VALUES ('t', ?, ?, 'trinket', 10, 3, 3, '2026-08-01T00:00:00Z')`,
+      [playerId, gearDefId],
+    );
+
+    return startEncounter(db, {
+      enemyId: 'enemy_harpy',
+      encounterKind: 'wild',
+      clientBattleId: 'cb-t',
+      startedAt: '2026-08-18T10:00:00-04:00',
+    }).snapshot.state.uses;
+  };
+
+  /** GDD 8 §2.1 — Mythic and Divine Trinkets grant a move; Heroic ones never do. */
+  it('offers a Mythic Trinket move and nothing for a Heroic one', () => {
+    expect(withTrinket('gear_gatekeepers_ruse')).toHaveProperty('move_gatekeepers_ruse', 4);
+    expect(Object.keys(withTrinket('gear_skyroad_sigil'))).not.toContain('move_gatekeepers_ruse');
   });
 });

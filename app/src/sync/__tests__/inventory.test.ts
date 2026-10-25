@@ -1,4 +1,4 @@
-import { readEquippedGear, readSatchel } from '../../battle/mirror';
+import { readEquippedGear, readSatchel, readStoredLoadout } from '../../battle/mirror';
 import { memoryDatabase } from '../../db/__tests__/testDatabase';
 import { parseProfile } from '../dto';
 import { writeProfile } from '../mirror';
@@ -85,6 +85,18 @@ describe('writing the inventory', () => {
         profile({ gear: [WIRE_BLADE, { ...WIRE_BLADE, id: '018f3a9c-0000-7000-8000-00000000a002' }] }),
       ),
     ).toThrow();
+  });
+
+  /** GDD 2 §5 — a restore recovers the chosen loadout, and replaces rather than merges it. */
+  it('replaces the stored loadout from the profile', () => {
+    const db = memoryDatabase();
+    const loadout = (ids: string[]) =>
+      profile({ equipped_skills: ids.map((skill_id, index) => ({ slot: index + 1, skill_id })) });
+
+    writeProfile(db, loadout(['skill_titans_reach', 'skill_iron_advance']));
+    writeProfile(db, loadout(['skill_shadowstep']));
+
+    expect(readStoredLoadout(db)).toEqual(['skill_shadowstep']);
   });
 
   it('accepts a profile carrying nothing at all', () => {

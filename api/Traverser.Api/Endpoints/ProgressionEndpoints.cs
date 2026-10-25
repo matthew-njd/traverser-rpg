@@ -51,6 +51,67 @@ public static class ProgressionEndpoints
         routes.MapPost("/players/me/items/{playerItemId:guid}/use", UseItemAsync)
             .WithName("UseItem")
             .WithSummary("Spend a healing item outside a battle (GDD 4 §4).");
+
+        routes.MapPut("/players/me/skills", SetSkillsAsync)
+            .WithName("SetSkills")
+            .WithSummary("Replace the 1–4 slot skill loadout (GDD 2 §5).");
+    }
+
+    /// <summary>
+    /// GDD 2 §5 / GDD 3 §4.1 — every id must be an unlocked limited-use skill or the move of the
+    /// Trinket worn now. Basic Attack is always available and never takes a slot.
+    /// </summary>
+    private static async Task<IResult> SetSkillsAsync(
+        SetSkillsRequest request,
+        CurrentPlayer current,
+        TraverserDbContext db,
+        CancellationToken ct)
+    {
+        var ids = request.SkillIds ?? [];
+
+        if (ids.Count > 4 || ids.Distinct().Count() != ids.Count)
+        {
+            return ApiProblem.BadRequest(ApiProblem.ValidationFailed, "skill_ids must be at most 4 distinct ids.");
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+
+        var player = await db.Players.FirstOrDefaultAsync(p => p.Id == current.PlayerId, ct);
+
+        if (player is null)
+        {
+            return ApiProblem.Unauthorized(ApiProblem.InvalidBearerToken, "The player for this token no longer exists.");
+        }
+
+        var skills = await db.PlayerSkillDefs
+            .Where(s => s.Uses != null && s.UnlockLevel <= player.Level)
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+        var trinketMove = await db.PlayerGear
+            .Where(g => g.PlayerId == player.Id && g.EquippedSlot == GearSlot.Trinket)
+            .Select(g => g.GearDef.GrantsMoveId)
+            .FirstOrDefaultAsync(ct);
+
+        var invalid = ids.FirstOrDefault(id => !skills.Contains(id) && id != trinketMove);
+
+        if (invalid is not null)
+        {
+            return ApiProblem.BadRequest(ApiProblem.ValidationFailed, $"{invalid} is not available to equip.");
+        }
+
+        await db.PlayerEquippedSkills.Where(s => s.PlayerId == player.Id).ExecuteDeleteAsync(ct);
+
+        db.PlayerEquippedSkills.AddRange(
+            ids.Select((id, index) => new PlayerEquippedSkill { PlayerId = player.Id, Slot = index + 1, SkillId = id }));
+
+        await db.SaveChangesAsync(ct);
+
+        var profile = await PlayerProfile.LoadAsync(db, player.Id, ct)
+            ?? throw new InvalidOperationException($"Profile for {player.Id} vanished mid-loadout.");
+
+        await transaction.CommitAsync(ct);
+
+        return Results.Ok(profile);
     }
 
     /// <summary>

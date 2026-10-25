@@ -1,5 +1,6 @@
 import type { TypeChart } from '../../battle/content';
 import { chartKey } from '../../battle/content';
+import { LOADOUT_SLOTS } from '../../battle/session';
 import type { Move } from '../../battle/types';
 import { type Labels, labelFor } from '../../content/labels';
 import type { SkillOption } from './ActionMenu';
@@ -61,7 +62,7 @@ function hintFor(
 }
 
 /** GDD 2 §5 / GDD 3 §2.4 — the loadout is four slots, filled or not. */
-export const SKILL_SLOTS = 4;
+export const SKILL_SLOTS = LOADOUT_SLOTS;
 
 /**
  * A slot in GDD 13 §6.1's grid: an unlocked skill, or the level that will fill it.
@@ -82,9 +83,7 @@ export type Slot = { readonly kind: 'skill'; readonly skill: SkillOption } | {
  * Levels 1–3 hold no skills at all (GDD 3 §2.4) and that is when GDD 10's tutorial runs, so the
  * four-locked case is the **first** battle screen a player ever sees rather than an edge case.
  *
- * ↯ Above Level 22 there are more unlocked skills than slots and GDD 2 §5 makes the loadout a
- * choice. The equip flow is unbuilt, so the first four by unlock order stand in for it — the same
- * stand-in `availableMoves` already makes, and the reason both say so.
+ * `skills` is the loadout the fight was built with (`offeredMoves`), so it is never more than four.
  */
 export function slotsFor(
   skills: readonly SkillOption[],

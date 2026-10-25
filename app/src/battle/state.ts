@@ -1,7 +1,7 @@
 import type { StatDeltas } from '../sync/writes';
 import { type BattleContent, type EnemyDefinition, enemyStatsAt } from './content';
 import { resolveDamage } from './damage';
-import { consumeEffects, consumeSwift } from './effects';
+import { applyEffect, consumeEffects, consumeSwift } from './effects';
 import { type DropEncounterKind, type DropTables, type Drops, NO_DROPS, rollDrops } from './loot';
 import type { Rng } from './rng';
 import { weightedPick } from './select';
@@ -269,8 +269,20 @@ function attack(
     result.consumed.filter((effect) => effect !== 'weaken' && effect !== 'surge'),
   );
 
-  const nextAttacker: CombatantState = { ...attackerState, effects: attackerEffects };
-  const nextDefender: CombatantState = { ...defenderState, effects: defenderEffects, vigor };
+  let nextAttacker: CombatantState = { ...attackerState, effects: attackerEffects };
+  let nextDefender: CombatantState = { ...defenderState, effects: defenderEffects, vigor };
+
+  // ↯ After this hit's own consumption, never before (GDD 3 §4.3 "applied on hit"): a Rend set
+  // first would amplify the very hit that sets it. Only a Trinket move carries one (T5 §6).
+  const effect = actor === 'player' ? context.content.gearMoves.get(move.id)?.effect : null;
+
+  if (effect === 'rend' || effect === 'weaken') {
+    nextDefender = { ...nextDefender, effects: applyEffect(nextDefender.effects, effect) };
+    events.push({ type: 'effect_applied', on: defenderSide, effect });
+  } else if (effect === 'fortify' || effect === 'swift') {
+    nextAttacker = { ...nextAttacker, effects: applyEffect(nextAttacker.effects, effect) };
+    events.push({ type: 'effect_applied', on: attackerSide, effect });
+  }
 
   const uses =
     usesLeft === undefined ? state.uses : { ...state.uses, [move.id]: Math.max(0, usesLeft - 1) };

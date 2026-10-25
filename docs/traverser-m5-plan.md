@@ -115,16 +115,22 @@ The commit subject names the packet number from this plan or no number at all.
 the Satchel; the Items list matches `player_item`; a heal stacks on accrued regen, stops at max, is
 refused when full or in a fight, and a replayed use changes nothing.
 
-### P2 — Gear-granted moves (GDD 8 §4)
+### P2 — The skill loadout, and gear-granted moves (GDD 2 §5, GDD 8 §4)
 
-- A worn Mythic or Divine Trinket adds its move to the battle's move list for that fight.
+- **The loadout picker comes first**, added 2026-10-25: no plan had built GDD 2 §5's choice, so
+  skills past the fourth never reached the battle menu. A Skills card on Character's Stats pane
+  (GDD 13 §3.2, amended), `PUT /skills`, and the loadout on the profile.
+- A worn Mythic or Divine Trinket adds its move to the loadout's pool, competing for the four
+  slots (GDD 3 §4.1). A Divine move's effect applies after its own hit.
 - Uses replenish each battle, as for every other Divine move.
 - ↯ The move is read when the battle is built, like the stat block. Taking the Trinket off mid-fight
   is already refused, so the frozen copy cannot go stale.
 
 **Tests:** a Mythic Trinket's move is offered and a Heroic one has none; its damage asserts against a
 fixtures row; the move leaves the list when the Trinket comes off. ↯ No fixture pins a gear move yet,
-so the machine-verified row comes first, the same order T5 §10 followed.
+so the machine-verified row comes first, the same order T5 §10 followed. Fixtures §10.10 added.
+Also: unchosen slots fill in unlock order; a stored choice survives a restore; a swap is refused in a
+fight.
 
 ### P3 — Deterministic rewards (T2 §4 step 10)
 
@@ -222,7 +228,8 @@ Verified at P8, before the wrap-up. M5 is done when, on the Pixel:
 - **GDD 12 has no tech spec.** T1 has no lore table and the manifest has no lore IDs. P5 starts with
   those, not with screens. The bestiary's place is settled: GDD 13 §5.3 (§3.2).
 - **GDD 8 §4's first Divine Trinket needs a secondary-effect tooltip** that Section 3 routed to
-  Section 12. GDD 12 does not cover it. P2 or P5 must place it, or record where it goes.
+  Section 12. GDD 12 does not cover it. P2 gives every Trinket effect a combat-log line; the
+  one-time overlay GDD 13 §6.4 lists goes with P5's other overlays.
 - **Note 2 (encounters never expire) remains spec-correct and unaddressed.** Carried from M4 §6.
 - **T6 names "M5" for the home-lab decision and the second restore drill.** Both now mean M6. Amend
   T6 when M6 is planned, not before.

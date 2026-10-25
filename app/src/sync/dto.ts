@@ -372,6 +372,8 @@ export interface PlayerProfile {
   readonly unlockedZoneIds: readonly string[];
   readonly gear: readonly OwnedGear[];
   readonly items: readonly OwnedItem[];
+  /** The chosen loadout in slot order (GDD 2 §5). Empty until the player chooses one. */
+  readonly equippedSkillIds: readonly string[];
 }
 
 /**
@@ -450,6 +452,10 @@ export function parseProfile(value: unknown, at = 'profile'): PlayerProfile {
         acquiredAt: text(item.acquired_at, `${at}.items[${index}].acquired_at`),
       };
     }),
+    // Ordered by slot on the server, so the index is the slot.
+    equippedSkillIds: array(body.equipped_skills, `${at}.equipped_skills`).map((row, index) =>
+      text(object(row, `${at}.equipped_skills[${index}]`).skill_id, `${at}.equipped_skills[${index}].skill_id`),
+    ),
   };
 }
 
@@ -532,6 +538,15 @@ export interface EquipPayload {
 
 export function toWireEquip(payload: EquipPayload): Json {
   return { equipped_slot: payload.equippedSlot, vigor_after: payload.vigorAfter };
+}
+
+/** GDD 2 §5's loadout, sent whole. Set, not added, so no operation id (T2 §6.3). */
+export interface SkillsPayload {
+  readonly skillIds: readonly string[];
+}
+
+export function toWireSkills(payload: SkillsPayload): Json {
+  return { skill_ids: payload.skillIds };
 }
 
 /** GDD 4 §4's out-of-battle heal. The item row is the server's ledger, so no operation id. */

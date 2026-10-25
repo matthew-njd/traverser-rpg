@@ -45,6 +45,10 @@ internal static class PlayerProfile
                     .Where(i => i.PlayerId == p.Id)
                     .OrderBy(i => i.AcquiredAt).ThenBy(i => i.Id)
                     .ToList(),
+                Skills = db.PlayerEquippedSkills
+                    .Where(s => s.PlayerId == p.Id)
+                    .OrderBy(s => s.Slot)
+                    .ToList(),
             })
             .FirstOrDefaultAsync(ct);
 
@@ -116,7 +120,9 @@ internal static class PlayerProfile
 
             Items: row.Items
                 .Select(i => new PlayerItemResponse(i.Id, i.ItemDefId, i.AcquiredAt))
-                .ToList());
+                .ToList(),
+
+            EquippedSkills: row.Skills.Select(s => new EquippedSkillResponse(s.Slot, s.SkillId)).ToList());
     }
 
     /// <summary>Fixed scale and invariant culture — a comma decimal separator would be a wire break.</summary>

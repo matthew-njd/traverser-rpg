@@ -1,4 +1,4 @@
-import { grantItem, readEquippedGear, readOwnedGear, readSatchel } from '../../battle/mirror';
+import { grantItem, readEquippedGear, readOwnedGear, readSatchel, readStoredLoadout } from '../../battle/mirror';
 import { edtDates } from '../../health/__tests__/fixtures';
 import { seedEmbeddedContent } from '../../content/store';
 import { count, peek } from '../../db/outbox';
@@ -14,6 +14,7 @@ import {
   changeSettings,
   consumeItem,
   equipGear,
+  setSkills,
   requestExplore,
   tagRestDay,
 } from '../writes';
@@ -417,6 +418,31 @@ describe('using a healing item outside a fight', () => {
     expect(consumeItem(db, item, NOW, edtDates)).toBeNull();
     expect(held(db)).toEqual(['salve', 'warhex']);
     expect(readPlayer(db)?.vigorCurrent).toBe(vigor);
+    expect(count(db)).toBe(0);
+  });
+});
+
+describe('setting the skill loadout', () => {
+  it('stores the loadout in slot order and queues one replay', () => {
+    const db = registeredDatabase();
+
+    expect(setSkills(db, ['skill_titans_reach', 'skill_iron_advance'], NOW)).toEqual({
+      skillIds: ['skill_titans_reach', 'skill_iron_advance'],
+    });
+    expect(readStoredLoadout(db)).toEqual(['skill_titans_reach', 'skill_iron_advance']);
+    expect(peek(db, 10).map((entry) => entry.kind)).toEqual(['skills']);
+  });
+
+  /** The fight froze its moves when it opened, so a mid-fight change would be invisible to it. */
+  it('refuses while a battle is open, and changes nothing', () => {
+    const db = registeredDatabase();
+
+    db.runSync(
+      `INSERT INTO battle_snapshot (one_row, client_battle_id, snapshot, updated_at) VALUES (1, 'b', '{}', '')`,
+    );
+
+    expect(setSkills(db, ['skill_iron_advance'], NOW)).toBeNull();
+    expect(readStoredLoadout(db)).toEqual([]);
     expect(count(db)).toBe(0);
   });
 });

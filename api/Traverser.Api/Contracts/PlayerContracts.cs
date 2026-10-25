@@ -36,7 +36,11 @@ public sealed record PlayerProfileResponse(
     PlayerSettingsResponse Settings,
     IReadOnlyList<string> UnlockedZoneIds,
     IReadOnlyList<PlayerGearResponse> Gear,
-    IReadOnlyList<PlayerItemResponse> Items);
+    IReadOnlyList<PlayerItemResponse> Items,
+    IReadOnlyList<EquippedSkillResponse> EquippedSkills);
+
+/// <summary>A chosen loadout slot (GDD 2 §5). Slots the player never chose are absent.</summary>
+public sealed record EquippedSkillResponse(int Slot, string SkillId);
 
 /// <summary>
 /// An owned gear instance. <c>Id</c> is the server's, and that is the point of carrying it: the

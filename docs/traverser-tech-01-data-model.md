@@ -315,6 +315,8 @@ create table player_equipped_skill (
 ```
 The 1–4 slot range is the "max 4 equipped skills" rule. *Unlocked* skills are not stored — they are derivable from `level >= unlock_level`, so there is nothing to keep in sync.
 
+> **Amended 2026-10-25 (M5/P2). `skill_id` has no foreign key.** GDD 3 §4.1 puts a worn Trinket's move in the same four slots, and gear moves live in `gear_move`, not `player_skill_def`. Migration `20261025203214_LoadoutHoldsGearMoves` drops the key. `PUT /skills` validates each id instead. A Trinket move's row outlives its Trinket, and readers skip a row that is no longer available, so taking the Trinket off needs no cleanup write. Rows exist only once the player has chosen; an unchosen slot is filled on read from unlocked moves in unlock order (GDD 10 §7.1).
+
 ```sql
 create table player_item (
   id          uuid primary key,

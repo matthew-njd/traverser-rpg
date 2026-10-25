@@ -25,6 +25,7 @@ describe('schema migrations', () => {
         // The M1 subset of the tech-01 §4 mirror.
         'activity_day',
         'encounter_grant',
+        'equipped_skill',
         'player',
         'player_bestiary',
         'player_gear',
@@ -82,6 +83,7 @@ describe('schema migrations', () => {
     const db = memoryDatabase();
 
     // Rewind to a device that is still on version 1 by dropping what came after it.
+    db.execSync('DROP TABLE equipped_skill');
     db.execSync('DROP TABLE encounter_grant');
     db.execSync('DROP TABLE player_bestiary');
     db.execSync('DROP TABLE player_gear');

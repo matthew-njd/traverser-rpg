@@ -3,14 +3,17 @@ import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getDatabase } from '@/db/open';
+import { loadBattleContent } from '@/battle/content';
 import { readEquippedGear, readSnapshot } from '@/battle/mirror';
+import { type Loadout, readLoadout } from '@/battle/session';
+import { type Labels, loadLabels } from '@/content/labels';
 import { type EquippedBonus, effectiveStats } from '@/progression/stats';
 import { maxVigorFor, vigorReadout } from '@/progression/vigor';
 import { syncNow } from '@/runtime';
 import type { ActivityDay } from '@/sync/dto';
 import { dayBefore, deviceLocalDates } from '@/health/localDate';
 import { type MirrorPlayer, isCredited, isRestTagged, readActivityDays, readPlayer } from '@/sync/mirror';
-import { type StatDeltas, allocateStatPoints, tagRestDay } from '@/sync/writes';
+import { type StatDeltas, allocateStatPoints, setSkills, tagRestDay } from '@/sync/writes';
 import { useAppStore } from '@/state/appStore';
 import { usePlayerStore } from '@/state/playerStore';
 import { ActivityLog } from '@/ui/ActivityLog';
@@ -20,6 +23,7 @@ import { Button, Card, Heading, Screen, SegmentedControl } from '@/ui/primitives
 import { RestDay } from '@/ui/RestDay';
 import { Streak } from '@/ui/Streak';
 import { XpBar } from '@/ui/XpBar';
+import { SkillsCard } from '@/ui/SkillsCard';
 import { StatPanel } from '@/ui/StatPanel';
 import { colors, radius, space, tabular, type } from '@/ui/theme';
 
@@ -42,6 +46,8 @@ export default function Character() {
   const [yesterdayOpen, setYesterdayOpen] = useState(false);
   const [fighting, setFighting] = useState(false);
   const [vigor, setVigor] = useState<{ current: number; max: number } | null>(null);
+  const [loadout, setLoadout] = useState<Loadout | null>(null);
+  const [labels, setLabels] = useState<Labels>(new Map());
 
   const slice = usePlayerStore();
   const banner = useAppStore((state) => state.banner);
@@ -77,6 +83,8 @@ export default function Character() {
         !isCredited(db, yesterday),
     );
     setFighting(readSnapshot(db) !== null);
+    setLoadout(mirror === null ? null : readLoadout(db, loadBattleContent(db), mirror.level));
+    setLabels(loadLabels(db));
   }, []);
 
   // `lastServerOutcome` is a poor change signal — two successful syncs both read `'synced'`, so
@@ -127,6 +135,15 @@ export default function Character() {
     } finally {
       setAllocating(false);
     }
+  };
+
+  /** GDD 2 §5. Local first; the replay is best-effort, like every write here. */
+  const equipSkills = (skillIds: string[]) => {
+    if (setSkills(getDatabase(), skillIds, Date.now()) !== null) {
+      void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
+    }
+
+    reload();
   };
 
   /**
@@ -238,6 +255,16 @@ export default function Character() {
                   current={effectiveStats(player, equipped)}
                   busy={allocating}
                   onConfirm={confirm}
+                />
+              )}
+
+              {loadout === null ? null : (
+                <SkillsCard
+                  available={loadout.available}
+                  equipped={loadout.skills}
+                  labels={labels}
+                  fighting={fighting}
+                  onSet={equipSkills}
                 />
               )}
 

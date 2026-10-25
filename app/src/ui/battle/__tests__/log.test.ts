@@ -126,6 +126,20 @@ describe('logLines', () => {
     ).toEqual(['item_stormveil used.']);
   });
 
+  /** GDD 3 §4.3 — a Trinket move's effect gets a line; an item's is already its own line. */
+  it('names the effect a Trinket move leaves, and not one an item arms', () => {
+    const rend: BattleEvent = { type: 'effect_applied', on: 'enemy', effect: 'rend' };
+    const weaken: BattleEvent = { type: 'effect_applied', on: 'enemy', effect: 'weaken' };
+
+    expect(logLines([used('move_gatekeepers_snare'), hit({ amount: 36 }), rend], LABELS)).toEqual([
+      'move_gatekeepers_snare — 36 damage.',
+      'Rend — the next hit it takes deals 150%.',
+    ]);
+    expect(
+      logLines([weaken, { type: 'item_used', itemDefId: 'item_sunder_oil', healed: null }], LABELS),
+    ).toEqual(['item_sunder_oil used.']);
+  });
+
   /**
    * A move that misses its `damage_dealt` — nothing in the engine does this today — must not swallow
    * the line that follows it. The held move is flushed, not dropped.

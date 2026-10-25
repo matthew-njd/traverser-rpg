@@ -118,6 +118,23 @@ export function readOwnedGear(db: SqliteDatabase): OwnedGear[] {
     }));
 }
 
+/** GDD 3 §4.1 — the move the worn Trinket grants, if it grants one. */
+export function readTrinketMove(db: SqliteDatabase): string | null {
+  return (
+    db.getFirstSync<{ grants_move_id: string | null }>(
+      `SELECT gd.grants_move_id FROM player_gear pg JOIN gear_def gd ON gd.id = pg.gear_def_id
+        WHERE pg.equipped_slot = 'trinket'`,
+    )?.grants_move_id ?? null
+  );
+}
+
+/** The chosen loadout in slot order (GDD 2 §5). Empty until the player has chosen one. */
+export function readStoredLoadout(db: SqliteDatabase): string[] {
+  return db
+    .getAllSync<{ skill_id: string }>('SELECT skill_id FROM equipped_skill ORDER BY slot')
+    .map((row) => row.skill_id);
+}
+
 export function readBestiary(db: SqliteDatabase, enemyId: string): BestiaryEntry {
   const row = db.getFirstSync<{ encounter_count: number; defeat_count: number }>(
     'SELECT encounter_count, defeat_count FROM player_bestiary WHERE enemy_id = ?',

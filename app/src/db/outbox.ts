@@ -15,7 +15,8 @@ export type OutboxKind =
   | 'rest_day'
   | 'explore'
   | 'equip'
-  | 'use_item';
+  | 'use_item'
+  | 'skills';
 
 export interface OutboxEntry {
   readonly clientOpId: string;

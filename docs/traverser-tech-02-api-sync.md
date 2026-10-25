@@ -98,6 +98,12 @@ All of these apply optimistically to the mirror and replay to the server; all ar
 > - **Healing items only.** A Buff or a Type Charm is rejected with `validation_failed` and kept.
 > - **The item row is the ledger, so there is no operation ID.** Vigour moves only when the call deletes the row. A replay finds it gone and changes nothing, so a use replayed after a later battle cannot undo that battle's damage. A missing row, including another player's item, returns the profile unchanged.
 
+> **Amended 2026-10-25 (M5/P2). `PUT /players/me/skills` is built, and the profile carries the loadout.**
+>
+> - **The body is `{ "skill_ids": [<id>, ...] }`** in slot order, at most four, all distinct. Each must be an unlocked limited-use skill or the move of the Trinket worn now (GDD 3 §4.1). Basic Attack never takes a slot. Anything else is `validation_failed`. The call replaces every row.
+> - **No operation ID**, because it sets state (§6.3), like the equip endpoint.
+> - **The profile gains `equipped_skills`**, `[{ "slot": 1, "skill_id": "..." }]` ordered by slot, so a restore recovers the choice. Empty until the player chooses.
+
 | • `POST` | `/api/v1/players/me/explore` | Queue an Explore request against a zone. Offline this records intent only; the grant is issued by the next sync (§1.3). |
 
 ### Reads

@@ -9,10 +9,10 @@ import { clearSnapshot, readBestiary, readSnapshot, spendItems, writeSnapshot } 
 import { type Rng, systemRng } from '../battle/rng';
 import {
   type Encounter,
-  availableMoves,
   battleItems,
   buildContext,
   dropKindFor,
+  offeredMoves,
   startEncounter,
 } from '../battle/session';
 import { battlePayload, settleBattle } from '../battle/settle';
@@ -45,7 +45,7 @@ interface BattleStore {
   /** Every event this battle has emitted, oldest first. The screen renders a window of it. */
   readonly events: readonly BattleEvent[];
   readonly items: readonly ItemOption[];
-  /** Basic Attack plus the player's unlocked Skills — what the action menu offers. */
+  /** Basic Attack plus the loadout this fight was built with — what the action menu offers. */
   readonly moves: readonly Move[];
   readonly playerId: string | null;
   readonly chevronsUnlocked: boolean;
@@ -107,7 +107,6 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const encounter: Encounter = startEncounter(db, input);
     const labels = loadLabels(db);
     const revealDetails = loadRevealDetails(db);
-    const { attack, skills } = availableMoves(encounter.context.content, encounter.player.level);
 
     currentRng = input.rng ?? systemRng;
 
@@ -122,7 +121,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       revealDetails,
       events: [...encounter.events],
       items: itemOptionsFor(db, encounter.context, labels),
-      moves: [attack, ...skills],
+      moves: offeredMoves(encounter.context, encounter.snapshot.state.uses),
       playerId: encounter.player.playerId,
       chevronsUnlocked: encounter.chevronsUnlocked,
       resolving: false,
@@ -256,9 +255,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // combat log is a record of this session, not of the battle.
       events: [],
       items: itemOptionsFor(db, context, labels),
-      moves: (({ attack, skills }) => [attack, ...skills])(
-        availableMoves(context.content, player.level),
-      ),
+      moves: offeredMoves(context, snapshot.state.uses),
       playerId: player.playerId,
       chevronsUnlocked: readBestiary(db, snapshot.state.enemyId).encounterCount > 0,
       resolving: false,

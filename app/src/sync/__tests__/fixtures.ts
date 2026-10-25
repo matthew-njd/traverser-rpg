@@ -69,6 +69,7 @@ export function wireProfile(overrides: Record<string, unknown> = {}): Record<str
     unlocked_zone_ids: ['olympion'],
     gear: [WIRE_BLADE],
     items: [wireSalve(1), wireSalve(2), wireSalve(3)],
+    equipped_skills: [],
     ...overrides,
   };
 }
