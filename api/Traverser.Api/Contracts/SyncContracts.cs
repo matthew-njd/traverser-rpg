@@ -164,7 +164,35 @@ public sealed record SyncResponse(
     /// </summary>
     IReadOnlyList<EncounterGrantResponse> EncounterGrants,
     /// <summary>Zones this sync unlocked, from step 7's dual gate (GDD 9 §3).</summary>
-    IReadOnlyList<string> UnlockedZoneIds);
+    IReadOnlyList<string> UnlockedZoneIds,
+    /// <summary>
+    /// Step 10's rewards that landed this sync. The ids are the server's, so the device mirrors these
+    /// rows verbatim — the response carries no inventory otherwise.
+    /// </summary>
+    IReadOnlyList<RewardResponse> RewardsGranted,
+    /// <summary>Every unresolved reward parked past a cap (GDD 4 §5.2, GDD 8 §5.5).</summary>
+    IReadOnlyList<PendingRewardResponse> PendingRewards);
+
+/// <param name="Kind"><c>item</c> or <c>gear</c>.</param>
+/// <param name="Source">The <c>player_item.source</c> or <c>player_gear.source</c> it was stored with.</param>
+public sealed record RewardResponse(
+    string Kind,
+    Guid Id,
+    string DefId,
+    string Source,
+    int? LevelAtDrop,
+    int? BonusPrimary,
+    int? BonusSecondary,
+    DateTime AcquiredAt);
+
+public sealed record PendingRewardResponse(
+    Guid Id,
+    string Kind,
+    string DefId,
+    int? LevelAtDrop,
+    int? BonusPrimary,
+    int? BonusSecondary,
+    DateTime CreatedAt);
 
 /// <param name="Source">Which of GDD 9 §5.1's three sources produced it. All share one daily pool.</param>
 public sealed record EncounterGrantResponse(

@@ -2865,7 +2865,7 @@ namespace Traverser.Api.Migrations
 
                     b.ToTable("milestone_grant", null, t =>
                         {
-                            t.HasCheckConstraint("ck_milestone_grant_milestone_kind", "milestone_kind in ('level_item', 'level_gear', 'streak_day', 'zone_entry', 'tutorial')");
+                            t.HasCheckConstraint("ck_milestone_grant_milestone_kind", "milestone_kind in ('level_item', 'level_gear', 'streak_day', 'zone_entry', 'tutorial', 'daily_goal')");
                         });
                 });
 
@@ -4284,6 +4284,70 @@ namespace Traverser.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Traverser.Api.Data.Entities.ZoneEntryReward", b =>
+                {
+                    b.Property<string>("ZoneId")
+                        .HasColumnType("text")
+                        .HasColumnName("zone_id");
+
+                    b.Property<string>("ItemDefId")
+                        .HasColumnType("text")
+                        .HasColumnName("item_def_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.HasKey("ZoneId", "ItemDefId")
+                        .HasName("pk_zone_entry_reward");
+
+                    b.HasIndex("ItemDefId")
+                        .HasDatabaseName("ix_zone_entry_reward_item_def_id");
+
+                    b.ToTable("zone_entry_reward", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_zone_entry_reward_quantity", "quantity >= 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            ZoneId = "valheon",
+                            ItemDefId = "item_heralds_draft",
+                            Quantity = 1
+                        },
+                        new
+                        {
+                            ZoneId = "valheon",
+                            ItemDefId = "item_thundercrack",
+                            Quantity = 1
+                        },
+                        new
+                        {
+                            ZoneId = "valheon",
+                            ItemDefId = "item_shadowbind",
+                            Quantity = 1
+                        },
+                        new
+                        {
+                            ZoneId = "imperion",
+                            ItemDefId = "item_heralds_draft",
+                            Quantity = 1
+                        },
+                        new
+                        {
+                            ZoneId = "imperion",
+                            ItemDefId = "item_undertow",
+                            Quantity = 1
+                        },
+                        new
+                        {
+                            ZoneId = "imperion",
+                            ItemDefId = "item_blindveil",
+                            Quantity = 1
+                        });
+                });
+
             modelBuilder.Entity("Traverser.Api.Data.Entities.ZoneGate", b =>
                 {
                     b.Property<string>("Id")
@@ -4837,6 +4901,27 @@ namespace Traverser.Api.Migrations
                     b.Navigation("AttackerType");
 
                     b.Navigation("DefenderType");
+                });
+
+            modelBuilder.Entity("Traverser.Api.Data.Entities.ZoneEntryReward", b =>
+                {
+                    b.HasOne("Traverser.Api.Data.Entities.ItemDef", "ItemDef")
+                        .WithMany()
+                        .HasForeignKey("ItemDefId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_zone_entry_reward_item_def_item_def_id");
+
+                    b.HasOne("Traverser.Api.Data.Entities.Zone", "Zone")
+                        .WithMany()
+                        .HasForeignKey("ZoneId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_zone_entry_reward_zone_zone_id");
+
+                    b.Navigation("ItemDef");
+
+                    b.Navigation("Zone");
                 });
 
             modelBuilder.Entity("Traverser.Api.Data.Entities.ZoneGate", b =>

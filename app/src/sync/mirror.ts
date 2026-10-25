@@ -290,6 +290,39 @@ export function applySyncResponse(db: SqliteDatabase, response: SyncResponse): v
       );
     }
 
+    // Same transaction as the acknowledgement, for the encounter grants' reason: step 10 reports a
+    // reward exactly once, so committing the ack without it loses the reward on this device.
+    for (const reward of response.rewardsGranted) {
+      if (reward.kind === 'item') {
+        db.runSync(
+          `INSERT INTO player_item (id, player_id, item_def_id, acquired_at) VALUES (?, ?, ?, ?)
+           ON CONFLICT (id) DO NOTHING`,
+          [reward.id, response.player.playerId, reward.defId, reward.acquiredAt],
+        );
+      } else {
+        db.runSync(
+          `INSERT INTO player_gear (
+             id, player_id, gear_def_id, equipped_slot, level_at_drop, bonus_primary, bonus_secondary, acquired_at
+           ) VALUES (?, ?, ?, NULL, ?, ?, ?, ?)
+           ON CONFLICT (id) DO NOTHING`,
+          [
+            reward.id,
+            response.player.playerId,
+            reward.defId,
+            reward.levelAtDrop ?? response.player.level,
+            reward.bonusPrimary ?? 0,
+            reward.bonusSecondary,
+            reward.acquiredAt,
+          ],
+        );
+      }
+
+      db.runSync(
+        'INSERT INTO fresh_reward (id, kind, def_id, source) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO NOTHING',
+        [reward.id, reward.kind, reward.defId, reward.source],
+      );
+    }
+
     acknowledge(db, [...response.acceptedDeltaIds, ...response.duplicateDeltaIds]);
   });
 }

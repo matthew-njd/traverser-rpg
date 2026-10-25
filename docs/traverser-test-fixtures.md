@@ -150,7 +150,9 @@ Enemy level always equals player level at encounter time. All stats: `floor(base
 | 90 | Armor → Mythic | No tier skipped (Weapon starts Mortal from onboarding; Armor/Accessory start empty) |
 | 120 | Accessory → Mythic | No tier skipped (Weapon starts Mortal from onboarding; Armor/Accessory start empty) |
 
-Overlap rule: if the slot is already at or above the milestone tier, auto-skip to next available tier for that slot; if all three slots ≥ milestone tier, one-time overflow fallback = 2× Herald's Draft. Never grants Trinket or Divine. Pacing anchors (corrected in audit): L15 ≈ day 28 avg / day 16 active; L25 ≈ day 81 avg / day 47 active.
+Overlap rule: if the slot is already at or above the milestone tier, auto-skip to next available tier for that slot; if all three slots ≥ milestone tier, one-time overflow fallback = 2× Herald's Draft.
+
+> **Amended 2026-10-25 (M5/P3). The fallback line above disagreed with GDD 11 §5.3, and Matthew chose the GDD's reading.** GDD 11: 2× Herald's Draft only when **all three slots are already at or above Mythic**. The rule, in full: a slot's tier is the highest tier owned in that slot, worn or held. The named slot below the milestone tier gets that tier. At or above it, the named slot gets its next tier, up to Mythic. If the named slot is already Mythic, the lowest other slot below Mythic gets its next tier, ties in Weapon, Armor, Accessory order. Only when all three are Mythic does the fallback fire. The ladder table is unchanged. Worked case: Day 14 (Weapon → Heroic) with all three slots at Heroic grants a **Mythic Weapon**, not 2× Draft. Never grants Trinket or Divine. Pacing anchors (corrected in audit): L15 ≈ day 28 avg / day 16 active; L25 ≈ day 81 avg / day 47 active.
 
 ## 8. Zone Gate Thresholds (Section 9)
 

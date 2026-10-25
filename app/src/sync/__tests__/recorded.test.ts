@@ -2,6 +2,7 @@ import contentVersion from './recorded/content-version.json';
 import playersMe from './recorded/players-me.json';
 import sync from './recorded/sync.json';
 import syncAccepted from './recorded/sync-accepted.json';
+import syncReward from './recorded/sync-reward.json';
 
 import { parseContentVersion, parseProfile, parseSyncResponse } from '../dto';
 import { wireActivityDay, wireProfile, wireSyncResponse } from './fixtures';
@@ -19,6 +20,13 @@ import { wireActivityDay, wireProfile, wireSyncResponse } from './fixtures';
  */
 
 describe('parsing recorded responses', () => {
+  /** Step 10's first real response: an 8,000-step day past the 7,000 goal pays one common item. */
+  it('reads a daily-goal reward', () => {
+    const [reward] = parseSyncResponse(syncReward).rewardsGranted;
+
+    expect(reward).toMatchObject({ kind: 'item', defId: 'item_brinestone', source: 'daily_goal', bonusPrimary: null });
+  });
+
   it('reads the content version poll', () => {
     expect(parseContentVersion(contentVersion)).toBe(1);
   });

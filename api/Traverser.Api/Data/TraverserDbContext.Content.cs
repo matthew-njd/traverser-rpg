@@ -249,6 +249,19 @@ public partial class TraverserDbContext
             entity.Property(e => e.Day).ValueGeneratedNever();
         });
 
+        modelBuilder.Entity<ZoneEntryReward>(entity =>
+        {
+            entity.ToTable("zone_entry_reward", t =>
+                t.HasCheckConstraint("ck_zone_entry_reward_quantity", "quantity >= 1"));
+
+            entity.HasKey(e => new { e.ZoneId, e.ItemDefId });
+
+            entity.HasOne(e => e.Zone).WithMany()
+                .HasForeignKey(e => e.ZoneId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.ItemDef).WithMany()
+                .HasForeignKey(e => e.ItemDefId).OnDelete(DeleteBehavior.NoAction);
+        });
+
         modelBuilder.Entity<LevelMilestone>(entity =>
         {
             entity.ToTable("level_milestone", t =>

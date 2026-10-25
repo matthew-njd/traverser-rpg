@@ -1,0 +1,83 @@
+{
+  "server_time": "2026-10-25T21:51:09.342234Z",
+  "content_version": 4,
+  "player": {
+    "player_id": "d475c5ea-3e15-474a-a8f6-991fa1a234f1",
+    "traverser_name": "WireProbe",
+    "timezone": "America/Toronto",
+    "created_at": "2026-10-25T21:51:09.181588Z",
+    "level": 3,
+    "xp_current": 93,
+    "xp_to_next": 317,
+    "xp_lifetime": 400,
+    "unspent_stat_points": 6,
+    "alloc_vigor": 0,
+    "alloc_might": 0,
+    "alloc_resolve": 0,
+    "alloc_favor": 0,
+    "alloc_aegis": 0,
+    "alloc_stride": 0,
+    "vigor_current": 20,
+    "vigor_anchor_at": "2026-10-25T21:51:09.178348Z",
+    "lifetime_steps": 8000,
+    "daily_step_goal": 7000,
+    "tutorial_completed_at": null
+  },
+  "leagues": 8,
+  "streak": {
+    "current": 1,
+    "longest": 1,
+    "last_credited_date": "2026-10-25"
+  },
+  "level_ups": [
+    {
+      "level": 2,
+      "stat_points_awarded": 3
+    },
+    {
+      "level": 3,
+      "stat_points_awarded": 3
+    }
+  ],
+  "activity_days": [
+    {
+      "activity_date": "2026-10-25",
+      "steps": 8000,
+      "tier1_minutes": 0,
+      "tier2_minutes": 0,
+      "tier3_minutes": 0,
+      "xp_awarded": 400,
+      "step_goal_snapshot": 7000,
+      "goal_met": true,
+      "streak_credit_method": "goal_hit",
+      "rest_tagged_at": null
+    }
+  ],
+  "accepted_delta_ids": [
+    "1412275b-2f04-41d3-b59d-2f19f85eac94"
+  ],
+  "duplicate_delta_ids": [],
+  "encounter_grants": [
+    {
+      "grant_id": "01a1750b-ca05-723f-a821-437b3bd3eb43",
+      "zone_id": "olympion",
+      "enemy_id": "enemy_harpy",
+      "source": "travel",
+      "activity_date": "2026-10-25"
+    }
+  ],
+  "unlocked_zone_ids": [],
+  "rewards_granted": [
+    {
+      "kind": "item",
+      "id": "01a1750b-ca12-7ef1-99b2-c524ff03b583",
+      "def_id": "item_brinestone",
+      "source": "daily_goal",
+      "level_at_drop": null,
+      "bonus_primary": null,
+      "bonus_secondary": null,
+      "acquired_at": "2026-10-25T21:51:09.32539Z"
+    }
+  ],
+  "pending_rewards": []
+}

@@ -57,5 +57,7 @@
       "activity_date": "2026-08-06"
     }
   ],
-  "unlocked_zone_ids": []
+  "unlocked_zone_ids": [],
+  "rewards_granted": [],
+  "pending_rewards": []
 }

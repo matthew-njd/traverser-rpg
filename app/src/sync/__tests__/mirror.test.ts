@@ -1,3 +1,5 @@
+import { readFreshRewards, readOwnedGear, readSatchel } from '../../battle/mirror';
+import { seedEmbeddedContent } from '../../content/store';
 import { count, enqueue, peek } from '../../db/outbox';
 import { recordingDatabase } from '../../health/__tests__/fixtures';
 import type { SqliteDatabase } from '../../db/types';
@@ -215,5 +217,50 @@ describe('reads', () => {
     db.runSync('UPDATE player_settings SET birth_year = NULL', []);
 
     expect(readBirthYear(db)).toBeNull();
+  });
+});
+
+describe('step 10 rewards', () => {
+  const salve = {
+    kind: 'item',
+    id: '01a1750b-0000-7000-8000-000000000001',
+    def_id: 'item_travelers_salve',
+    source: 'daily_goal',
+    level_at_drop: null,
+    bonus_primary: null,
+    bonus_secondary: null,
+    acquired_at: '2026-10-25T12:00:00Z',
+  };
+  const blade = {
+    ...salve,
+    kind: 'gear',
+    id: '01a1750b-0000-7000-8000-000000000002',
+    def_id: 'gear_weapon_heroic',
+    source: 'level_milestone',
+    level_at_drop: 15,
+    bonus_primary: 4,
+  };
+
+  /** The response carries no inventory, so this is the only way a reward reaches the satchel. */
+  it('mirrors each reward with the server id, and queues it as fresh', () => {
+    const db = registeredDatabase();
+
+    seedEmbeddedContent(db);
+    applySyncResponse(db, response({ rewards_granted: [salve, blade] }));
+
+    expect(readSatchel(db).map((item) => item.playerItemId)).toContain(salve.id);
+    expect(readOwnedGear(db).find((gear) => gear.playerGearId === blade.id)?.bonusPrimary).toBe(4);
+    expect(readFreshRewards(db).map((reward) => reward.source)).toEqual(['daily_goal', 'level_milestone']);
+  });
+
+  it('applies a repeated reward once', () => {
+    const db = registeredDatabase();
+
+    seedEmbeddedContent(db);
+    applySyncResponse(db, response({ rewards_granted: [salve] }));
+    applySyncResponse(db, response({ rewards_granted: [salve] }));
+
+    expect(readSatchel(db).filter((item) => item.playerItemId === salve.id)).toHaveLength(1);
+    expect(readFreshRewards(db)).toHaveLength(1);
   });
 });

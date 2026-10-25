@@ -35,6 +35,7 @@ describe('schema migrations', () => {
         'streak_state',
         // tech-04 §6.2's device-only tables.
         'battle_snapshot',
+        'fresh_reward',
         'hr_minute_watermark',
         'hr_session_ledger',
         'outbox',
@@ -83,6 +84,7 @@ describe('schema migrations', () => {
     const db = memoryDatabase();
 
     // Rewind to a device that is still on version 1 by dropping what came after it.
+    db.execSync('DROP TABLE fresh_reward');
     db.execSync('DROP TABLE equipped_skill');
     db.execSync('DROP TABLE encounter_grant');
     db.execSync('DROP TABLE player_bestiary');

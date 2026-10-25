@@ -449,6 +449,22 @@ const V9_EQUIPPED_SKILL: readonly string[] = [
    )`,
 ];
 
+/**
+ * Version 10 — step 10's rewards the player has not seen yet (device-only, tech-04 §6.2).
+ *
+ * A daily-goal item waits here until Items is viewed (GDD 13 §5.2's road find); every other reward
+ * waits until its Reveal Card is dismissed (§6.3). Sync arrives while any screen is open, so the
+ * queue is durable rather than session state.
+ */
+const V10_FRESH_REWARD: readonly string[] = [
+  `CREATE TABLE fresh_reward (
+     id     TEXT PRIMARY KEY NOT NULL,
+     kind   TEXT NOT NULL,
+     def_id TEXT NOT NULL,
+     source TEXT NOT NULL
+   )`,
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
@@ -459,6 +475,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 7, statements: [...V7_VIGOR_ANCHOR] },
   { version: 8, statements: [...V8_ENCOUNTER_GRANT] },
   { version: 9, statements: [...V9_EQUIPPED_SKILL] },
+  { version: 10, statements: [...V10_FRESH_REWARD] },
 ];
 
 /** The version a fully-migrated database reports. */

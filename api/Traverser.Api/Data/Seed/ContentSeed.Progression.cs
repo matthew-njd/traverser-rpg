@@ -100,7 +100,20 @@ internal static partial class ContentSeed
             GearAt(35, GearTier.Heroic),
             GearAt(45, GearTier.Mythic),
             GearAt(55, GearTier.Heroic));
+
+        // GDD 4 §6.3 — a Herald's Draft and two Breach charms aimed at each zone's SE gaps: wild
+        // types for Valheon, boss fights for Imperion. Olympion is where the road starts; no entry.
+        modelBuilder.Entity<ZoneEntryReward>().HasData(
+            ZoneEntry(Ids.Zone.Valheon, Ids.Item.HeraldsDraft),
+            ZoneEntry(Ids.Zone.Valheon, Ids.Item.Thundercrack),
+            ZoneEntry(Ids.Zone.Valheon, Ids.Item.Shadowbind),
+            ZoneEntry(Ids.Zone.Imperion, Ids.Item.HeraldsDraft),
+            ZoneEntry(Ids.Zone.Imperion, Ids.Item.Undertow),
+            ZoneEntry(Ids.Zone.Imperion, Ids.Item.Blindveil));
     }
+
+    private static ZoneEntryReward ZoneEntry(string zoneId, string itemDefId) =>
+        new() { ZoneId = zoneId, ItemDefId = itemDefId, Quantity = 1 };
 
     /// <summary>
     /// <c>round(100 × L^1.05)</c>, cap 60 — seeded rather than computed at runtime. The formula is

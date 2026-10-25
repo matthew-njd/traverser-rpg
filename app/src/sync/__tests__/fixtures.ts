@@ -93,6 +93,8 @@ export function wireSyncResponse(overrides: Record<string, unknown> = {}): Recor
     duplicate_delta_ids: [],
     encounter_grants: [],
     unlocked_zone_ids: [],
+    rewards_granted: [],
+    pending_rewards: [],
     ...overrides,
   };
 }

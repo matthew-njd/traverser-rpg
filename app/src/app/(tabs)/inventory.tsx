@@ -1,8 +1,18 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
-import { type OwnedGear, type SatchelItem, readEquippedGear, readOwnedGear, readSatchel, readSnapshot } from '@/battle/mirror';
+import {
+  type OwnedGear,
+  type SatchelItem,
+  clearFreshRewards,
+  isRoadFind,
+  readEquippedGear,
+  readFreshRewards,
+  readOwnedGear,
+  readSatchel,
+  readSnapshot,
+} from '@/battle/mirror';
 import { readContentRows } from '@/content/bundle';
 import { type Labels, loadLabels } from '@/content/labels';
 import { getDatabase } from '@/db/open';
@@ -10,6 +20,7 @@ import { deviceLocalDates } from '@/health/localDate';
 import { type EquippedBonus, effectiveStats } from '@/progression/stats';
 import { maxVigorFor, vigorReadout } from '@/progression/vigor';
 import { syncNow } from '@/runtime';
+import { useAppStore } from '@/state/appStore';
 import { usePlayerStore } from '@/state/playerStore';
 import { type MirrorPlayer, readPlayer } from '@/sync/mirror';
 import { EquipError, consumeItem, equipGear } from '@/sync/writes';
@@ -32,6 +43,8 @@ export default function Inventory() {
   const [labels, setLabels] = useState<Labels>(new Map());
   const [fighting, setFighting] = useState(false);
   const [vigor, setVigor] = useState<{ current: number; max: number } | null>(null);
+  const [found, setFound] = useState<ReadonlySet<string>>(new Set());
+  const rewardsSeq = useAppStore((state) => state.rewardsSeq);
 
   const reload = useCallback(() => {
     const db = getDatabase();
@@ -67,6 +80,25 @@ export default function Inventory() {
   }, []);
 
   useFocusEffect(reload);
+
+  // GDD 13 §5.2 — viewing Items is what collects a road find: it is highlighted here while the view
+  // stays open, and leaves the queue (and the Satchel's badge) at once.
+  useEffect(() => {
+    if (view !== 'items') {
+      setFound(new Set());
+      return;
+    }
+
+    const db = getDatabase();
+    const finds = readFreshRewards(db).filter(isRoadFind).map((reward) => reward.id);
+
+    if (finds.length > 0) {
+      setFound((previous) => new Set([...previous, ...finds]));
+      clearFreshRewards(db, finds);
+      reload();
+      useAppStore.getState().rewardsChanged();
+    }
+  }, [view, rewardsSeq, reload]);
 
   /** GDD 8 §2. Local first, like every write here; the replay is best-effort. */
   const equip = (playerGearId: string, wear: boolean) => {
@@ -129,6 +161,7 @@ export default function Inventory() {
             kinds={kinds}
             labels={labels}
             vigor={vigor}
+            found={found}
             fighting={fighting}
             onUse={heal}
           />

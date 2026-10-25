@@ -53,6 +53,7 @@ public partial class TraverserDbContext(DbContextOptions<TraverserDbContext> opt
     public DbSet<PlayerBestiary> PlayerBestiary => Set<PlayerBestiary>();
     public DbSet<PlayerZoneProgress> PlayerZoneProgress => Set<PlayerZoneProgress>();
     public DbSet<MilestoneGrant> MilestoneGrants => Set<MilestoneGrant>();
+    public DbSet<ZoneEntryReward> ZoneEntryRewards => Set<ZoneEntryReward>();
     public DbSet<PendingReward> PendingRewards => Set<PendingReward>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

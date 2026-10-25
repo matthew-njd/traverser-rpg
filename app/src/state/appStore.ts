@@ -26,6 +26,11 @@ interface AppStore {
    * a Reveal Card is shown from it exactly once.
    */
   readonly pendingLevelUps: readonly LevelUp[];
+  /**
+   * Bumped whenever `fresh_reward` may have changed — a finished pass, or a reward seen — so the
+   * tab bar and the reveal re-read it from SQLite rather than holding a second copy.
+   */
+  readonly rewardsSeq: number;
 
   markBooted(registered: boolean): void;
   setRegistered(registered: boolean): void;
@@ -35,6 +40,7 @@ interface AppStore {
   syncFinished(result: SyncPassResult, banner: BannerKind | null): void;
   syncAborted(): void;
   consumeLevelUps(): readonly LevelUp[];
+  rewardsChanged(): void;
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -45,6 +51,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   health: null,
   banner: null,
   pendingLevelUps: [],
+  rewardsSeq: 0,
 
   markBooted(registered) {
     set({ booted: true, registered });
@@ -69,7 +76,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
       health: result.health,
       banner,
       pendingLevelUps: [...state.pendingLevelUps, ...result.levelUps],
+      rewardsSeq: state.rewardsSeq + 1,
     }));
+  },
+
+  rewardsChanged() {
+    set((state) => ({ rewardsSeq: state.rewardsSeq + 1 }));
   },
 
   syncAborted() {

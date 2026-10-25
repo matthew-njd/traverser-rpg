@@ -29,6 +29,7 @@ export function ItemGrid({
   kinds,
   labels,
   vigor,
+  found = new Set(),
   fighting,
   onUse,
 }: {
@@ -36,6 +37,8 @@ export function ItemGrid({
   kinds: ReadonlyMap<string, ItemKind>;
   labels: Labels;
   vigor: { current: number; max: number } | null;
+  /** GDD 13 §5.2's road finds, highlighted while Items stays open. */
+  found?: ReadonlySet<string>;
   fighting: boolean;
   onUse: (playerItemId: string) => void;
 }) {
@@ -64,6 +67,16 @@ export function ItemGrid({
         onChange={setFilter}
       />
 
+      {found.size === 0 ? null : (
+        <Text style={styles.found}>
+          Found along the road:{' '}
+          {items
+            .filter((item) => found.has(item.playerItemId))
+            .map((item) => labelFor(labels, item.itemDefId))
+            .join(', ')}
+        </Text>
+      )}
+
       <Text style={styles.count}>
         {items.length} / {ITEM_SLOTS}
         {vigor === null ? null : ` · Vigour ${vigor.current} / ${vigor.max}`}
@@ -79,7 +92,12 @@ export function ItemGrid({
               accessibilityRole="button"
               accessibilityLabel={labelFor(labels, item.itemDefId)}
               onPress={() => setPicked(item.playerItemId)}
-              style={[styles.tile, locked && styles.locked, item.playerItemId === picked && styles.picked]}
+              style={[
+                styles.tile,
+                locked && styles.locked,
+                found.has(item.playerItemId) && styles.foundTile,
+                item.playerItemId === picked && styles.picked,
+              ]}
             >
               <Text style={styles.tileName} numberOfLines={3}>
                 {labelFor(labels, item.itemDefId)}
@@ -141,6 +159,8 @@ const styles = StyleSheet.create({
   },
   locked: { opacity: 0.5 },
   picked: { borderColor: colors.accent },
+  foundTile: { borderColor: colors.gold, borderWidth: 2 },
+  found: { ...type.small, color: colors.gold },
   empty: { backgroundColor: colors.background },
   tileName: { ...type.small, color: colors.text },
   lock: { fontSize: 12, alignSelf: 'flex-end' },

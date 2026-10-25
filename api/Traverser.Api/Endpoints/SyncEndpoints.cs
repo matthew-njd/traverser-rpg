@@ -12,7 +12,7 @@ namespace Traverser.Api.Endpoints;
 /// <summary>
 /// <c>POST /api/v1/sync</c> — T2 §4. The only endpoint that advances progression.
 /// <para>
-/// Steps 1–9 are built; steps 10 and 11 (deterministic rewards, overactivity) are M5's. The order
+/// Steps 1–10 are built; step 11 (overactivity) is M5/P4's. The order
 /// is normative and steps 3–6 in particular cannot be reordered without changing outcomes.
 /// </para>
 /// </summary>
@@ -180,6 +180,9 @@ public static class SyncEndpoints
 
         await db.SaveChangesAsync(ct);
 
+        // ---- Step 10. Deterministic rewards -----------------------------------------------------
+        var (rewards, pending) = await SyncRewards.GrantAsync(db, player, touchedDates, rng, ct);
+
         var profile = await PlayerProfile.LoadAsync(db, player.Id, ct)
             ?? throw new InvalidOperationException($"Profile for {player.Id} vanished mid-sync.");
 
@@ -209,7 +212,9 @@ public static class SyncEndpoints
             // client both mean the same thing — stop resending this.
             DuplicateDeltaIds: duplicateIds,
             EncounterGrants: grants,
-            UnlockedZoneIds: unlockedZoneIds));
+            UnlockedZoneIds: unlockedZoneIds,
+            RewardsGranted: rewards,
+            PendingRewards: pending));
     }
 
     /// <summary>

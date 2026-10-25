@@ -79,6 +79,23 @@ describe('the item grid', () => {
     expect(screen.queryByRole('button', { name: 'Use' })).toBeNull();
   });
 
+  /** GDD 13 §5.2 — the road find is named and its tile marked while Items stays open. */
+  it('names the road finds', async () => {
+    await render(
+      <ItemGrid
+        items={items}
+        kinds={kinds}
+        labels={labels}
+        vigor={{ current: 10, max: 20 }}
+        found={new Set(['pi-3'])}
+        fighting={false}
+        onUse={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Found along the road: Warhex/)).toBeTruthy();
+  });
+
   it('filters by category', async () => {
     await grid();
     await fireEvent.press(screen.getByText('Charms'));

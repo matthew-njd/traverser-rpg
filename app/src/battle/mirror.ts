@@ -118,6 +118,28 @@ export function readOwnedGear(db: SqliteDatabase): OwnedGear[] {
     }));
 }
 
+export interface FreshReward {
+  readonly id: string;
+  readonly kind: 'item' | 'gear';
+  readonly defId: string;
+  readonly source: string;
+}
+
+/** GDD 13 §5.2 — a daily-goal item is a "road find", highlighted in Items rather than revealed. */
+export const isRoadFind = (reward: FreshReward) => reward.source === 'daily_goal' && reward.kind === 'item';
+
+/** Step 10's rewards not yet seen, oldest first. */
+export function readFreshRewards(db: SqliteDatabase): FreshReward[] {
+  return db.getAllSync<FreshReward & { def_id: string }>('SELECT id, kind, def_id, source FROM fresh_reward ORDER BY rowid')
+    .map((row) => ({ id: row.id, kind: row.kind, defId: row.def_id, source: row.source }));
+}
+
+export function clearFreshRewards(db: SqliteDatabase, ids: readonly string[]): void {
+  for (const id of ids) {
+    db.runSync('DELETE FROM fresh_reward WHERE id = ?', [id]);
+  }
+}
+
 /** GDD 3 §4.1 — the move the worn Trinket grants, if it grants one. */
 export function readTrinketMove(db: SqliteDatabase): string | null {
   return (

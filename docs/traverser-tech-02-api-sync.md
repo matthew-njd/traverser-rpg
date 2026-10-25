@@ -216,6 +216,13 @@ A null `streak_credit_method` on a past date is a break, and that is *all* it is
 **10. Deterministic rewards.**
 Daily-goal item, level milestones, streak milestones, zone-entry grants. **Every one is gated by an `INSERT INTO milestone_grant ... ON CONFLICT DO NOTHING` that must report a row before the reward is materialised.** No reward in this step is allowed to key off "did this sync already run" or off the delta set — the grant table is the only permission slip. Streak milestones apply GDD 11 §5.3's overlap rule (skip to the slot's next available tier) and its all-slots-Mythic fallback (2× Herald's Draft, recorded as `overflow_fallback = true`); they never grant Trinket or Divine, which tech-01's CHECK enforces structurally anyway. If a grant would exceed the 20-slot inventory cap it becomes a `pending_reward` instead of being dropped.
 
+> **Amended 2026-10-25 (M5/P3). Step 10 is built; what each source offers, and the response shape.**
+>
+> - **Every candidate is offered on every sync, and the grant insert decides.** Level milestones at or below the current level. Streak milestones at or below `longest_streak`, so a run later broken still pays what it reached. Zone entries for every opened zone, from the seeded `zone_entry_reward` (T1). The daily goal for each goal-met date this sync touched, keyed by date. A milestone reached before step 10 existed is therefore paid on the first sync after it ships.
+> - **Gear bonuses are computed here** with GDD 8 §3.2's formula at the player's level when granted, **rounding halves to even** (fixtures §5; DECISIONS 2026-08-01). Random slots and the daily-goal draws come from the same `IRandomSource` as step 8.
+> - **Past a cap, a reward becomes a `pending_reward`**: 20 items, 12 pieces of gear. Resolving it is M5/P3b.
+> - **The response gains `rewards_granted`**: `[{ "kind": "item" | "gear", "id", "def_id", "source", "level_at_drop", "bonus_primary", "bonus_secondary", "acquired_at" }]`, with the server's ids. ↯ It is the only way a reward reaches the device, because the response carries no inventory. **`pending_rewards`** lists every unresolved pending row in the same shape, with `created_at`.
+
 **11. Overactivity check.**
 For each session in the payload, if cumulative Tier 1+ minutes ≥ 90 and `overactivity_warned_at is null`, set it and flag the warning in the response. At most once per session (GDD 11 §8.3). In-app banner only, never a push. Sessions that ended before the player opened the app do not fire it retroactively (GDD 11 §8.2) — the client decides that by checking whether the session is live, and the server simply reports threshold-crossed.
 

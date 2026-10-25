@@ -134,17 +134,29 @@ fight.
 
 ### P3 — Deterministic rewards (T2 §4 step 10)
 
-- The daily-goal item, level milestones, streak milestones (with GDD 11 §5.3's overlap rule) and
-  zone-entry grants, each behind its `milestone_grant` row.
+- The daily-goal item (and GDD 8 §5.3's 25% Mortal piece), level milestones, streak milestones
+  (with GDD 11 §5.3's overlap rule) and zone-entry grants, each behind its `milestone_grant` row.
+- The daily "road find" goes straight into the satchel, flagged new: a Satchel badge and a highlight
+  in Items (GDD 13 §5.2). Decided 2026-10-25.
+- A reward that would pass the 12-piece or 20-item cap parks as a `pending_reward`; P3b resolves it.
 - The streak popover on the badge, previewing the next milestone.
 - Rewards reveal on the device the same way drops do.
-- **The caps and the overflow prompt** (GDD 8 §5.5, GDD 4 §5.1, GDD 13 §5.1–5.2), added 2026-10-25:
-  12 gear pieces, 20 items, and the keep/discard modal for both battle drops and step 10 grants. No
-  plan had scheduled them, and nothing caps the satchel before this packet.
 
-**Tests:** each reward lands once and a replayed sync grants nothing; the overlap rule skips a tier
-already reached; no Trinket is ever a streak reward (GDD 11 §5.1); a 13th piece or a 21st item
-prompts and is never silently lost.
+**Tests:** each reward lands once and a replayed sync grants nothing; the overlap rule follows GDD
+11 §5.3 (fixtures §7, amended); no Trinket is ever a streak reward (GDD 11 §5.1); a reward past a cap
+parks rather than vanishing.
+
+### P3b — The caps and the overflow prompt (GDD 8 §5.5, GDD 4 §5.1–5.2, GDD 13 §5.1–5.2)
+
+Split from P3 on 2026-10-25 (Matthew's choice). No plan had scheduled any of it.
+
+- 12 gear pieces and 20 items, and GDD 4 §5.1's per-item maximums (5 Salves, 3 of each charm…),
+  which stop a drop at acquisition.
+- The keep/discard modal: on the victory panel for battle drops, and for `pending_reward` rows.
+- T2's discard and pending-reward endpoints, both unbuilt.
+
+**Tests:** a 13th piece or a 21st item prompts and is never silently lost; a sixth Salve does not
+drop; a kept pending reward lands once.
 
 ### P4 — The overactivity warning (T2 §4 step 11, GDD 11 §8)
 

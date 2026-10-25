@@ -228,6 +228,23 @@ export interface SyncResponse {
   readonly encounterGrants: readonly EncounterGrant[];
   /** Zones step 7's dual gate opened on this sync (GDD 9 §3). News, not the full set. */
   readonly unlockedZoneIds: readonly string[];
+  /**
+   * Step 10's rewards (T2 §4). ↯ The only way they reach the device: the response carries no
+   * inventory, so a reward dropped here is in the server's satchel and not this one until a repair.
+   */
+  readonly rewardsGranted: readonly RewardGranted[];
+}
+
+/** One reward row, with the server's id — mirrored verbatim like the profile's lists. */
+export interface RewardGranted {
+  readonly kind: 'item' | 'gear';
+  readonly id: string;
+  readonly defId: string;
+  readonly source: string;
+  readonly levelAtDrop: number | null;
+  readonly bonusPrimary: number | null;
+  readonly bonusSecondary: number | null;
+  readonly acquiredAt: string;
 }
 
 /** @param source Which of GDD 9 §5.1's three sources produced it. All share one daily pool. */
@@ -337,6 +354,26 @@ export function parseSyncResponse(value: unknown): SyncResponse {
     unlockedZoneIds: array(body.unlocked_zone_ids, 'unlocked_zone_ids').map((id, index) =>
       text(id, `unlocked_zone_ids[${index}]`),
     ),
+    rewardsGranted: array(body.rewards_granted, 'rewards_granted').map((entry, index) => {
+      const at = `rewards_granted[${index}]`;
+      const reward = object(entry, at);
+      const kind = text(reward.kind, `${at}.kind`);
+
+      if (kind !== 'item' && kind !== 'gear') {
+        throw new Error(`${at}.kind: expected item or gear, got ${kind}`);
+      }
+
+      return {
+        kind,
+        id: text(reward.id, `${at}.id`),
+        defId: text(reward.def_id, `${at}.def_id`),
+        source: text(reward.source, `${at}.source`),
+        levelAtDrop: nullableInt(reward.level_at_drop, `${at}.level_at_drop`),
+        bonusPrimary: nullableInt(reward.bonus_primary, `${at}.bonus_primary`),
+        bonusSecondary: nullableInt(reward.bonus_secondary, `${at}.bonus_secondary`),
+        acquiredAt: text(reward.acquired_at, `${at}.acquired_at`),
+      };
+    }),
   };
 }
 

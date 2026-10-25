@@ -14,6 +14,7 @@ import { getDatabase } from '@/db/open';
 import { loadBattleContent } from '@/battle/content';
 import { readEquippedGear, readSnapshot } from '@/battle/mirror';
 import { type Loadout, readLoadout } from '@/battle/session';
+import { readContentRows } from '@/content/bundle';
 import { type Labels, loadLabels } from '@/content/labels';
 import { type EquippedBonus, effectiveStats } from '@/progression/stats';
 import { maxVigorFor, vigorReadout } from '@/progression/vigor';
@@ -29,7 +30,7 @@ import { VigorBar } from '@/ui/battle/VigorBar';
 import { HealthBanner } from '@/ui/HealthBanner';
 import { Button, Card, Heading, Screen, SegmentedControl } from '@/ui/primitives';
 import { RestDay } from '@/ui/RestDay';
-import { Streak } from '@/ui/Streak';
+import { type NextStreakMilestone, Streak } from '@/ui/Streak';
 import { XpBar } from '@/ui/XpBar';
 import { SkillsCard } from '@/ui/SkillsCard';
 import { StatPanel } from '@/ui/StatPanel';
@@ -57,6 +58,7 @@ export default function Character() {
   const [vigor, setVigor] = useState<{ current: number; max: number } | null>(null);
   const [loadout, setLoadout] = useState<Loadout | null>(null);
   const [pendingVigor, setPendingVigor] = useState(0);
+  const [ladder, setLadder] = useState<readonly NextStreakMilestone[]>([]);
   const [labels, setLabels] = useState<Labels>(new Map());
 
   const slice = usePlayerStore();
@@ -95,6 +97,11 @@ export default function Character() {
     setFighting(readSnapshot(db) !== null);
     setLoadout(mirror === null ? null : readLoadout(db, loadBattleContent(db), mirror.level));
     setLabels(loadLabels(db));
+    setLadder(
+      readContentRows(db, 'streak_milestone')
+        .map((row) => ({ day: Number(row.day), slot: String(row.slot), tier: String(row.tier) }))
+        .sort((a, b) => a.day - b.day),
+    );
   }, []);
 
   // `lastServerOutcome` is a poor change signal — two successful syncs both read `'synced'`, so
@@ -223,7 +230,12 @@ export default function Character() {
       <Pane shown={view === 'avatar'} pull={pull}>
         <Avatar leagues={slice.leagues} lifetimeSteps={slice.lifetimeSteps} />
 
-        <Streak current={slice.streak.current} longest={slice.streak.longest} />
+        <Streak
+          current={slice.streak.current}
+          longest={slice.streak.longest}
+          // Rungs are paid by the longest run (T2 §4 step 10), so the next one is past it.
+          next={ladder.find((rung) => rung.day > slice.streak.longest) ?? null}
+        />
 
         <RestDay
           name={slice.traverserName}

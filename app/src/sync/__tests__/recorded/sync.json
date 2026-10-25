@@ -36,5 +36,7 @@
     "a67e54dd-9255-435a-8208-c4634f38592c"
   ],
   "encounter_grants": [],
-  "unlocked_zone_ids": []
+  "unlocked_zone_ids": [],
+  "rewards_granted": [],
+  "pending_rewards": []
 }

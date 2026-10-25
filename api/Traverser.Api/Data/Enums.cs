@@ -185,7 +185,8 @@ public enum MilestoneKind
     LevelGear,
     StreakDay,
     ZoneEntry,
-    Tutorial
+    Tutorial,
+    DailyGoal
 }
 
 /// <summary>`pending_reward.kind`.</summary>
