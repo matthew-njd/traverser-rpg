@@ -16,7 +16,7 @@ import { colors, radius, space, type } from './theme';
  * An unknown grade falls back to the ordinary card edge rather than to a colour that would claim a
  * rank the content did not give it.
  */
-const GRADE_BORDER: Readonly<Record<string, string>> = {
+export const GRADE_BORDER: Readonly<Record<string, string>> = {
   common: colors.pewter,
   mortal: colors.pewter,
   uncommon: colors.moss,

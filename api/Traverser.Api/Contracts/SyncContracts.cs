@@ -261,3 +261,12 @@ public sealed record TagRestDayRequest(DateOnly ActivityDate, int VigorAfter);
 /// it. Null leaves Vigor alone. The client's number, as on a Rest Day (T5 §1.6).
 /// </param>
 public sealed record EquipGearRequest(GearSlot? EquippedSlot, int? VigorAfter);
+
+/// <summary>
+/// <c>POST /api/v1/players/me/items/{player_item_id}/use</c> — GDD 4 §4's out-of-battle heal.
+/// </summary>
+/// <param name="VigorAfter">
+/// The healed value, the client's as on a Rest Day: the heal is a percentage of max Vigor, which
+/// needs the equipped gear (T5 §1.6).
+/// </param>
+public sealed record UseItemRequest(int VigorAfter);

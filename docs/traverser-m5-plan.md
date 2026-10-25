@@ -83,8 +83,8 @@ These are not decided here (DECISIONS records a decision only after Matthew pick
    content table in the seed, keyed by manifest IDs, so text arrives with the bundle like every other
    display string. That means manifest IDs and a T1 amendment **before** code (CLAUDE.md: never
    invent IDs).
-2. **Where the bestiary lives.** GDD 12 §11 leaves the screen to GDD 13 and GDD 13 never chose one.
-   The recommendation is to decide it with a mockup first, as M3's P4a did for the action layout.
+2. ~~**Where the bestiary lives.**~~ **Closed 2026-10-25 (P1).** GDD 13 §5.3 already places it as the
+   Satchel's third sub-tab; this question was stale. P5 builds it there (DECISIONS).
 
 ### 3.3 Balance is measured, not retuned
 
@@ -108,9 +108,12 @@ The commit subject names the packet number from this plan or no number at all.
   ↯ `progression/stats.ts` deliberately leaves the Trinket out of its slot table, so `effectiveStats`
   ignores a worn one today. It needs both halves, `bonus_primary` and `bonus_secondary`.
 - ↯ The open-battle refusal moves with the control. It must not be lost in the move between tabs.
+- **Healing items can be used from Items** (GDD 4 §4), added 2026-10-25. A new T2 endpoint replays
+  the use, with the item row as its ledger.
 
 **Tests:** a Trinket equips into the fourth slot and moves both stats; the refusal still holds from
-the Satchel; the Items list matches `player_item`.
+the Satchel; the Items list matches `player_item`; a heal stacks on accrued regen, stops at max, is
+refused when full or in a fight, and a replayed use changes nothing.
 
 ### P2 — Gear-granted moves (GDD 8 §4)
 
@@ -129,9 +132,13 @@ so the machine-verified row comes first, the same order T5 §10 followed.
   zone-entry grants, each behind its `milestone_grant` row.
 - The streak popover on the badge, previewing the next milestone.
 - Rewards reveal on the device the same way drops do.
+- **The caps and the overflow prompt** (GDD 8 §5.5, GDD 4 §5.1, GDD 13 §5.1–5.2), added 2026-10-25:
+  12 gear pieces, 20 items, and the keep/discard modal for both battle drops and step 10 grants. No
+  plan had scheduled them, and nothing caps the satchel before this packet.
 
 **Tests:** each reward lands once and a replayed sync grants nothing; the overlap rule skips a tier
-already reached; no Trinket is ever a streak reward (GDD 11 §5.1).
+already reached; no Trinket is ever a streak reward (GDD 11 §5.1); a 13th piece or a 21st item
+prompts and is never silently lost.
 
 ### P4 — The overactivity warning (T2 §4 step 11, GDD 11 §8)
 
@@ -212,8 +219,8 @@ Verified at P8, before the wrap-up. M5 is done when, on the Pixel:
 
 ## 6. Cross-spec flags
 
-- **GDD 12 has no tech spec.** T1 has no lore table, the manifest has no lore IDs, and GDD 13 never
-  placed the bestiary. P5 starts with those, not with screens.
+- **GDD 12 has no tech spec.** T1 has no lore table and the manifest has no lore IDs. P5 starts with
+  those, not with screens. The bestiary's place is settled: GDD 13 §5.3 (§3.2).
 - **GDD 8 §4's first Divine Trinket needs a secondary-effect tooltip** that Section 3 routed to
   Section 12. GDD 12 does not cover it. P2 or P5 must place it, or record where it goes.
 - **Note 2 (encounters never expire) remains spec-correct and unaddressed.** Carried from M4 §6.

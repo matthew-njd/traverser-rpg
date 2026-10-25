@@ -1,31 +1,42 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { type ReactNode, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { OwnedGear } from '../battle/mirror';
 import { type Labels, labelFor } from '../content/labels';
-import { SLOT_STAT } from '../progression/stats';
+import { gearBonuses } from '../progression/stats';
 import type { StatDeltas } from '../sync/writes';
-import { Button, Card, Heading } from './primitives';
-import { colors, space, tabular, type } from './theme';
+import { Button, Card } from './primitives';
+import { GRADE_BORDER } from './RevealCard';
+import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme';
 
 /**
- * GDD 8 §2's three worn slots. The Trinket slot is M5's (M4 plan §3.1), so it is not listed.
+ * GDD 13 §5.1 — the four slots in a row; tapping one opens its comparison.
  *
- * Each unworn piece shows the stat it would leave you with before the tap, so one tap is enough:
+ * Each held piece shows the stats it would leave you with before the tap, so one tap is enough:
  * equipping is reversible, unlike an allocation.
  */
-const SLOTS = Object.keys(SLOT_STAT) as (keyof typeof SLOT_STAT)[];
+const SLOTS = ['weapon', 'armor', 'accessory', 'trinket'] as const;
 
 /** Not derived from the IDs: the IDs are American (`armor`, `vigor`) and the copy is Canadian. */
 const NAMES: Record<string, string> = {
   weapon: 'Weapon',
   armor: 'Armour',
   accessory: 'Accessory',
+  trinket: 'Trinket',
   might: 'Might',
   resolve: 'Resolve',
   vigor: 'Vigour',
+  favor: 'Favour',
+  aegis: 'Aegis',
+  mortal: 'Mortal',
+  heroic: 'Heroic',
+  mythic: 'Mythic',
+  divine: 'Divine',
 };
 
-const statName = (key: string) => NAMES[key] ?? key;
+const nameOf = (key: string) => NAMES[key] ?? key;
+
+const signed = (n: number) => (n < 0 ? `−${-n}` : `+${n}`);
 
 export function GearRack({
   gear,
@@ -41,64 +52,128 @@ export function GearRack({
   fighting: boolean;
   onEquip: (playerGearId: string, equip: boolean) => void;
 }) {
+  const [open, setOpen] = useState<(typeof SLOTS)[number]>('weapon');
+
+  const pieces = gear.filter((piece) => piece.slot === open);
+  const worn = pieces.find((piece) => piece.equippedSlot !== null);
+  const held = pieces.filter((piece) => piece !== worn);
+  const wornBonus = new Map(worn === undefined ? [] : gearBonuses(open, worn));
+
   return (
-    <Card style={styles.card}>
-      <Heading>Gear</Heading>
+    <View style={styles.rack}>
+      <View style={styles.slots}>
+        {SLOTS.map((slot) => {
+          const piece = gear.find((each) => each.slot === slot && each.equippedSlot !== null);
 
-      {SLOTS.map((slot) => {
-        const stat = SLOT_STAT[slot];
-        const pieces = gear.filter((piece) => piece.slot === slot);
-        const wornBonus = pieces.find((piece) => piece.equippedSlot !== null)?.bonusPrimary ?? 0;
+          return (
+            <Pressable
+              key={slot}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: slot === open }}
+              onPress={() => setOpen(slot)}
+              style={[
+                styles.slot,
+                { borderColor: piece === undefined ? colors.border : (GRADE_BORDER[piece.tier] ?? colors.border) },
+                slot === open && styles.slotOpen,
+              ]}
+            >
+              <Text style={styles.slotName}>{nameOf(slot)}</Text>
+              <Text style={styles.slotPiece} numberOfLines={2}>
+                {piece === undefined ? 'Empty' : labelFor(labels, piece.gearDefId)}
+              </Text>
+              {piece?.zoneId == null ? null : (
+                <Text style={styles.badge}>{labelFor(labels, piece.zoneId)}</Text>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
 
-        return (
-          <View key={slot} style={styles.slot}>
-            <Text style={styles.slotName}>
-              {statName(slot)} · {statName(stat)}
-            </Text>
+      <Card style={styles.card}>
+        {worn === undefined ? (
+          <Text style={styles.note}>Nothing worn.</Text>
+        ) : (
+          <Row piece={worn} labels={labels} lines={[...wornBonus].map(([stat, bonus]) => `+${bonus} ${nameOf(stat)}`)}>
+            <Button label="Take off" variant="secondary" disabled={fighting} onPress={() => onEquip(worn.playerGearId, false)} />
+          </Row>
+        )}
 
-            {pieces.length === 0 ? <Text style={styles.note}>Nothing yet.</Text> : null}
+        {held.length === 0 ? <Text style={styles.note}>Nothing else held for this slot.</Text> : null}
 
-            {pieces.map((piece) => {
-              const worn = piece.equippedSlot !== null;
-              const after = stats[stat] - wornBonus + (worn ? 0 : piece.bonusPrimary);
+        {held.map((piece) => {
+          const bonus = new Map(gearBonuses(open, piece));
+          const changed = [...new Set([...wornBonus.keys(), ...bonus.keys()])];
 
-              return (
-                <View key={piece.playerGearId} style={styles.row}>
-                  <View style={styles.text}>
-                    <Text style={styles.name}>
-                      {labelFor(labels, piece.gearDefId)}
-                      {worn ? <Text style={styles.worn}> · worn</Text> : null}
-                    </Text>
-                    <Text style={styles.note}>
-                      +{piece.bonusPrimary} {statName(stat)}
-                      {worn ? null : ` · ${statName(stat)} ${stats[stat]} → ${after}`}
-                    </Text>
-                  </View>
+          return (
+            <Row
+              key={piece.playerGearId}
+              piece={piece}
+              labels={labels}
+              lines={changed.map((stat) => {
+                const delta = (bonus.get(stat) ?? 0) - (wornBonus.get(stat) ?? 0);
 
-                  <Button
-                    label={worn ? 'Take off' : 'Wear'}
-                    variant="secondary"
-                    disabled={fighting}
-                    onPress={() => onEquip(piece.playerGearId, !worn)}
-                  />
-                </View>
-              );
-            })}
-          </View>
-        );
-      })}
+                return `${nameOf(stat)} ${stats[stat]} → ${stats[stat] + delta} (${signed(delta)})`;
+              })}
+            >
+              <Button label="Wear" variant="secondary" disabled={fighting} onPress={() => onEquip(piece.playerGearId, true)} />
+            </Row>
+          );
+        })}
 
-      {fighting ? (
-        <Text style={styles.note}>A fight is still open. Settle or flee it first.</Text>
-      ) : null}
-    </Card>
+        {fighting ? <Text style={styles.note}>A fight is still open. Settle or flee it first.</Text> : null}
+      </Card>
+    </View>
+  );
+}
+
+function Row({
+  piece,
+  labels,
+  lines,
+  children,
+}: {
+  piece: OwnedGear;
+  labels: Labels;
+  lines: string[];
+  children: ReactNode;
+}) {
+  return (
+    <View style={styles.row}>
+      <View style={styles.text}>
+        <Text style={styles.name}>
+          {labelFor(labels, piece.gearDefId)}
+          {piece.equippedSlot === null ? null : <Text style={styles.worn}> · worn</Text>}
+        </Text>
+        <Text style={styles.note}>{nameOf(piece.tier)}</Text>
+        {lines.map((line) => (
+          <Text key={line} style={styles.note}>
+            {line}
+          </Text>
+        ))}
+      </View>
+
+      {children}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: space.md },
-  slot: { gap: space.sm },
+  rack: { gap: space.md },
+  slots: { flexDirection: 'row', gap: space.sm },
+  slot: {
+    flex: 1,
+    minHeight: MIN_TOUCH_TARGET * 2,
+    padding: space.sm,
+    gap: space.xs,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 2,
+  },
+  slotOpen: { backgroundColor: colors.surfaceRaised },
   slotName: { ...type.small, color: colors.textDim },
+  slotPiece: { ...type.small, color: colors.text },
+  badge: { ...type.small, color: colors.accent },
+  card: { gap: space.md },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   text: { flex: 1 },
   name: { ...type.body, color: colors.text },

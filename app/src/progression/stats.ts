@@ -12,8 +12,8 @@ export const BASE_STATS: StatDeltas = {
 };
 
 /**
- * GDD 8 §2 — which stat each equipped slot raises. A Trinket splits its bonus across Favor and
- * Aegis and is M3's, so it is absent here rather than mapped to one of them.
+ * GDD 8 §3.1 — which stat each single-stat slot raises. The Trinket raises two, so
+ * {@link gearBonuses} handles it rather than this table.
  *
  * ↯ **No slot maps to Stride, and none ever will** (GDD 1 §5, CLAUDE.md). The rule is enforced by
  * this table having no entry rather than by a check, so there is no branch anyone can "fix".
@@ -28,6 +28,24 @@ export interface EquippedBonus {
   readonly equippedSlot: string | null;
   /** Frozen at drop time (GDD 8 §3.2). Read as stored; never re-derived from tier and level. */
   readonly bonusPrimary: number;
+  /** Aegis on a Trinket; null on every other slot. */
+  readonly bonusSecondary: number | null;
+}
+
+/** The stats a piece raises in `slot`, and by how much. Empty for a slot that raises nothing. */
+export function gearBonuses(
+  slot: string,
+  gear: Pick<EquippedBonus, 'bonusPrimary' | 'bonusSecondary'>,
+): [keyof StatDeltas, number][] {
+  // GDD 8 §3.1 — Favor takes the primary and Aegis the secondary, each frozen at drop.
+  if (slot === 'trinket') {
+    return [
+      ['favor', gear.bonusPrimary],
+      ['aegis', gear.bonusSecondary ?? 0],
+    ];
+  }
+
+  return slot in SLOT_STAT ? [[SLOT_STAT[slot as keyof typeof SLOT_STAT], gear.bonusPrimary]] : [];
 }
 
 /**
@@ -52,15 +70,13 @@ export function effectiveStats(
   const total = { ...stats };
 
   for (const gear of equipped) {
-    const slot = gear.equippedSlot;
-
-    if (slot === null || !(slot in SLOT_STAT)) {
+    if (gear.equippedSlot === null) {
       continue;
     }
 
-    const stat = SLOT_STAT[slot as keyof typeof SLOT_STAT];
-
-    total[stat] += gear.bonusPrimary;
+    for (const [stat, bonus] of gearBonuses(gear.equippedSlot, gear)) {
+      total[stat] += bonus;
+    }
   }
 
   return total;

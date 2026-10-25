@@ -16,10 +16,11 @@ const PLAYER = {
   allocStride: 0,
 } as unknown as MirrorPlayer;
 
-const gear = (equippedSlot: string | null, bonusPrimary: number): EquippedBonus => ({
-  equippedSlot,
-  bonusPrimary,
-});
+const gear = (
+  equippedSlot: string | null,
+  bonusPrimary: number,
+  bonusSecondary: number | null = null,
+): EquippedBonus => ({ equippedSlot, bonusPrimary, bonusSecondary });
 
 describe('effectiveStats', () => {
   it('is the Level 1 baseline with nothing spent and nothing worn', () => {
@@ -68,11 +69,17 @@ describe('effectiveStats', () => {
     expect(effectiveStats(spent, [gear('weapon', 3)]).might).toBe(17);
   });
 
-  /**
-   * The Trinket splits its bonus across Favor and Aegis and is M3's. Until then it contributes
-   * nothing rather than being mapped to one of the two, which would be wrong by half.
-   */
-  it('contributes nothing for a Trinket, which M2 does not implement', () => {
-    expect(effectiveStats(PLAYER, [gear('trinket', 5)])).toEqual(BASE_STATS);
+  /** fixtures §5: a Divine Trinket at L60 is 11 Favor and 11 Aegis. Nothing else moves. */
+  it('splits a Trinket across Favor and Aegis', () => {
+    expect(effectiveStats(PLAYER, [gear('trinket', 11, 11)])).toEqual({
+      ...BASE_STATS,
+      favor: 21,
+      aegis: 21,
+    });
+  });
+
+  /** Each half is frozen separately, so swapping the columns must show. */
+  it('reads Aegis from the secondary bonus, not the primary', () => {
+    expect(effectiveStats(PLAYER, [gear('trinket', 4, 3)])).toMatchObject({ favor: 14, aegis: 13 });
   });
 });

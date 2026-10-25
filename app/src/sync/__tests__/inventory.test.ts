@@ -45,7 +45,7 @@ describe('writing the inventory', () => {
 
     writeProfile(db, profile());
 
-    expect(readEquippedGear(db)).toEqual([{ equippedSlot: 'weapon', bonusPrimary: 1 }]);
+    expect(readEquippedGear(db)).toEqual([{ equippedSlot: 'weapon', bonusPrimary: 1, bonusSecondary: null }]);
   });
 
   /**

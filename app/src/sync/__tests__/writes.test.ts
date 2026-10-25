@@ -1,4 +1,5 @@
-import { readEquippedGear, readOwnedGear } from '../../battle/mirror';
+import { grantItem, readEquippedGear, readOwnedGear, readSatchel } from '../../battle/mirror';
+import { edtDates } from '../../health/__tests__/fixtures';
 import { seedEmbeddedContent } from '../../content/store';
 import { count, peek } from '../../db/outbox';
 import type { SqliteDatabase } from '../../db/types';
@@ -11,6 +12,7 @@ import {
   NO_STATS,
   allocateStatPoints,
   changeSettings,
+  consumeItem,
   equipGear,
   requestExplore,
   tagRestDay,
@@ -266,6 +268,26 @@ describe('equipping gear', () => {
     expect(worn(db).sword).toBeNull();
   });
 
+  /** GDD 8 §3.1 — the fourth slot, and the only one that moves two stats. */
+  it('wears a Trinket in its own slot and moves Favor and Aegis', () => {
+    const db = gearDatabase();
+    const playerId = readPlayer(db)?.playerId ?? '';
+
+    db.runSync(
+      `INSERT INTO player_gear (id, player_id, gear_def_id, equipped_slot, level_at_drop, bonus_primary, bonus_secondary, acquired_at)
+       VALUES ('sigil', ?, 'gear_skyroad_sigil', NULL, 10, 2, 2, '2026-08-01T00:00:00Z')`,
+      [playerId],
+    );
+
+    expect(equipGear(db, 'sigil', true, NOW).equippedSlot).toBe('trinket');
+
+    const player = readPlayer(db);
+    const stats = player === null ? null : effectiveStats(player, readEquippedGear(db));
+
+    expect(stats).toMatchObject({ favor: 12, aegis: 12 });
+    expect(worn(db)).toMatchObject({ sigil: 'trinket', blade: 'weapon' });
+  });
+
   it('clamps Vigor when unequipping leaves it above the new max, and sends the clamp', () => {
     const db = gearDatabase(23);
 
@@ -337,5 +359,64 @@ describe('the Explore tap', () => {
 
     expect(second.operationId).not.toBe(first.operationId);
     expect(peek(db, 10, 'explore')).toHaveLength(2);
+  });
+});
+
+describe('using a healing item outside a fight', () => {
+  /** Max Vigour 20 with nothing worn, so a Salve's 20% is 4. */
+  const itemDatabase = (vigorCurrent: number, anchorAt = new Date(NOW).toISOString()) => {
+    const db = registeredDatabase({ vigor_current: vigorCurrent, vigor_anchor_at: anchorAt });
+
+    seedEmbeddedContent(db);
+    db.runSync('DELETE FROM player_gear');
+
+    const playerId = readPlayer(db)?.playerId ?? '';
+
+    grantItem(db, { playerItemId: 'salve', playerId, itemDefId: 'item_travelers_salve', acquiredAt: '' });
+    grantItem(db, { playerItemId: 'warhex', playerId, itemDefId: 'item_warhex', acquiredAt: '' });
+
+    return db;
+  };
+
+  const held = (db: SqliteDatabase) => readSatchel(db).map((item) => item.playerItemId);
+
+  it('heals by the item’s share of max, spends it, and queues one replay', () => {
+    const db = itemDatabase(10);
+
+    expect(consumeItem(db, 'salve', NOW, edtDates)).toEqual({ playerItemId: 'salve', vigorAfter: 14 });
+    expect(readPlayer(db)?.vigorCurrent).toBe(14);
+    expect(held(db)).toEqual(['warhex']);
+    expect(peek(db, 10).map((entry) => entry.kind)).toEqual(['use_item']);
+  });
+
+  /** The mutation this guards: healing the stored number and discarding regen since the anchor. */
+  it('heals on top of the regen already accrued', () => {
+    // 100 minutes at max 20 is two points (GDD 2 §6).
+    const db = itemDatabase(10, new Date(NOW - 100 * 60_000).toISOString());
+
+    expect(consumeItem(db, 'salve', NOW, edtDates)?.vigorAfter).toBe(16);
+  });
+
+  it('stops at max', () => {
+    expect(consumeItem(itemDatabase(18), 'salve', NOW, edtDates)?.vigorAfter).toBe(20);
+  });
+
+  it.each([
+    ['a battle-only item', 10, 'warhex', false],
+    ['full Vigour', 20, 'salve', false],
+    ['an open fight', 10, 'salve', true],
+  ])('refuses with %s, and changes nothing', (_, vigor, item, fighting) => {
+    const db = itemDatabase(vigor);
+
+    if (fighting) {
+      db.runSync(
+        `INSERT INTO battle_snapshot (one_row, client_battle_id, snapshot, updated_at) VALUES (1, 'b', '{}', '')`,
+      );
+    }
+
+    expect(consumeItem(db, item, NOW, edtDates)).toBeNull();
+    expect(held(db)).toEqual(['salve', 'warhex']);
+    expect(readPlayer(db)?.vigorCurrent).toBe(vigor);
+    expect(count(db)).toBe(0);
   });
 });

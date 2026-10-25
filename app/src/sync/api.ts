@@ -11,6 +11,7 @@ import {
   type SettingsPayload,
   type SyncResponse,
   type SyncSession,
+  type UseItemPayload,
   parseActivityDays,
   parseContentVersion,
   parseProfile,
@@ -22,6 +23,7 @@ import {
   toWireRestDay,
   toWireSettings,
   toWireSyncRequest,
+  toWireUseItem,
 } from './dto';
 
 /**
@@ -100,6 +102,7 @@ export interface TraverserApi {
   /** GDD 11 §3.1's tag, which is also GDD 2 §6's Vigor restore. */
   tagRestDay(payload: RestDayPayload): Promise<void>;
   equipGear(payload: EquipPayload): Promise<void>;
+  useItem(payload: UseItemPayload): Promise<void>;
 }
 
 async function problemCode(response: Response): Promise<string | null> {
@@ -221,6 +224,13 @@ export function createApi(options: ApiOptions): TraverserApi {
       await request(options, `/players/me/gear/${encodeURIComponent(payload.playerGearId)}/equipped`, {
         method: 'PUT',
         body: JSON.stringify(toWireEquip(payload)),
+      });
+    },
+
+    async useItem(payload) {
+      await request(options, `/players/me/items/${encodeURIComponent(payload.playerItemId)}/use`, {
+        method: 'POST',
+        body: JSON.stringify(toWireUseItem(payload)),
       });
     },
   };

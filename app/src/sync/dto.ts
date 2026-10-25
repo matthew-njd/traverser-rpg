@@ -533,3 +533,13 @@ export interface EquipPayload {
 export function toWireEquip(payload: EquipPayload): Json {
   return { equipped_slot: payload.equippedSlot, vigor_after: payload.vigorAfter };
 }
+
+/** GDD 4 §4's out-of-battle heal. The item row is the server's ledger, so no operation id. */
+export interface UseItemPayload {
+  readonly playerItemId: string;
+  readonly vigorAfter: number;
+}
+
+export function toWireUseItem(payload: UseItemPayload): Json {
+  return { vigor_after: payload.vigorAfter };
+}

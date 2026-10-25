@@ -2,14 +2,16 @@ import { enqueue } from '../db/outbox';
 import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
 import { mintUuidV7 } from '../health/deltaId';
-import { maxVigorFor, restoreVigor } from '../progression/vigor';
-import { readOwnedGear, readSnapshot } from '../battle/mirror';
+import type { LocalDateResolver } from '../health/localDate';
+import { maxVigorFor, recoverVigor, restoreVigor } from '../progression/vigor';
+import { readOwnedGear, readSnapshot, spendItems } from '../battle/mirror';
 import type {
   AllocationPayload,
   EquipPayload,
   ExplorePayload,
   RestDayPayload,
   SettingsPayload,
+  UseItemPayload,
 } from './dto';
 import { readPlayer, writeRestTag, writeSettings, writeVigor } from './mirror';
 
@@ -253,6 +255,64 @@ export function equipGear(
     enqueue(db, {
       clientOpId: mintUuidV7(db, now),
       kind: 'equip',
+      payload,
+      createdAt: new Date(now).toISOString(),
+    });
+  });
+
+  return payload;
+}
+
+/**
+ * GDD 4 §4 — spend a healing item outside a fight. Null, and nothing written, when the item is not
+ * a held heal, a fight is open (its snapshot already counts the satchel), or Vigour is full.
+ *
+ * ↯ Heals on top of the regen accrued since the anchor, so recovery is settled first; the new anchor
+ * is the moment of use, as a battle's is its end.
+ */
+export function consumeItem(
+  db: SqliteDatabase,
+  playerItemId: string,
+  now: number,
+  dates: LocalDateResolver,
+): UseItemPayload | null {
+  let payload: UseItemPayload | null = null;
+
+  transact(db, () => {
+    const player = readPlayer(db);
+
+    if (player === null || readSnapshot(db) !== null) {
+      return;
+    }
+
+    const item = db.getFirstSync<{ heal_pct: number | null }>(
+      `SELECT d.heal_pct FROM player_item i JOIN item_def d ON d.id = i.item_def_id
+        WHERE i.id = ? AND d.category = 'heal' AND d.battle_only = 0`,
+      [playerItemId],
+    );
+
+    if (item?.heal_pct == null) {
+      return;
+    }
+
+    const max = maxVigorFor(db, player);
+    const recovered = recoverVigor(player, max, now, dates).vigorCurrent;
+
+    if (recovered >= max) {
+      return;
+    }
+
+    // Same rounding as a heal in battle (battle/state.ts).
+    const vigorAfter = Math.min(max, recovered + Math.floor((item.heal_pct / 100) * max));
+
+    payload = { playerItemId, vigorAfter };
+
+    spendItems(db, [playerItemId]);
+    writeVigor(db, vigorAfter, new Date(now).toISOString());
+
+    enqueue(db, {
+      clientOpId: mintUuidV7(db, now),
+      kind: 'use_item',
       payload,
       createdAt: new Date(now).toISOString(),
     });

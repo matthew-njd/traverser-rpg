@@ -9,7 +9,7 @@ import { type BattleSnapshot, parseSnapshot, serialiseSnapshot } from './snapsho
  * ↯ **None of these is reconciled by a sync response** — T2 §4's response block carries no inventory
  * and no bestiary. They are the local half of a ledger the server keeps from the same battle
  * payload, and `client_battle_id` is what makes both halves move exactly once. So every write here
- * belongs inside the transaction that queues a battle, and nothing may write them from a screen.
+ * belongs inside a transaction that queues the matching replay: a battle, or `consumeItem`'s heal.
  */
 
 export interface SatchelItem {
@@ -26,10 +26,10 @@ export interface BestiaryEntry {
 export const NEVER_MET: BestiaryEntry = { encounterCount: 0, defeatCount: 0 };
 
 /**
- * The battle-usable satchel, oldest first.
+ * Every held item, oldest first.
  *
- * `battle_only` is not filtered here: GDD 4's roster is battle-only throughout, and a filter would
- * silently hide a future out-of-battle item from the one screen that is meant to list what is held.
+ * `battle_only` is not filtered here: the Satchel lists everything held, and the healing items are
+ * usable outside a fight too (GDD 4 §4).
  */
 export function readSatchel(db: SqliteDatabase): SatchelItem[] {
   return db
@@ -64,40 +64,57 @@ export function grantItem(
  * `(player_id, equipped_slot)` is what makes at most one per slot true in the schema.
  */
 export function readEquippedGear(db: SqliteDatabase): EquippedBonus[] {
-  return db.getAllSync<{ equipped_slot: string | null; bonus_primary: number }>(
-    'SELECT equipped_slot, bonus_primary FROM player_gear WHERE equipped_slot IS NOT NULL',
-  ).map((row) => ({ equippedSlot: row.equipped_slot, bonusPrimary: row.bonus_primary }));
+  return db
+    .getAllSync<{ equipped_slot: string | null; bonus_primary: number; bonus_secondary: number | null }>(
+      `SELECT equipped_slot, bonus_primary, bonus_secondary
+         FROM player_gear WHERE equipped_slot IS NOT NULL`,
+    )
+    .map((row) => ({
+      equippedSlot: row.equipped_slot,
+      bonusPrimary: row.bonus_primary,
+      bonusSecondary: row.bonus_secondary,
+    }));
 }
 
-export interface OwnedGear {
+export interface OwnedGear extends EquippedBonus {
   readonly playerGearId: string;
   readonly gearDefId: string;
   /** The slot the piece's `gear_def` fits — not where it is worn. */
   readonly slot: string;
-  readonly equippedSlot: string | null;
-  readonly bonusPrimary: number;
+  readonly tier: string;
+  /** Trinkets only. */
+  readonly zoneId: string | null;
 }
 
-/** Every owned piece, for the equip control. Newest first within a slot. */
+/** Every owned piece, for the equip control. Highest tier first within a slot (GDD 13 §5.1). */
 export function readOwnedGear(db: SqliteDatabase): OwnedGear[] {
   return db
     .getAllSync<{
       id: string;
       gear_def_id: string;
       slot: string;
+      tier: string;
+      zone_id: string | null;
       equipped_slot: string | null;
       bonus_primary: number;
+      bonus_secondary: number | null;
     }>(
-      `SELECT pg.id, pg.gear_def_id, gd.slot, pg.equipped_slot, pg.bonus_primary
+      `SELECT pg.id, pg.gear_def_id, gd.slot, gd.tier, gd.zone_id, pg.equipped_slot,
+              pg.bonus_primary, pg.bonus_secondary
          FROM player_gear pg JOIN gear_def gd ON gd.id = pg.gear_def_id
-        ORDER BY gd.slot, pg.acquired_at DESC, pg.id`,
+        ORDER BY gd.slot,
+                 CASE gd.tier WHEN 'divine' THEN 0 WHEN 'mythic' THEN 1 WHEN 'heroic' THEN 2 ELSE 3 END,
+                 pg.acquired_at DESC, pg.id`,
     )
     .map((row) => ({
       playerGearId: row.id,
       gearDefId: row.gear_def_id,
       slot: row.slot,
+      tier: row.tier,
+      zoneId: row.zone_id,
       equippedSlot: row.equipped_slot,
       bonusPrimary: row.bonus_primary,
+      bonusSecondary: row.bonus_secondary,
     }));
 }
 

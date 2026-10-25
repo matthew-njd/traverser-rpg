@@ -47,6 +47,63 @@ public static class ProgressionEndpoints
         routes.MapPut("/players/me/gear/{playerGearId:guid}/equipped", EquipGearAsync)
             .WithName("EquipGear")
             .WithSummary("Wear a piece in its slot, displacing the current one, or unequip it (GDD 8 §2).");
+
+        routes.MapPost("/players/me/items/{playerItemId:guid}/use", UseItemAsync)
+            .WithName("UseItem")
+            .WithSummary("Spend a healing item outside a battle (GDD 4 §4).");
+    }
+
+    /// <summary>
+    /// GDD 4 §4 — healing items only. The item row is the ledger: Vigor moves only when this call
+    /// deletes it, so a replay finds it gone and changes nothing.
+    /// </summary>
+    private static async Task<IResult> UseItemAsync(
+        Guid playerItemId,
+        UseItemRequest request,
+        CurrentPlayer current,
+        TraverserDbContext db,
+        CancellationToken ct)
+    {
+        if (request.VigorAfter < 0)
+        {
+            return ApiProblem.BadRequest(ApiProblem.ValidationFailed, "vigor_after cannot be negative.");
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+
+        var item = await db.PlayerItems
+            .Include(i => i.ItemDef)
+            .FirstOrDefaultAsync(i => i.Id == playerItemId && i.PlayerId == current.PlayerId, ct);
+
+        if (item is not null)
+        {
+            if (item.ItemDef.Category != ItemCategory.Heal)
+            {
+                return ApiProblem.BadRequest(
+                    ApiProblem.ValidationFailed, $"{item.ItemDefId} can only be used in a battle.");
+            }
+
+            // ↯ Gated on the delete, not the earlier read: two replays racing past the read would
+            // otherwise both apply Vigor.
+            var deleted = await db.PlayerItems.Where(i => i.Id == item.Id).ExecuteDeleteAsync(ct);
+
+            if (deleted == 1)
+            {
+                var player = await db.Players.FirstAsync(p => p.Id == current.PlayerId, ct);
+
+                player.VigorCurrent = request.VigorAfter;
+                player.VigorAnchorAt = DateTime.UtcNow;
+
+                await db.SaveChangesAsync(ct);
+            }
+        }
+
+        var profile = await PlayerProfile.LoadAsync(db, current.PlayerId, ct)
+            ?? throw new InvalidOperationException($"Profile for {current.PlayerId} vanished mid-use.");
+
+        await transaction.CommitAsync(ct);
+
+        return Results.Ok(profile);
     }
 
     /// <summary>

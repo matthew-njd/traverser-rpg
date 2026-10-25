@@ -105,6 +105,7 @@ function fakeApi(
     updateSettings: async () => undefined,
     tagRestDay: async () => undefined,
     equipGear: async () => undefined,
+    useItem: async () => undefined,
     ...overrides,
   };
 }
@@ -458,6 +459,28 @@ describe('the online pass', () => {
     await run(db, { api });
 
     expect(equipped).toEqual([payload]);
+    expect(count(db)).toBe(0);
+  });
+
+  it('replays a queued item use to its own endpoint and acknowledges it', async () => {
+    const db = registeredDatabase();
+    const payload = { playerItemId: 'salve', vigorAfter: 14 };
+
+    enqueue(db, { clientOpId: 'use-1', kind: 'use_item', payload, createdAt: '2026-08-01T00:00:00.000Z' });
+
+    const used: unknown[] = [];
+    const api = fakeApi({
+      useItem: async (sent) => {
+        used.push(sent);
+      },
+      updateSettings: async () => {
+        throw new Error('an item use was sent as settings');
+      },
+    });
+
+    await run(db, { api });
+
+    expect(used).toEqual([payload]);
     expect(count(db)).toBe(0);
   });
 

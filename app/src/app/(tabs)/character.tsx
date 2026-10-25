@@ -3,20 +3,18 @@ import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getDatabase } from '@/db/open';
-import { type OwnedGear, readEquippedGear, readOwnedGear, readSnapshot } from '@/battle/mirror';
-import { type Labels, loadLabels } from '@/content/labels';
+import { readEquippedGear, readSnapshot } from '@/battle/mirror';
 import { type EquippedBonus, effectiveStats } from '@/progression/stats';
 import { maxVigorFor, vigorReadout } from '@/progression/vigor';
 import { syncNow } from '@/runtime';
 import type { ActivityDay } from '@/sync/dto';
 import { dayBefore, deviceLocalDates } from '@/health/localDate';
 import { type MirrorPlayer, isCredited, isRestTagged, readActivityDays, readPlayer } from '@/sync/mirror';
-import { EquipError, type StatDeltas, allocateStatPoints, equipGear, tagRestDay } from '@/sync/writes';
+import { type StatDeltas, allocateStatPoints, tagRestDay } from '@/sync/writes';
 import { useAppStore } from '@/state/appStore';
 import { usePlayerStore } from '@/state/playerStore';
 import { ActivityLog } from '@/ui/ActivityLog';
 import { VigorBar } from '@/ui/battle/VigorBar';
-import { GearRack } from '@/ui/GearRack';
 import { HealthBanner } from '@/ui/HealthBanner';
 import { Button, Card, Heading, Screen, SegmentedControl } from '@/ui/primitives';
 import { RestDay } from '@/ui/RestDay';
@@ -37,8 +35,6 @@ export default function Character() {
   const [view, setView] = useState<'avatar' | 'stats'>('avatar');
   const [player, setPlayer] = useState<MirrorPlayer | null>(null);
   const [equipped, setEquipped] = useState<readonly EquippedBonus[]>([]);
-  const [owned, setOwned] = useState<readonly OwnedGear[]>([]);
-  const [labels, setLabels] = useState<Labels>(new Map());
   const [days, setDays] = useState<readonly ActivityDay[]>([]);
   const [allocating, setAllocating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,8 +64,6 @@ export default function Character() {
     }
 
     setEquipped(readEquippedGear(db));
-    setOwned(readOwnedGear(db));
-    setLabels(loadLabels(db));
     setDays(readActivityDays(db, ACTIVITY_LOG_LIMIT));
     const today = deviceLocalDates.dateOf(Date.now());
     const yesterday = dayBefore(today);
@@ -154,23 +148,6 @@ export default function Character() {
     void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
   };
 
-  /** GDD 8 §2. Local first, like every write here; the replay is best-effort. */
-  const equip = (playerGearId: string, wear: boolean) => {
-    try {
-      equipGear(getDatabase(), playerGearId, wear, Date.now());
-    } catch (error) {
-      // A fight opened or the piece left since the last render. The rack re-reads either way.
-      if (!(error instanceof EquipError)) {
-        throw error;
-      }
-    }
-
-    usePlayerStore.getState().hydrate(getDatabase());
-    reload();
-
-    void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
-  };
-
   return (
     <Screen tabbed>
       <View style={styles.header}>
@@ -238,16 +215,6 @@ export default function Character() {
               <Heading>Vigour</Heading>
               <VigorBar side="player" vigor={vigor.current} vigorMax={vigor.max} />
             </Card>
-          )}
-
-          {player === null ? null : (
-            <GearRack
-              gear={owned}
-              labels={labels}
-              stats={effectiveStats(player, equipped)}
-              fighting={fighting}
-              onEquip={equip}
-            />
           )}
         </ScrollView>
       </View>
