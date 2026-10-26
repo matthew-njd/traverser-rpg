@@ -2,7 +2,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { GateState, RoadGate, RoadState, RoadZone } from '../progression/road';
 import { segmentFill } from '../progression/road';
-import { Button } from './primitives';
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme';
 
 /**
@@ -14,16 +13,16 @@ import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme'
  */
 export function Road({
   state,
-  exploring = null,
-  onExplore,
+  selected = null,
+  onSelect,
   onFace,
   onZoneLayout,
 }: {
   state: RoadState;
-  /** The zone whose Explore tap is still in flight, so its button reports itself. */
-  exploring?: string | null;
-  /** GDD 9 §4.3 — offered on an already-unlocked segment and nowhere else. */
-  onExplore?: (zoneId: string) => void;
+  /** Explore's target (GDD 13 §4.2, amended at M5/P6), highlighted. */
+  selected?: string | null;
+  /** GDD 9 §4.3 — only an unlocked segment can be Explore's target. */
+  onSelect?: (zoneId: string) => void;
   /** GDD 9 §4.2 — tapping a reached gate starts the fight; a defeated one is a rematch (GDD 5 §5). */
   onFace?: (gate: RoadGate) => void;
   /** Reports each segment's y offset so the screen can scroll the Viewport to it (§4.3). */
@@ -38,8 +37,8 @@ export function Road({
           next={state.zones[index + 1]}
           leagues={state.leagues}
           here={zone.zoneId === waymarkerZone(state)}
-          exploring={exploring === zone.zoneId}
-          onExplore={onExplore}
+          selected={zone.zoneId === selected}
+          onSelect={onSelect}
           onFace={onFace}
           onLayout={onZoneLayout}
         />
@@ -68,8 +67,8 @@ function ZoneSegment({
   next,
   leagues,
   here,
-  exploring,
-  onExplore,
+  selected,
+  onSelect,
   onFace,
   onLayout,
 }: {
@@ -77,20 +76,29 @@ function ZoneSegment({
   next: RoadZone | undefined;
   leagues: number;
   here: boolean;
-  exploring: boolean;
-  onExplore?: (zoneId: string) => void;
+  selected: boolean;
+  onSelect?: (zoneId: string) => void;
   onFace?: (gate: RoadGate) => void;
   onLayout?: (zoneId: string, y: number) => void;
 }) {
   const fill = segmentFill(zone, next, leagues);
+  const selectable = zone.unlocked && onSelect !== undefined;
 
   return (
-    <View
-      style={[styles.segment, zone.unlocked ? null : styles.segmentLocked]}
+    <Pressable
+      accessibilityRole={selectable ? 'radio' : undefined}
+      accessibilityState={selectable ? { checked: selected } : undefined}
+      disabled={!selectable}
+      onPress={() => onSelect?.(zone.zoneId)}
+      style={[styles.segment, zone.unlocked ? null : styles.segmentLocked, selected && styles.segmentSelected]}
       onLayout={(event) => onLayout?.(zone.zoneId, event.nativeEvent.layout.y)}
     >
       <View style={styles.bannerRow}>
-        <Text style={[styles.banner, zone.unlocked ? null : styles.dimmed]}>{zone.displayName}</Text>
+        <View style={styles.bannerName}>
+          {/* The dot says the card can be picked, before any tap; a locked zone has none. */}
+          {selectable ? <Text style={[styles.radio, selected && styles.radioOn]}>{selected ? '●' : '○'}</Text> : null}
+          <Text style={[styles.banner, zone.unlocked ? null : styles.dimmed]}>{zone.displayName}</Text>
+        </View>
 
         {/*
           Locked and unreleased are different sentences and must not collapse into one grey label:
@@ -116,21 +124,7 @@ function ZoneSegment({
       {zone.gates.map((gate) => (
         <GateNode key={gate.gateId} gate={gate} leagues={leagues} onFace={onFace} />
       ))}
-
-      {/*
-        §4.3 — Explore belongs to a segment the player has **already unlocked**, which is what makes
-        returning to Olympion for a Storm charm while levelling in Imperion a supported thing to do
-        rather than a workaround. A locked segment offers nothing to explore.
-      */}
-      {zone.unlocked && onExplore !== undefined ? (
-        <Button
-          variant="secondary"
-          label={exploring ? 'Searching the road…' : `Explore ${zone.displayName}`}
-          disabled={exploring}
-          onPress={() => onExplore(zone.zoneId)}
-        />
-      ) : null}
-    </View>
+    </Pressable>
   );
 }
 
@@ -147,16 +141,10 @@ function GateNode({
   const faceable = onFace !== undefined && gate.state !== 'locked';
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.node, pressed && faceable ? styles.nodePressed : null]}
-      accessibilityRole={faceable ? 'button' : undefined}
-      accessibilityLabel={`${gate.displayName}, ${STATE_COPY[gate.state]}`}
-      disabled={!faceable}
-      onPress={() => onFace?.(gate)}
-    >
+    <View style={styles.node}>
       <Text style={[styles.glyph, stateTone[gate.state]]}>{GLYPH[gate.state]}</Text>
 
-      <View style={styles.nodeText}>
+      <View accessible accessibilityLabel={`${gate.displayName}, ${STATE_COPY[gate.state]}`} style={styles.nodeText}>
         <Text style={[styles.nodeName, gate.state === 'locked' ? styles.dimmed : null]}>
           {gate.displayName}
         </Text>
@@ -173,10 +161,21 @@ function GateNode({
         </Text>
       </View>
 
+      {/*
+        Only the label starts the fight. The row sits inside a selectable zone card, and a tap meant
+        to pick the zone must not open an unfleeable boss fight.
+      */}
       {faceable ? (
-        <Text style={styles.face}>{gate.state === 'defeated' ? 'Face again ›' : 'Face ›'}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Battle ${gate.displayName}${gate.state === 'defeated' ? ' again' : ''}`}
+          onPress={() => onFace?.(gate)}
+          style={({ pressed }) => [styles.battle, pressed ? styles.nodePressed : null]}
+        >
+          <Text style={styles.face}>{gate.state === 'defeated' ? 'Battle again ›' : 'Battle ›'}</Text>
+        </Pressable>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 
@@ -188,7 +187,7 @@ const GLYPH: Record<GateState, string> = {
 
 const STATE_COPY: Record<GateState, string> = {
   locked: 'locked',
-  available: 'ready to face',
+  available: 'ready to battle',
   defeated: 'defeated',
 };
 
@@ -211,8 +210,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   segmentLocked: { backgroundColor: colors.background },
+  segmentSelected: { borderColor: colors.accent, borderWidth: 2 },
 
   bannerRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  bannerName: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
+  radio: { fontSize: 16, color: colors.textDim },
+  radioOn: { color: colors.accent },
   banner: { ...type.title, color: colors.text },
   dimmed: { color: colors.textDim },
   tag: {
@@ -240,6 +243,7 @@ const styles = StyleSheet.create({
 
   node: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: MIN_TOUCH_TARGET },
   nodePressed: { opacity: 0.7 },
+  battle: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center', paddingLeft: space.sm },
   face: { ...type.small, color: colors.accent, fontWeight: '600' },
   glyph: { fontSize: 18, width: 22, textAlign: 'center' },
   nodeText: { flex: 1 },

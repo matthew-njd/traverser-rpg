@@ -61,7 +61,7 @@ describe('the Road', () => {
   it('says a gate is ready once the Waymarker reaches it', async () => {
     await render(<Road state={state({ leagues: 90, zones: [zone({ gates: [gate({ state: 'available' })] })] })} />);
 
-    expect(screen.getByText(/ready to face/)).toBeTruthy();
+    expect(screen.getByText(/ready to battle/)).toBeTruthy();
   });
 
   it('says a gate is defeated once its boss has fallen', async () => {
@@ -91,7 +91,7 @@ describe('the Road', () => {
     );
 
     expect(screen.getByLabelText('Cyclops, defeated')).toBeTruthy();
-    expect(screen.getByLabelText('Cerberus, ready to face')).toBeTruthy();
+    expect(screen.getByLabelText('Cerberus, ready to battle')).toBeTruthy();
   });
 
   /**
@@ -119,12 +119,11 @@ describe('the Road', () => {
   });
 
   /**
-   * GDD 9 §4.3 — Explore belongs to a segment the player has **already unlocked**. That is what
-   * makes returning to Olympion for a Storm charm while levelling in Imperion a supported thing to
-   * do rather than a workaround, and it is why a locked segment offers nothing.
+   * GDD 9 §4.3 — Explore acts on a segment the player has **already unlocked**, so only those can be
+   * selected as its target (GDD 13 §4.2, amended at M5/P6). A locked one does not answer.
    */
-  it('offers Explore on an unlocked segment and nowhere else', async () => {
-    const onExplore = jest.fn();
+  it("selects an unlocked segment as Explore's target, and never a locked one", async () => {
+    const onSelect = jest.fn();
 
     await render(
       <Road
@@ -134,16 +133,21 @@ describe('the Road', () => {
             zone({ zoneId: 'valheon', displayName: 'Valheon', unlocked: false, gates: [] }),
           ],
         })}
-        onExplore={onExplore}
+        selected="olympion"
+        onSelect={onSelect}
       />,
     );
 
-    expect(screen.getByText('Explore Olympion')).toBeTruthy();
-    expect(screen.queryByText('Explore Valheon')).toBeNull();
+    expect(screen.getAllByRole('radio')).toHaveLength(1);
+    expect(screen.getByRole('radio').props.accessibilityState).toMatchObject({ checked: true });
+    // One dot, on the unlocked card: a locked zone shows none.
+    expect(screen.getAllByText(/^[●○]$/)).toHaveLength(1);
+    expect(screen.getByText('●')).toBeTruthy();
 
-    await fireEvent.press(screen.getByText('Explore Olympion'));
+    await fireEvent.press(screen.getByText('Olympion'));
+    await fireEvent.press(screen.getByText('Valheon'));
 
-    expect(onExplore).toHaveBeenCalledWith('olympion');
+    expect(onSelect.mock.calls).toEqual([['olympion']]);
   });
 
   /**
@@ -170,30 +174,16 @@ describe('the Road', () => {
       />,
     );
 
-    await fireEvent.press(screen.getByText('Face ›'));
-    await fireEvent.press(screen.getByText('Face again ›'));
+    // The row is not the button: a tap on the name belongs to the zone card, not the fight.
+    await fireEvent.press(screen.getByText('Cerberus'));
+    await fireEvent.press(screen.getByText('Battle ›'));
+    await fireEvent.press(screen.getByText('Battle again ›'));
     await fireEvent.press(screen.getByText('Fenrir'));
 
     expect(onFace.mock.calls.map(([faced]) => (faced as RoadGate).gateId)).toEqual([
       'gate_cyclops',
       'gate_cerberus',
     ]);
-  });
-
-  /**
-   * ↯ The roll is the server's (T2 §4 step 8), so the button cannot report an outcome — only that
-   * the tap is away. A second press while the first is in flight would spend a second roll.
-   */
-  it('shuts the button while its tap is in flight', async () => {
-    const onExplore = jest.fn();
-
-    await render(
-      <Road state={state({ zones: [zone({ gates: [] })] })} exploring="olympion" onExplore={onExplore} />,
-    );
-
-    await fireEvent.press(screen.getByText('Searching the road…'));
-
-    expect(onExplore).not.toHaveBeenCalled();
   });
 
   /**

@@ -1,9 +1,9 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { type BestiaryEntry, readBestiaryBook } from '@/battle/mirror';
-import { type Labels, loadLabels } from '@/content/labels';
+import { type Labels, labelFor, loadLabels } from '@/content/labels';
 import { type EnemyLore, readRoster } from '@/content/lore';
 import { getDatabase } from '@/db/open';
 import { deviceLocalDates } from '@/health/localDate';
@@ -11,9 +11,10 @@ import { type PendingEncounter, type RoadState, readEncounters, readRoad } from 
 import { syncNow } from '@/runtime';
 import { requestExplore } from '@/sync/writes';
 import { Bestiary } from '@/ui/Bestiary';
-import { Button, Card, Heading, Screen, SegmentedControl, Title } from '@/ui/primitives';
+import { EncounterCard } from '@/ui/EncounterCard';
+import { Button, Screen, SegmentedControl, Title } from '@/ui/primitives';
 import { Road, waymarkerZone } from '@/ui/Road';
-import { colors, space, tabular, type } from '@/ui/theme';
+import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from '@/ui/theme';
 
 /**
  * GDD 9 §4 — the Road.
@@ -23,8 +24,9 @@ import { colors, space, tabular, type } from '@/ui/theme';
  * the authority and the repair path, the same role `GET /players/me` plays for the player block.
  *
  * The Viewport scrolls freely to any segment behind the Waymarker (§4.3); "Return to the Road"
- * snaps it back. Explore (§4.3) is offered per unlocked segment, and the encounters sync has
- * already granted are spendable from here whether or not the API is reachable (T2 §1.3).
+ * snaps it back. One Explore button acts on the selected unlocked segment, the Waymarker's by
+ * default (GDD 13 §4.2, amended at M5/P6), and the encounters sync has already granted are
+ * spendable from here whether or not the API is reachable (T2 §1.3).
  *
  * The Bestiary is the second sub-view (GDD 13 §5.3, amended at M5/P5): enemies are met on the Road
  * and grouped by its zones.
@@ -34,6 +36,7 @@ export default function MapScreen() {
   const [road, setRoad] = useState<RoadState | null>(null);
   const [encounters, setEncounters] = useState<readonly PendingEncounter[]>([]);
   const [exploring, setExploring] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [view, setView] = useState<'path' | 'bestiary'>('path');
   const [roster, setRoster] = useState<readonly EnemyLore[]>([]);
@@ -99,6 +102,9 @@ export default function MapScreen() {
     scroll.current?.scrollTo({ y: roadY.current + (y ?? 0), animated: true });
   };
 
+  const target = road === null ? null : (selected ?? waymarkerZone(road));
+  const targetName = road?.zones.find((zone) => zone.zoneId === target)?.displayName;
+
   return (
     <Screen tabbed>
       <Title>The Road</Title>
@@ -151,35 +157,29 @@ export default function MapScreen() {
               no particular node, and burying it in the segment it names would hide it. Inside the
               scroll view, because outside it a long queue took the whole screen and froze the Road.
             */}
-            {encounters.length === 0 ? null : (
-              <Card>
-                <Heading>
-                  {encounters.length === 1
-                    ? 'Something waits on the road'
-                    : `${encounters.length} wait on the road`}
-                </Heading>
-
-                {encounters.map((encounter) => (
-                  <Button
-                    key={encounter.grantId}
-                    label={encounter.displayName}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/battle',
-                        params: { enemyId: encounter.enemyId, grantId: encounter.grantId },
-                      })
-                    }
-                  />
-                ))}
-              </Card>
-            )}
+            <EncounterCard
+              encounters={encounters}
+              types={
+                new Map(
+                  roster
+                    .filter((enemy) => met.has(enemy.id) && enemy.typeId !== null)
+                    .map((enemy) => [enemy.id, labelFor(labels, enemy.typeId ?? '')]),
+                )
+              }
+              onFace={(encounter) =>
+                router.push({
+                  pathname: '/battle',
+                  params: { enemyId: encounter.enemyId, grantId: encounter.grantId },
+                })
+              }
+            />
 
             {/* Segment offsets are relative to the Road, so its own offset is added on return. */}
             <View onLayout={(event) => (roadY.current = event.nativeEvent.layout.y)}>
               <Road
                 state={road}
-                exploring={exploring}
-                onExplore={explore}
+                selected={target}
+                onSelect={setSelected}
                 onFace={(gate) =>
                   router.push({
                     pathname: '/battle',
@@ -192,7 +192,27 @@ export default function MapScreen() {
             </View>
           </ScrollView>
 
-          <Button label="Return to the Road" onPress={returnToTheRoad} />
+          {/*
+            GDD 13 §4.2's two buttons in the thumb zone: Explore wide on the left, Return as an icon
+            on the right. The ◆ is the Waymarker's own glyph on the track.
+          */}
+          <View style={styles.actions}>
+            <View style={styles.action}>
+              <Button
+                label={exploring !== null ? 'Searching the road…' : `Explore ${targetName ?? ''}`}
+                disabled={target === null || exploring !== null}
+                onPress={() => target !== null && explore(target)}
+              />
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Return to the Road"
+              onPress={returnToTheRoad}
+              style={({ pressed }) => [styles.recentre, pressed && styles.recentrePressed]}
+            >
+              <Text style={styles.recentreGlyph}>◆</Text>
+            </Pressable>
+          </View>
         </View>
       )}
     </Screen>
@@ -206,4 +226,16 @@ const styles = StyleSheet.create({
   viewport: { gap: space.md, paddingBottom: space.md },
   pane: { flex: 1, gap: space.sm },
   hidden: { display: 'none' },
+  actions: { flexDirection: 'row', gap: space.sm },
+  action: { flex: 1 },
+  recentre: {
+    width: MIN_TOUCH_TARGET + space.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  recentrePressed: { opacity: 0.85 },
+  recentreGlyph: { fontSize: 18, color: colors.gold },
 });

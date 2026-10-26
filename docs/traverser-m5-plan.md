@@ -195,7 +195,8 @@ Split from P5 on 2026-10-25 (DECISIONS).
 
 ### P6 — The Road layout (GDD 13 §4)
 
-- The encounters card collapses by default to a count, **Face the next ›** and **Show all ▾**.
+- The encounters card collapses by default to two fixed lines: the next enemy and **Battle ›**, over
+  the count and **Show all ▾**.
 - The Road now has two sub-views, Path and Bestiary (P5). Everything below is Path's, and the
   Explore button shows on Path only.
 - **One floating Explore button at the bottom left, acting on a selected zone**, replacing the
@@ -206,7 +207,7 @@ Split from P5 on 2026-10-25 (DECISIONS).
   - The label names the target, "Explore Valheon", so no tap is a surprise.
   - ↯ Not GDD 13 §4's "centred on the Viewport": the Road is a vertical list, and a target derived
     from scroll position is the ambiguity DECISIONS 2026-08-22 rejected. The selection is explicit.
-  - Amend GDD 13 §4 when this is built.
+  - GDD 13 §4.2 amended 2026-10-25, when built.
 
 **Tests:** the card stays one row high with any number waiting; Explore targets the Waymarker's
 zone by default; selecting another unlocked zone retargets it and relabels the button; a locked zone
