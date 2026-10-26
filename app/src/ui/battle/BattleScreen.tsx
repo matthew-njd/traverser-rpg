@@ -13,7 +13,7 @@ import { colors, radius, space, tabular, type } from '../theme';
 import { ActionMenu, type ItemOption } from './ActionMenu';
 import { CombatLog } from './CombatLog';
 import { VigorBar } from './VigorBar';
-import { type Callout, calloutOf, logEntries } from './log';
+import { type Callout, calloutOf, logEntries, shownVigor } from './log';
 import { ACTOR_CHANGE_DELAY_MS, LINE_DELAY_MS, usePacedLines } from './paced';
 import { skillOptions, slotsFor } from './options';
 
@@ -90,10 +90,20 @@ export function BattleScreen({
   const entries = useMemo(() => logEntries(events, labels), [events, labels]);
   const lines = useMemo(() => entries.map((entry) => entry.text), [entries]);
 
-  // GDD 13 §6 pacing — one line at a time, and a longer beat where the turn changes hands.
-  const paced = usePacedLines(lines, (index) =>
-    index > 0 && entries[index]?.actor !== entries[index - 1]?.actor ? ACTOR_CHANGE_DELAY_MS : LINE_DELAY_MS,
-  );
+  // GDD 13 §6 pacing — one line at a time, and a longer beat where the other side replies within
+  // the same round. Not at a round's first line: that one answers the tap, and a pause there reads
+  // as the gap between rounds (DECISIONS 2026-10-25).
+  const paced = usePacedLines(lines, (index) => {
+    const line = entries[index];
+    const before = entries[index - 1];
+
+    return line !== undefined && before !== undefined && line.round === before.round && line.actor !== before.actor
+      ? ACTOR_CHANGE_DELAY_MS
+      : LINE_DELAY_MS;
+  });
+  const enemyName = labelFor(labels, state.enemyId);
+  // The bars follow the log, not the engine: a hit drains its bar when its line appears.
+  const hidden = entries.slice(paced.length);
   const catchingUp = paced.length < lines.length;
 
   const options = useMemo(
@@ -121,14 +131,16 @@ export function BattleScreen({
   );
 
   const callout = latestCallout(events);
-  const over = state.outcome !== null;
+  // The engine ends the fight with the final turn's events, but the player has not seen them yet: the
+  // outcome waits for the log, and until then the menu stays, closed to input.
+  const over = state.outcome !== null && !catchingUp;
   const beat = script?.beat ?? null;
 
   // Session state, not the snapshot: a fight resumed after the app died shows its beat again.
   const [opened, setOpened] = useState(lore.opening.length === 0);
   const [closed, setClosed] = useState(lore.defeat.length === 0);
   const [walked, setWalked] = useState(lore.narrative.length === 0);
-  const won = state.outcome === 'win';
+  const won = over && state.outcome === 'win';
 
   // GDD 12 §2: the next zone's screens follow the defeat text, before the victory panel.
   if (won && closed && !walked) {
@@ -168,7 +180,11 @@ export function BattleScreen({
           )}
         </View>
 
-        <VigorBar side="enemy" vigor={state.enemy.vigor} vigorMax={state.enemy.vigorMax} />
+        <VigorBar
+          side="enemy"
+          vigor={shownVigor(hidden, 'enemy', state.enemy.vigor)}
+          vigorMax={state.enemy.vigorMax}
+        />
       </View>
 
       <View style={styles.player}>
@@ -178,14 +194,21 @@ export function BattleScreen({
           header, where a counter belongs.
         */}
         <Text style={styles.playerName}>{traverserName}</Text>
-        <VigorBar side="player" vigor={state.player.vigor} vigorMax={state.player.vigorMax} />
+        <VigorBar
+          side="player"
+          vigor={shownVigor(hidden, 'player', state.player.vigor)}
+          vigorMax={state.player.vigorMax}
+        />
       </View>
 
       <View style={styles.logHeader}>
-        <Text style={styles.roundLabel}>Round {state.round}</Text>
+        <Text style={styles.roundLabel}>
+          Round {state.round}
+          {state.phase === 'await_player' ? ` · ${orderNote(state, enemyName)}` : null}
+        </Text>
       </View>
 
-      <CombatLog lines={paced} />
+      <CombatLog lines={entries.slice(0, paced.length)} enemyName={enemyName} />
 
       {/* The guided band. Note first, then what to do — the order the player earned them in. */}
       {beat === null ? null : (
@@ -278,6 +301,21 @@ const OUTCOME_COPY = {
   flee: 'You withdraw. The road keeps.',
 } as const;
 
+/** Who strikes first this round, and why, said before the player chooses (GDD 2 §4). */
+function orderNote(state: BattleState, enemyName: string): string {
+  if (state.first === 'player') {
+    return state.firstReason === 'swift'
+      ? 'Swift: you strike first'
+      : state.firstReason === 'tie_roll'
+        ? 'You win the tie and strike first'
+        : 'You are faster and strike first';
+  }
+
+  return state.firstReason === 'tie_roll'
+    ? `${enemyName} wins the tie and strikes first`
+    : `${enemyName} is faster and strikes first`;
+}
+
 /** The callout belongs to the most recent hit and nothing older (GDD 13 §6.2). */
 function latestCallout(events: readonly BattleEvent[]): Callout | null {
   for (let index = events.length - 1; index >= 0; index -= 1) {
@@ -328,7 +366,7 @@ const styles = StyleSheet.create({
 
   player: { gap: space.xs },
   playerName: { ...type.body, color: colors.text },
-  logHeader: { alignItems: 'flex-end', paddingHorizontal: space.xs },
+  logHeader: { paddingHorizontal: space.xs },
   roundLabel: { ...type.small, ...tabular, color: colors.textDim },
 
   guide: { gap: space.xs, paddingHorizontal: space.xs },

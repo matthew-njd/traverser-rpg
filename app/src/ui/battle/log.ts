@@ -91,10 +91,38 @@ const EFFECT_LINES: Readonly<Record<string, string>> = {
   swift: 'Swift — you act first next round.',
 };
 
-/** One log line, and whose turn produced it — what note 16's longer beat keys on. */
+/** A Vigor bar moving, as one line of the log caused it. */
+export interface VigorChange {
+  readonly side: BattleSide;
+  readonly from: number;
+  readonly to: number;
+}
+
+/**
+ * One log line, whose turn produced it, in which round — what the pause between sides keys on — and
+ * the Vigor it moved, so the bars move when the line appears and not before.
+ */
 export interface LogLine {
   readonly text: string;
   readonly actor: BattleSide;
+  readonly round: number;
+  readonly changes: readonly VigorChange[];
+}
+
+/**
+ * What a bar shows while the log is still revealing: its value before the first change on a line
+ * not yet shown, or `current` once every line is out.
+ */
+export function shownVigor(hidden: readonly LogLine[], side: BattleSide, current: number): number {
+  for (const line of hidden) {
+    const change = line.changes.find((candidate) => candidate.side === side);
+
+    if (change !== undefined) {
+      return change.from;
+    }
+  }
+
+  return current;
 }
 
 export function logLines(events: readonly BattleEvent[], labels: Labels): string[] {
@@ -106,8 +134,15 @@ export function logEntries(events: readonly BattleEvent[], labels: Labels): LogL
   let pending: string | null = null;
   // An item is the player's, and a Trinket's effect line belongs to the move before it.
   let actor: BattleSide = 'player';
+  let round = 0;
+  // ↯ A hit's `vigor_changed` follows its line, but a heal's comes before `item_used`. So a change
+  // after `damage_dealt` joins the line just pushed, and any other waits for the next one.
+  let changes: VigorChange[] = [];
 
-  const push = (text: string) => lines.push({ text, actor });
+  const push = (text: string) => {
+    lines.push({ text, actor, round, changes });
+    changes = [];
+  };
 
   const flush = () => {
     if (pending !== null) {
@@ -118,6 +153,23 @@ export function logEntries(events: readonly BattleEvent[], labels: Labels): LogL
 
   events.forEach((event, index) => {
     switch (event.type) {
+      case 'vigor_changed': {
+        const change = { side: event.actor, from: event.from, to: event.to };
+        const last = lines[lines.length - 1];
+
+        if (events[index - 1]?.type === 'damage_dealt' && last !== undefined) {
+          lines[lines.length - 1] = { ...last, changes: [...last.changes, change] };
+        } else {
+          changes.push(change);
+        }
+        break;
+      }
+
+      case 'turn_order_decided':
+        flush();
+        round += 1;
+        break;
+
       case 'move_used':
         flush();
         actor = event.actor;

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { colors } from '../../theme';
@@ -14,6 +14,7 @@ import {
 } from '../../../onboarding/tutorial';
 import { DEFAULT_SKILL_LOCKED, type BattleScript, BattleScreen } from '../BattleScreen';
 import { RESISTED, SUPER_EFFECTIVE } from '../log';
+import { ACTOR_CHANGE_DELAY_MS, LINE_DELAY_MS } from '../paced';
 import type { Reveal } from '../reveal';
 import type { BattleLore } from '../../../content/lore';
 
@@ -164,15 +165,15 @@ describe('the enemy panel', () => {
   });
 
   /**
-   * GDD 13 §6.1 — the enemy bar is a **percentage**, never raw numbers, because enemy max Vigor is
-   * not meaningful information to expose. The player's own pool is the opposite case.
+   * GDD 13 §6.1, amended at M5/P7c — both bars read current/max, the units the log's damage is in.
+   * A percentage on the enemy left "14 damage" with nothing to be read against.
    */
-  it('shows enemy Vigor as a percentage and the player\'s as raw numbers', async () => {
+  it("shows both sides' Vigor as current over max", async () => {
     await show();
 
-    expect(screen.getByText('50%')).toBeTruthy();
+    expect(screen.getByText('24 / 48')).toBeTruthy();
     expect(screen.getByText('32 / 40')).toBeTruthy();
-    expect(screen.queryByText('24 / 48')).toBeNull();
+    expect(screen.queryByText('50%')).toBeNull();
   });
 
   /** §6.1 closes Section 5's flag: no level indicator, because it always equals the player's. */
@@ -584,6 +585,138 @@ describe('the fight as a whole', () => {
       ],
     });
 
-    expect(screen.getByText('Basic Attack — 26 damage.')).toBeTruthy();
+    expect(screen.getByText('You: Basic Attack — 26 damage.')).toBeTruthy();
+  });
+});
+
+/** GDD 13 §6.1, amended at M5/P7c: who acted, which side, and who goes first. */
+describe('the combat log', () => {
+  const exchange: BattleEvent[] = [
+    { type: 'turn_order_decided', first: 'enemy', reason: 'stride' },
+    { type: 'move_used', actor: 'enemy', moveId: 'skill_basic_attack', usesLeft: null },
+    incoming(1),
+    { type: 'move_used', actor: 'player', moveId: 'skill_basic_attack', usesLeft: null },
+    hit(1),
+  ];
+
+  it('names the actor on every line and puts each side on its own edge', async () => {
+    await show({ events: exchange });
+
+    const theirs = screen.getByText('Harpy: Basic Attack — 26 damage.');
+    const mine = screen.getByText('You: Basic Attack — 26 damage.');
+
+    expect(StyleSheet.flatten(theirs.props.style)).toMatchObject({ alignSelf: 'flex-start' });
+    expect(StyleSheet.flatten(mine.props.style)).toMatchObject({ alignSelf: 'flex-end' });
+  });
+
+  /** The window shows the last four; the rest stay in the log, a scroll away, at full brightness. */
+  it('keeps every line of the fight, none of them dimmed', async () => {
+    await show({ events: [...exchange, ...exchange, ...exchange] });
+
+    const lines = screen.getAllByText(/^(You|Harpy): Basic Attack/);
+
+    expect(lines).toHaveLength(6);
+    lines.forEach((line) => expect(StyleSheet.flatten(line.props.style).color).toBe(colors.text));
+  });
+
+  /** Found on the device: the drops and Continue arrived before the killing blow was shown. */
+  it('holds the outcome until the final line has landed', async () => {
+    jest.useFakeTimers();
+
+    try {
+      const props = {
+        context: CONTEXT,
+        moves: MOVES,
+        labels: LABELS,
+        traverserName: 'Matthew',
+        items: [],
+        chevronsUnlocked: true,
+        onBegin: jest.fn(),
+        onMove: jest.fn(),
+        onItem: jest.fn(),
+        onFlee: jest.fn(),
+        onDone: jest.fn(),
+      };
+
+      await render(<BattleScreen {...props} state={stateOf()} events={[]} />);
+      await screen.rerender(
+        <BattleScreen {...props} state={stateOf({ phase: 'victory', outcome: 'win' })} events={exchange} />,
+      );
+
+      expect(screen.queryByText('Continue')).toBeNull();
+
+      // Each line's timer starts once the one before it has rendered.
+      await act(async () => jest.advanceTimersByTime(LINE_DELAY_MS));
+      expect(screen.queryByText('Continue')).toBeNull();
+
+      await act(async () => jest.advanceTimersByTime(ACTOR_CHANGE_DELAY_MS));
+      expect(screen.getByText('Continue')).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('says who strikes first before the player chooses', async () => {
+    await show({ state: { first: 'enemy', firstReason: 'stride' } });
+    expect(screen.getByText('Round 1 · Harpy is faster and strikes first')).toBeTruthy();
+  });
+
+  it('says so when the player is first, too', async () => {
+    await show({ state: { first: 'player', firstReason: 'stride' } });
+    expect(screen.getByText('Round 1 · You are faster and strike first')).toBeTruthy();
+  });
+
+  /** Matthew's ask: a pause between the enemy's attack and the reply, and none before the first line. */
+  it("pauses longer before the reply, not before the round's first line", async () => {
+    jest.useFakeTimers();
+
+    try {
+      await render(
+        <BattleScreen
+          state={stateOf()}
+          context={CONTEXT}
+          moves={MOVES}
+          labels={LABELS}
+          traverserName="Matthew"
+          events={[]}
+          items={[]}
+          chevronsUnlocked
+          onBegin={jest.fn()}
+          onMove={jest.fn()}
+          onItem={jest.fn()}
+          onFlee={jest.fn()}
+          onDone={jest.fn()}
+        />,
+      );
+
+      await screen.rerender(
+        <BattleScreen
+          state={stateOf()}
+          context={CONTEXT}
+          moves={MOVES}
+          labels={LABELS}
+          traverserName="Matthew"
+          events={exchange}
+          items={[]}
+          chevronsUnlocked
+          onBegin={jest.fn()}
+          onMove={jest.fn()}
+          onItem={jest.fn()}
+          onFlee={jest.fn()}
+          onDone={jest.fn()}
+        />,
+      );
+
+      await act(async () => jest.advanceTimersByTime(LINE_DELAY_MS));
+      expect(screen.getByText('Harpy: Basic Attack — 26 damage.')).toBeTruthy();
+
+      await act(async () => jest.advanceTimersByTime(LINE_DELAY_MS));
+      expect(screen.queryByText('You: Basic Attack — 26 damage.')).toBeNull();
+
+      await act(async () => jest.advanceTimersByTime(ACTOR_CHANGE_DELAY_MS - LINE_DELAY_MS));
+      expect(screen.getByText('You: Basic Attack — 26 damage.')).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

@@ -1,5 +1,5 @@
 import type { BattleEvent } from '../../../battle/state';
-import { RESISTED, SUPER_EFFECTIVE, calloutFor, calloutOf, chevronFor, logEntries, logLines } from '../log';
+import { RESISTED, SUPER_EFFECTIVE, calloutFor, calloutOf, chevronFor, logEntries, logLines, shownVigor } from '../log';
 
 /**
  * The event queue turned into what the player reads (GDD 13 §6.2).
@@ -46,6 +46,34 @@ describe('logEntries', () => {
     ];
 
     expect(logEntries(events, LABELS).map((line) => line.actor)).toEqual(['player', 'enemy', 'player']);
+  });
+});
+
+/** The bars move with the line that moved them, not with the engine's final state. */
+describe('Vigor on each line', () => {
+  const events: BattleEvent[] = [
+    { type: 'vigor_changed', actor: 'player', from: 20, to: 32, max: 40 },
+    { type: 'item_used', itemDefId: 'item_travelers_salve', healed: 12 },
+    { type: 'move_used', actor: 'enemy', moveId: 'skill_basic_attack', usesLeft: null },
+    hit({ actor: 'enemy', target: 'player', amount: 9 }),
+    { type: 'vigor_changed', actor: 'player', from: 32, to: 23, max: 40 },
+  ];
+
+  /** ↯ A heal's change comes before its line, a hit's after; both land on their own line. */
+  it('gives each change to the line that caused it', () => {
+    expect(logEntries(events, LABELS).map((line) => line.changes)).toEqual([
+      [{ side: 'player', from: 20, to: 32 }],
+      [{ side: 'player', from: 32, to: 23 }],
+    ]);
+  });
+
+  it('shows a bar as it stood before the first line still to come', () => {
+    const lines = logEntries(events, LABELS);
+
+    expect(shownVigor(lines, 'player', 23)).toBe(20);
+    expect(shownVigor(lines.slice(1), 'player', 23)).toBe(32);
+    expect(shownVigor([], 'player', 23)).toBe(23);
+    expect(shownVigor(lines, 'enemy', 40)).toBe(40);
   });
 });
 

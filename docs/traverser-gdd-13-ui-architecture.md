@@ -182,6 +182,10 @@ Three sub-tabs sharing one top-level destination, resolving Section 8's "distinc
 >
 > ↯ **The 48dp minimum touch target and the circle overlapping the grid are what decide the geometry**, not the sketch's proportions.
 
+> **Amended 2026-10-25 (M5/P7c). The combat log says who acted, which side, and who goes first.** Every line opens with its actor, *"Harpy: Gale Slash — 12 damage."* or *"You: Thunderer's Wrath — Super effective! — 26 damage."*, the enemy's lines on the left and the player's on the right, each name in its side's colour, every line at full brightness. The log is tall enough for the last four lines, about one round from each side twice, and scrolls back through the whole fight; a new line scrolls it to the bottom. Above the log, the round header states the order before the player chooses: *"Round 3 · Harpy is faster and strikes first"*, or *"You are faster and strike first"*, with the tie and Swift cases named. Lines reveal one at a time, and the reply within a round waits longer than any other line, so it reads as an answer; a round's first line does not wait longer, because it answers the tap. Found on the device: a faster enemy's line landed before the player's, and no line said whose it was.
+>
+> **Also amended 2026-10-25 (M5/P7c): the enemy's Vigor bar reads current/max, like the player's, not a percentage.** The log states damage in raw numbers, so against a percentage bar "14 damage" could not be read. The reason given above, that enemy max Vigor is not meaningful to expose, does not hold up: knowing how tough an enemy is is what the player needs to decide on an item, and it reveals no level and no matchup.
+
 ### 6.2 Type-effectiveness indicator (resolves the Section 6/7/12 flag, raised three times)
 
 Two complementary surfaces, addressing both *before* and *after* the fact:
