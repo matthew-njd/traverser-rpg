@@ -276,8 +276,8 @@ namespace Traverser.Api.Migrations
                         new
                         {
                             Id = 1,
-                            GeneratedAt = new DateTime(2026, 10, 25, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Version = 5
+                            GeneratedAt = new DateTime(2026, 10, 26, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Version = 6
                         });
                 });
 
@@ -1657,7 +1657,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_draugr",
                             Stat = "favor",
                             Base = 5m,
-                            Rate = 0.35m
+                            Rate = 0.3m
                         },
                         new
                         {
@@ -1678,7 +1678,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_valkyrie",
                             Stat = "vigor",
                             Base = 22m,
-                            Rate = 0.55m
+                            Rate = 0.5m
                         },
                         new
                         {
@@ -1720,7 +1720,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_fenrir",
                             Stat = "vigor",
                             Base = 48m,
-                            Rate = 1.1m
+                            Rate = 1.0m
                         },
                         new
                         {
@@ -1860,7 +1860,7 @@ namespace Traverser.Api.Migrations
                             EnemyId = "enemy_lemures",
                             Stat = "resolve",
                             Base = 8m,
-                            Rate = 0.7m
+                            Rate = 0.65m
                         },
                         new
                         {

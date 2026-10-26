@@ -85,8 +85,6 @@ const GATE_FROM: Readonly<Record<string, number>> = {
   enemy_cacus: 54,
 };
 
-const LEVELS = [1, 5, 10, 16, 22, 30, 45, 60];
-
 const LIMITS: Readonly<
   Record<string, { rounds: [number, number]; cost: (level: number) => number }>
 > = {
@@ -113,7 +111,7 @@ describe('GDD 2 §7 — fight-cost invariants over the shipped rosters', () => {
         continue;
       }
 
-      for (const level of LEVELS.filter((candidate) => candidate >= from)) {
+      for (let level = from; level <= 60; level++) {
         const { rounds, cost } = fight(entry.id, level);
 
         if (rounds < limits.rounds[0] || rounds > limits.rounds[1] || cost > limits.cost(level)) {

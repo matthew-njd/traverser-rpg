@@ -36,6 +36,9 @@ As established in Section 5: enemy Divine moves never apply a TypeMultiplier aga
 > in the Combat Design Notes below predate the pass where they disagree with the tables; the
 > tables are normative.
 
+> **Amended 2026-10-26 (M5/P7b balance pass — GDD 2 §7, DECISIONS 2026-10-26).** Lemures Resolve
+> trimmed 0.7 → 0.65: at 0.7 a neutral fight ran six rounds at L55, past the wild ceiling of five.
+
 ### 3.1 Strix — Wild Encounter
 
 | Field | Value |
@@ -94,7 +97,7 @@ Strix's vulnerabilities (Storm, War) were both unlocked in the first ten levels 
 |---|---|---|---|---|---|---|
 | Vigor | `24 + 0.5L` | 34 | 39 | 44 | 49 | 54 |
 | Might | `7 + 0.25L` | 12 | 14 | 17 | 19 | 22 |
-| Resolve | `8 + 0.7L` | 22 | 29 | 36 | 43 | 50 |
+| Resolve | `8 + 0.65L` | 21 | 27 | 34 | 40 | 47 |
 | Favor | `5 + 0.35L` | 12 | 15 | 19 | 22 | 26 |
 | Aegis | `7 + 0.6L` | 19 | 25 | 31 | 37 | 43 |
 | Stride | `6 + 0.55L` | 17 | 22 | 28 | 33 | 39 |

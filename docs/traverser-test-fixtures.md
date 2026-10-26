@@ -97,6 +97,10 @@ Enemy level always equals player level at encounter time. All stats: `floor(base
 > `enemy_stat_scaling` coefficients (DECISIONS 2026-08-29, GDD 2 §7 amendment). Machine-verified by
 > executing `floor(base + rate × L)` in Node against the seed's coefficient table, per the fixtures
 > convention. Resolve, Aegis and Stride are unchanged for every enemy §10 references.
+>
+> **Amended 2026-10-26 (M5/P7b balance pass).** Twelve rows regenerated the same way after four
+> rate trims: Valkyrie Vigor 0.55 → 0.5, Draugr Favor 0.35 → 0.3, Fenrir Vigor 1.1 → 1.0, Lemures
+> Resolve 0.7 → 0.65 (DECISIONS 2026-10-26). No value §10 references changes.
 
 | Enemy | Type | Level | Vigor | Might | Resolve | Favor | Aegis | Stride |
 |---|---|---|---|---|---|---|---|---|
@@ -112,24 +116,24 @@ Enemy level always equals player level at encounter time. All stats: `floor(base
 | Cerberus | Underworld | 15 | 61 | 13 | 14 | 13 | 15 | 8 |
 | Cerberus | Underworld | 20 | 67 | 15 | 17 | 15 | 18 | 10 |
 | Cerberus | Underworld | 30 | 77 | 18 | 22 | 18 | 23 | 12 |
-| Draugr | Underworld | 15 | 31 | 10 | 16 | 10 | 13 | 12 |
-| Draugr | Underworld | 25 | 36 | 13 | 22 | 13 | 18 | 17 |
-| Draugr | Underworld | 35 | 41 | 15 | 28 | 17 | 23 | 22 |
-| Valkyrie | Storm | 15 | 30 | 9 | 9 | 16 | 13 | 26 |
-| Valkyrie | Storm | 25 | 35 | 12 | 12 | 21 | 18 | 36 |
-| Valkyrie | Storm | 35 | 41 | 15 | 15 | 26 | 23 | 46 |
-| Fenrir | War | 20 | 70 | 19 | 20 | 17 | 17 | 20 |
-| Fenrir | War | 25 | 75 | 21 | 23 | 19 | 19 | 23 |
-| Fenrir | War | 35 | 86 | 25 | 29 | 23 | 24 | 29 |
+| Draugr | Underworld | 15 | 31 | 10 | 16 | 9 | 13 | 12 |
+| Draugr | Underworld | 25 | 36 | 13 | 22 | 12 | 18 | 17 |
+| Draugr | Underworld | 35 | 41 | 15 | 28 | 15 | 23 | 22 |
+| Valkyrie | Storm | 15 | 29 | 9 | 9 | 16 | 13 | 26 |
+| Valkyrie | Storm | 25 | 34 | 12 | 12 | 21 | 18 | 36 |
+| Valkyrie | Storm | 35 | 39 | 15 | 15 | 26 | 23 | 46 |
+| Fenrir | War | 20 | 68 | 19 | 20 | 17 | 17 | 20 |
+| Fenrir | War | 25 | 73 | 21 | 23 | 19 | 19 | 23 |
+| Fenrir | War | 35 | 83 | 25 | 29 | 23 | 24 | 29 |
 | Jörmungandr | Sea | 28 | 91 | 19 | 13 | 24 | 24 | 12 |
 | Jörmungandr | Sea | 31 | 95 | 20 | 14 | 25 | 26 | 12 |
 | Jörmungandr | Sea | 40 | 107 | 24 | 17 | 30 | 32 | 15 |
 | Strix | Trickery | 33 | 47 | 17 | 22 | 22 | 22 | 35 |
 | Strix | Trickery | 45 | 55 | 21 | 28 | 28 | 28 | 45 |
 | Strix | Trickery | 60 | 65 | 27 | 36 | 35 | 36 | 57 |
-| Lemures | Underworld | 33 | 40 | 15 | 31 | 16 | 26 | 24 |
-| Lemures | Underworld | 45 | 46 | 18 | 39 | 20 | 34 | 30 |
-| Lemures | Underworld | 60 | 54 | 22 | 50 | 26 | 43 | 39 |
+| Lemures | Underworld | 33 | 40 | 15 | 29 | 16 | 26 | 24 |
+| Lemures | Underworld | 45 | 46 | 18 | 37 | 20 | 34 | 30 |
+| Lemures | Underworld | 60 | 54 | 22 | 47 | 26 | 43 | 39 |
 | Griffin | Wisdom | 44 | 79 | 26 | 33 | 27 | 37 | 40 |
 | Griffin | Wisdom | 50 | 84 | 29 | 36 | 30 | 41 | 45 |
 | Griffin | Wisdom | 60 | 93 | 33 | 42 | 34 | 48 | 52 |

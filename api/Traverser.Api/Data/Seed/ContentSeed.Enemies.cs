@@ -37,18 +37,19 @@ internal static partial class ContentSeed
         // Retuned 2026-08-29 (M3/P9 balance pass, DECISIONS): Vigor re-anchored high-base/low-rate
         // and offense rates cut to <= the reference player's defensive growth, per GDD 2 §7's
         // fight-cost invariants. Resolve/Aegis/Stride kept wherever fixtures §10 pins them.
+        // Trimmed 2026-10-26 (M5/P7b, DECISIONS): Valkyrie and Fenrir Vigor, Draugr Favor, Lemures Resolve.
         //                                  Vigor          Might          Resolve       Favor          Aegis         Stride
         modelBuilder.Entity<EnemyStatScaling>().HasData([
             .. Scaling(Ids.Enemy.Harpy,      (22, 0.8m),   (5, 0.25m),  (5, 0.25m),  (7, 0.45m),  (5, 0.5m),   (10, 1.0m)),
             .. Scaling(Ids.Enemy.Satyr,      (20, 0.65m),  (6, 0.35m),  (6, 0.5m),   (6, 0.4m),   (6, 0.5m),   (8, 0.75m)),
             .. Scaling(Ids.Enemy.Cyclops,    (36, 0.9m),   (9, 0.35m),  (8, 0.5m),   (7, 0.35m),  (7, 0.5m),   (5, 0.25m)),
             .. Scaling(Ids.Enemy.Cerberus,   (46, 1.05m),  (8, 0.35m),  (7, 0.5m),   (8, 0.35m),  (8, 0.5m),   (5, 0.25m)),
-            .. Scaling(Ids.Enemy.Draugr,     (24, 0.5m),   (7, 0.25m),  (7, 0.6m),   (5, 0.35m),  (6, 0.5m),   (5, 0.5m)),
-            .. Scaling(Ids.Enemy.Valkyrie,   (22, 0.55m),  (5, 0.3m),   (5, 0.3m),   (9, 0.5m),   (6, 0.5m),  (11, 1.0m)),
-            .. Scaling(Ids.Enemy.Fenrir,     (48, 1.1m),  (10, 0.45m),  (8, 0.6m),   (9, 0.4m),   (7, 0.5m),   (8, 0.6m)),
+            .. Scaling(Ids.Enemy.Draugr,     (24, 0.5m),   (7, 0.25m),  (7, 0.6m),   (5, 0.3m),   (6, 0.5m),   (5, 0.5m)),
+            .. Scaling(Ids.Enemy.Valkyrie,   (22, 0.5m),   (5, 0.3m),   (5, 0.3m),   (9, 0.5m),   (6, 0.5m),  (11, 1.0m)),
+            .. Scaling(Ids.Enemy.Fenrir,     (48, 1.0m),  (10, 0.45m),  (8, 0.6m),   (9, 0.4m),   (7, 0.5m),   (8, 0.6m)),
             .. Scaling(Ids.Enemy.Jormungandr,(55, 1.3m),   (8, 0.4m),   (5, 0.3m),  (10, 0.5m),   (8, 0.6m),   (5, 0.25m)),
             .. Scaling(Ids.Enemy.Strix,      (26, 0.65m),  (6, 0.35m),  (6, 0.5m),   (8, 0.45m),  (6, 0.5m),   (9, 0.8m)),
-            .. Scaling(Ids.Enemy.Lemures,    (24, 0.5m),   (7, 0.25m),  (8, 0.7m),   (5, 0.35m),  (7, 0.6m),   (6, 0.55m)),
+            .. Scaling(Ids.Enemy.Lemures,    (24, 0.5m),   (7, 0.25m),  (8, 0.65m),  (5, 0.35m),  (7, 0.6m),   (6, 0.55m)),
             .. Scaling(Ids.Enemy.Griffin,    (42, 0.85m),  (9, 0.4m),   (9, 0.55m), (10, 0.4m),   (9, 0.65m), (10, 0.7m)),
             .. Scaling(Ids.Enemy.Cacus,      (54, 1.1m),  (10, 0.45m),  (8, 0.55m), (12, 0.45m),  (9, 0.6m),   (7, 0.32m)),
             // The Wisp has fixed stats, not a scaling curve — every rate is 0, so `floor(base + 0 × L)`

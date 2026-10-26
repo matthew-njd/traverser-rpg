@@ -28,6 +28,10 @@ Enemy level equals the Traverser's current level at the time of the encounter, i
 > in the Combat Design Notes below predate the pass where they disagree with the tables; the
 > tables are normative.
 
+> **Amended 2026-10-26 (M5/P7b balance pass — GDD 2 §7, DECISIONS 2026-10-26).** Three rates
+> trimmed so every level from each gate to 60 holds §7's ceilings: Draugr Favor 0.35 → 0.3,
+> Valkyrie Vigor 0.55 → 0.5, Fenrir Vigor 1.1 → 1.0. The tables below carry the new values.
+
 ### 3.1 Draugr — Wild Encounter
 
 | Field | Value |
@@ -45,7 +49,7 @@ Enemy level equals the Traverser's current level at the time of the encounter, i
 | Vigor | `24 + 0.5L` | 26 | 29 | 31 | 34 | 39 |
 | Might | `7 + 0.25L` | 8 | 9 | 10 | 12 | 14 |
 | Resolve | `7 + 0.6L` | 10 | 13 | 16 | 19 | 25 |
-| Favor | `5 + 0.35L` | 6 | 8 | 10 | 12 | 15 |
+| Favor | `5 + 0.3L` | 6 | 8 | 9 | 11 | 14 |
 | Aegis | `6 + 0.5L` | 8 | 11 | 13 | 16 | 21 |
 | Stride | `5 + 0.5L` | 7 | 10 | 12 | 15 | 20 |
 
@@ -90,7 +94,7 @@ Pale Ash is thematically matched to Draugr's Underworld typing and useful for th
 
 | Stat | Formula | L5 | L10 | L15 | L20 | L30 |
 |---|---|---|---|---|---|---|
-| Vigor | `22 + 0.55L` | 24 | 27 | 30 | 33 | 38 |
+| Vigor | `22 + 0.5L` | 24 | 27 | 29 | 32 | 37 |
 | Might | `5 + 0.3L` | 6 | 8 | 9 | 11 | 14 |
 | Resolve | `5 + 0.3L` | 6 | 8 | 9 | 11 | 14 |
 | Favor | `9 + 0.5L` | 11 | 14 | 16 | 19 | 24 |
@@ -145,7 +149,7 @@ Stormveil is both thematically matched and tactically useful: a Storm Surge Char
 
 | Stat | Formula | L5 | L10 | L15 | L20 | L30 |
 |---|---|---|---|---|---|---|
-| Vigor | `48 + 1.1L` | 53 | 59 | 64 | 70 | 81 |
+| Vigor | `48 + L` | 53 | 58 | 63 | 68 | 78 |
 | Might | `10 + 0.45L` | 12 | 14 | 16 | 19 | 23 |
 | Resolve | `8 + 0.6L` | 11 | 14 | 17 | 20 | 26 |
 | Favor | `9 + 0.4L` | 11 | 13 | 15 | 17 | 21 |
