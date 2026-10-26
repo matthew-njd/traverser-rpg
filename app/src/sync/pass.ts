@@ -17,6 +17,7 @@ import {
   type HealthProvider,
   NO_PERMISSIONS,
   type SdkAvailability,
+  missedBefore,
   readWindowFor,
 } from '../health/provider';
 import { ApiStatusError, ApiUnreachableError, type TraverserApi } from './api';
@@ -95,6 +96,11 @@ export interface SyncPassResult {
   readonly contentStale: boolean;
   /** The only source of a level-up. Never projected (§8.4). */
   readonly levelUps: readonly LevelUp[];
+  /**
+   * Set when this read had to skip days because the last one was more than 72 hours ago: the first
+   * local date it counted. Reported once, because the read moves the watermark past the gap.
+   */
+  readonly missedBefore: string | null;
   /** GDD 11 §8 — step 11 fired for a session this read still found open (T3 §9). */
   readonly overactive: boolean;
   /**
@@ -150,6 +156,7 @@ async function consumeHealth(deps: SyncPassDeps): Promise<{
   health: HealthPassResult;
   minted: readonly MintedDelta[];
   sessions: readonly SyncSession[];
+  missedBefore: string | null;
 }> {
   const { db, provider, dates, now } = deps;
 
@@ -165,6 +172,7 @@ async function consumeHealth(deps: SyncPassDeps): Promise<{
         health: { availability, permissions, ageMissing, error: null },
         minted: [],
         sessions: [],
+        missedBefore: null,
       };
     }
 
@@ -187,6 +195,7 @@ async function consumeHealth(deps: SyncPassDeps): Promise<{
         health: { availability, permissions, ageMissing, error: null },
         minted: [],
         sessions: [],
+        missedBefore: null,
       };
     }
 
@@ -194,7 +203,8 @@ async function consumeHealth(deps: SyncPassDeps): Promise<{
     const thresholds = thresholdsForAge(
       birthYear === null ? 0 : ageFromBirthYear(birthYear, now, dates),
     );
-    const window = readWindowFor(readWatermark(db), now, dates);
+    const watermark = readWatermark(db);
+    const window = readWindowFor(watermark, now, dates);
     const snapshot = await provider.read(window, thresholds, dates, reading);
 
     // Steps 6–8. `commitHealthRead` is the transaction boundary: queue, then marks, then watermark.
@@ -204,6 +214,8 @@ async function consumeHealth(deps: SyncPassDeps): Promise<{
       health: { availability, permissions, ageMissing, error: null },
       minted: deltas,
       sessions: toSyncSessions(sessions, dates),
+      // Only once the read is committed: a failed one leaves the watermark, and the next reports it.
+      missedBefore: missedBefore(watermark, now, dates),
     };
   } catch (error) {
     // A health failure does not fail the pass — it becomes banner state and the sync continues,
@@ -217,6 +229,7 @@ async function consumeHealth(deps: SyncPassDeps): Promise<{
       },
       minted: [],
       sessions: [],
+      missedBefore: null,
     };
   }
 }
@@ -330,7 +343,7 @@ export async function runForegroundSync(deps: SyncPassDeps): Promise<SyncPassRes
 async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
   const { db, api } = deps;
 
-  const { health, minted, sessions } = await consumeHealth(deps);
+  const { health, minted, sessions, missedBefore: missed } = await consumeHealth(deps);
 
   // Before the network, deliberately — a re-granted permission clears its banner now rather than
   // when the server eventually answers or times out.
@@ -350,6 +363,7 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
     contentStale: contentVersion !== null && contentVersion > heldVersion(),
     levelUps: [],
     overactive: false,
+    missedBefore: missed,
     parked: reportParked(db),
   });
 
@@ -461,6 +475,7 @@ async function runPass(deps: SyncPassDeps): Promise<SyncPassResult> {
       contentVersion: response.contentVersion,
       contentStale: response.contentVersion > heldVersion(),
       levelUps: response.levelUps,
+      missedBefore: missed,
       // A closed session's warning is dropped: GDD 11 §8.2 never fires it retroactively.
       overactive: response.warnings.some(
         (warning) =>

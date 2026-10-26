@@ -55,6 +55,11 @@ export default function Restore() {
           the server before anything is saved.
         </Body>
 
+        <Body dim>
+          Your progress comes back as the server last saw it. Steps your old phone hadn't synced
+          won't come across.
+        </Body>
+
         <Field
           label="Player id"
           value={playerId}

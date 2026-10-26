@@ -33,6 +33,8 @@ interface AppStore {
   readonly rewardsSeq: number;
   /** GDD 11 §8 — up until dismissed. A later pass never clears it: step 11 reports a session once. */
   readonly overactive: boolean;
+  /** T3 §4.1 — the first date a read counted after a gap of more than 72 hours, until dismissed. */
+  readonly missedBefore: string | null;
 
   markBooted(registered: boolean): void;
   setRegistered(registered: boolean): void;
@@ -44,6 +46,7 @@ interface AppStore {
   consumeLevelUps(): readonly LevelUp[];
   rewardsChanged(): void;
   dismissOveractivity(): void;
+  dismissMissed(): void;
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -56,6 +59,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   pendingLevelUps: [],
   rewardsSeq: 0,
   overactive: false,
+  missedBefore: null,
 
   markBooted(registered) {
     set({ booted: true, registered });
@@ -82,6 +86,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       pendingLevelUps: [...state.pendingLevelUps, ...result.levelUps],
       rewardsSeq: state.rewardsSeq + 1,
       overactive: state.overactive || result.overactive,
+      missedBefore: result.missedBefore ?? state.missedBefore,
     }));
   },
 
@@ -91,6 +96,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   dismissOveractivity() {
     set({ overactive: false });
+  },
+
+  dismissMissed() {
+    set({ missedBefore: null });
   },
 
   syncAborted() {

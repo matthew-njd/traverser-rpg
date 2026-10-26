@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Share, StyleSheet, Text, View } from 'react-native';
 
 import { getDatabase } from '@/db/open';
 import { parked } from '@/db/outbox';
@@ -172,8 +172,12 @@ function IdentityExport() {
  *
  * Offered **only while the local profile carries nothing irreversible** (`isProfileReplaceable`).
  * That is the whole safety model — this control can strand a throwaway profile on the server, and
- * must never be able to replace a real save. Steps do not disqualify it: the hand-over clears the
- * watermarks and the next sync re-mints the last 72 hours for the restored player.
+ * must never be able to replace a real save. Once it is closed, the card says why and how to reopen
+ * it rather than vanishing (M3 note 17).
+ *
+ * ↯ Steps do not disqualify it, and they do not come across either. The hand-over clears the
+ * watermarks, and the first read after it is a baseline that credits nothing (T3 §4.1, DECISIONS
+ * 2026-10-24) — so the dialog says so rather than promising a re-read.
  */
 function IdentityImport() {
   const [open, setOpen] = useState(false);
@@ -183,8 +187,23 @@ function IdentityImport() {
 
   // Read on every render rather than held in state: allocating a point on the Character screen must
   // close this door, and nothing here would otherwise know that happened.
-  if (currentIdentity() === null || !isProfileReplaceable(getDatabase())) {
+  if (currentIdentity() === null) {
     return null;
+  }
+
+  if (!isProfileReplaceable(getDatabase())) {
+    return (
+      <Card>
+        <Heading>Restore a different identity</Heading>
+        <Body dim>
+          Restoring is only possible before a new traverser finishes the tutorial, so it can never
+          replace a real save. To restore a backup now, export this traverser first, then clear
+          Traverser's storage in Android's app settings and choose Restore from a backup on the first
+          screen.
+        </Body>
+        <Button label="Open app settings" variant="secondary" onPress={() => void Linking.openSettings()} />
+      </Card>
+    );
   }
 
   const parsed = parseIdentityDocument(pasted);
@@ -201,7 +220,8 @@ function IdentityImport() {
       'The traverser on this device will be replaced by the one in the file you pasted, and this ' +
         'device will stop being able to reach it. The profile you are leaving is not deleted from ' +
         'the server — it stays claimable by its own exported identity.\n\n' +
-        'Steps from the last three days are re-read after the swap and are not lost.',
+        "Steps your old phone hadn't synced won't come across, and neither will the steps already " +
+        'counted for the traverser on this device.',
       [
         { text: 'Keep this profile', style: 'cancel' },
         { text: 'Replace', style: 'destructive', onPress: () => void handOver() },

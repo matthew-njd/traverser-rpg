@@ -1,4 +1,4 @@
-import { coalescePasses } from '../coalesce';
+import { coalescePasses, retryDelay } from '../coalesce';
 
 /**
  * The re-entrancy rules, as behaviour rather than as a comment. This is the module the M2 defect
@@ -145,5 +145,21 @@ describe('coalescePasses', () => {
     await expect(run()).rejects.toThrow('failed');
 
     expect(started).toBe(2);
+  });
+});
+
+/** T2 §5: 1s, 2s, 4s … capped at 60s, with full jitter below the cap. */
+describe('retryDelay', () => {
+  const top = () => 0.999_999;
+
+  it('doubles from one second and stops at sixty', () => {
+    expect([0, 1, 2, 3, 4, 5, 6, 7, 20].map((attempt) => Math.round(retryDelay(attempt, top) / 1000))).toEqual([
+      1, 2, 4, 8, 16, 32, 60, 60, 60,
+    ]);
+  });
+
+  it('draws anywhere from zero up to the cap', () => {
+    expect(retryDelay(3, () => 0)).toBe(0);
+    expect(retryDelay(3, () => 0.5)).toBe(4_000);
   });
 });

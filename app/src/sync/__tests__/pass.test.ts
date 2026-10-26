@@ -399,6 +399,15 @@ describe('the online pass', () => {
     expect(result.levelUps).toEqual([{ level: 12, statPointsAwarded: 3 }]);
   });
 
+  /** T3 §4.1: a read after more than 72 hours away reaches back only so far, and says so once. */
+  it('reports the first date a read counted after a gap, and nothing after a recent one', async () => {
+    // The fixture's watermark is 2026-07-01, a month before NOW.
+    const gap = registeredDatabase();
+
+    expect((await run(gap)).missedBefore).toBe('2026-07-31');
+    expect((await run(gap)).missedBefore).toBeNull();
+  });
+
   describe('the overactivity warning (T3 §9)', () => {
     const warned = (open: boolean) =>
       run(registeredDatabase(), {

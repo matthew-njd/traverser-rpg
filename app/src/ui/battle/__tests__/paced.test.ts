@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react-native';
 
-import { LINE_DELAY_MS, usePacedLines } from '../paced';
+import { ACTOR_CHANGE_DELAY_MS, LINE_DELAY_MS, usePacedLines } from '../paced';
 
 /**
  * The pacing rule, as timing rather than as pixels. RNTL cannot see a layout (T4 §12) but it can
@@ -54,6 +54,27 @@ describe('usePacedLines', () => {
     await tick(LINE_DELAY_MS - 1);
 
     expect(result.current).toEqual(['heal']);
+  });
+
+  /** Note 16: the counter waits longer than a line of the same turn would. */
+  it('waits the per-line delay it is given', async () => {
+    expect(ACTOR_CHANGE_DELAY_MS).toBeGreaterThan(LINE_DELAY_MS);
+
+    const delayAt = (index: number) => (index === 1 ? ACTOR_CHANGE_DELAY_MS : LINE_DELAY_MS);
+    const { result, rerender } = await renderHook(
+      ({ lines }: { lines: readonly string[] }) => usePacedLines(lines, delayAt),
+      { initialProps: { lines: [] as readonly string[] } },
+    );
+
+    await rerender({ lines: ['salve', 'counter'] });
+    await tick(LINE_DELAY_MS);
+    expect(result.current).toEqual(['salve']);
+
+    await tick(ACTOR_CHANGE_DELAY_MS - 1);
+    expect(result.current).toEqual(['salve']);
+
+    await tick(1);
+    expect(result.current).toEqual(['salve', 'counter']);
   });
 
   it('snaps to a shorter list rather than pacing backwards', async () => {

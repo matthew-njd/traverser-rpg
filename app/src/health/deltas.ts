@@ -1,4 +1,4 @@
-import type { OutboxKind } from '../db/outbox';
+import { MAX_ATTEMPTS, type OutboxKind, acknowledge, enqueue } from '../db/outbox';
 import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
 import {
@@ -273,9 +273,73 @@ export function commitHealthRead(
     };
 
     commitReadCycle(db, cycle);
+    coalesceQueue(db, now);
 
     result = { deltas, sessions };
   });
 
   return result;
+}
+
+/** tech-02 §5's queue cap. */
+export const QUEUE_CAP = 5_000;
+
+/**
+ * tech-02 §5 — past the cap, the oldest deltas sharing a date, source and tier merge into one under a
+ * fresh id. Every step and minute is kept. The tier is in the key because it sets a minute's XP rate.
+ *
+ * ponytail: originals that reached the server under a lost response credit twice once merged; T2
+ * accepts it at 5,000 entries (DECISIONS 2026-10-25).
+ */
+export function coalesceQueue(db: SqliteDatabase, now: number, cap: number = QUEUE_CAP): void {
+  const rows = db.getAllSync<{ client_op_id: string; payload: string; created_at: string }>(
+    `SELECT client_op_id, payload, created_at FROM outbox
+      WHERE kind = ? AND attempts < ? ORDER BY created_at, client_op_id`,
+    [DELTA_KIND, MAX_ATTEMPTS],
+  );
+
+  let count = rows.length;
+
+  if (count <= cap) {
+    return;
+  }
+
+  // In order of each group's oldest entry, so the oldest merge first.
+  const groups = new Map<string, { id: string; delta: MintedDelta; createdAt: string }[]>();
+
+  for (const row of rows) {
+    const delta = JSON.parse(row.payload) as MintedDelta;
+    const key = `${delta.activityDate}|${delta.source}|${delta.hrTier ?? ''}`;
+
+    groups.set(key, [...(groups.get(key) ?? []), { id: row.client_op_id, delta, createdAt: row.created_at }]);
+  }
+
+  for (const group of groups.values()) {
+    if (count <= cap) {
+      break;
+    }
+
+    const [first] = group;
+    const last = group[group.length - 1];
+
+    if (group.length < 2 || first === undefined || last === undefined) {
+      continue;
+    }
+
+    const merged: MintedDelta = {
+      ...first.delta,
+      clientDeltaId: mintUuidV7(db, now),
+      stepsDelta: group.reduce((sum, entry) => sum + entry.delta.stepsDelta, 0),
+      minutesDelta: group.reduce((sum, entry) => sum + entry.delta.minutesDelta, 0),
+      recordedAt: last.delta.recordedAt,
+    };
+
+    transact(db, () => {
+      acknowledge(db, group.map((entry) => entry.id));
+      // The oldest entry's queue position, so the merge drains where its first part would have.
+      enqueue(db, { clientOpId: merged.clientDeltaId, kind: DELTA_KIND, payload: merged, createdAt: first.createdAt });
+    });
+
+    count -= group.length - 1;
+  }
 }

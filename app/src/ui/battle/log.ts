@@ -1,6 +1,7 @@
 import type { Labels } from '../../content/labels';
 import { labelFor } from '../../content/labels';
 import type { BattleEvent } from '../../battle/state';
+import type { BattleSide } from '../../battle/types';
 
 /**
  * The event queue turned into what the player reads (GDD 13 §6.2, T5 §9).
@@ -90,13 +91,27 @@ const EFFECT_LINES: Readonly<Record<string, string>> = {
   swift: 'Swift — you act first next round.',
 };
 
+/** One log line, and whose turn produced it — what note 16's longer beat keys on. */
+export interface LogLine {
+  readonly text: string;
+  readonly actor: BattleSide;
+}
+
 export function logLines(events: readonly BattleEvent[], labels: Labels): string[] {
-  const lines: string[] = [];
+  return logEntries(events, labels).map((line) => line.text);
+}
+
+export function logEntries(events: readonly BattleEvent[], labels: Labels): LogLine[] {
+  const lines: LogLine[] = [];
   let pending: string | null = null;
+  // An item is the player's, and a Trinket's effect line belongs to the move before it.
+  let actor: BattleSide = 'player';
+
+  const push = (text: string) => lines.push({ text, actor });
 
   const flush = () => {
     if (pending !== null) {
-      lines.push(pending);
+      push(pending);
       pending = null;
     }
   };
@@ -105,6 +120,7 @@ export function logLines(events: readonly BattleEvent[], labels: Labels): string
     switch (event.type) {
       case 'move_used':
         flush();
+        actor = event.actor;
         pending = labelFor(labels, event.moveId);
         break;
 
@@ -118,13 +134,15 @@ export function logLines(events: readonly BattleEvent[], labels: Labels): string
         ];
 
         pending = null;
-        lines.push(parts.join(' — '));
+        actor = event.actor;
+        push(parts.join(' — '));
         break;
       }
 
       case 'item_used':
         flush();
-        lines.push(
+        actor = 'player';
+        push(
           event.healed === null || event.healed === 0
             ? `${labelFor(labels, event.itemDefId)} used.`
             : `${labelFor(labels, event.itemDefId)} — ${event.healed} Vigour restored.`,
@@ -138,7 +156,7 @@ export function logLines(events: readonly BattleEvent[], labels: Labels): string
 
         if (events[index + 1]?.type !== 'item_used' && line !== undefined) {
           flush();
-          lines.push(line);
+          push(line);
         }
         break;
       }

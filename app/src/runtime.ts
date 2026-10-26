@@ -7,7 +7,7 @@ import { healthConnectProvider } from './health/healthconnect';
 import { deviceLocalDates } from './health/localDate';
 import { apiBaseUrl } from './env';
 import { type TraverserApi, createApi } from './sync/api';
-import { coalescePasses } from './sync/coalesce';
+import { coalescePasses, retryDelay } from './sync/coalesce';
 import { type SyncPassResult, runForegroundSync } from './sync/pass';
 import { useAppStore } from './state/appStore';
 import { useBattleStore } from './state/battleStore';
@@ -82,6 +82,7 @@ const runPass = coalescePasses(async (now = Date.now()): Promise<SyncPassResult>
     // SQLite first, store second, always (tech-04 §5.2).
     usePlayerStore.getState().hydrate(db);
     useAppStore.getState().syncFinished(result, bannerFor(result.health));
+    scheduleRetry(result);
 
     return result;
   } catch (error) {
@@ -90,6 +91,43 @@ const runPass = coalescePasses(async (now = Date.now()): Promise<SyncPassResult>
     throw error;
   }
 });
+
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let retryAttempt = 0;
+
+/**
+ * T2 §5 — while the app stays open, an unreachable server is tried again on a backoff, so turning
+ * the PC on is noticed without a reopen.
+ *
+ * ↯ Only `unreachable`. A server that answered with an error has counted an attempt against each
+ * entry, and retrying on a timer would park them within a minute instead of over five opens.
+ */
+function scheduleRetry(result: SyncPassResult): void {
+  cancelRetry(result.server === 'unreachable' ? retryAttempt : 0);
+
+  if (result.server !== 'unreachable') {
+    return;
+  }
+
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    void syncNow().catch(() => undefined);
+  }, retryDelay(retryAttempt));
+  retryAttempt += 1;
+}
+
+/**
+ * ↯ Called on `background`: a timer is suspended with the JS thread, and firing late on the next
+ * foreground would only duplicate the pass that foreground starts anyway.
+ */
+export function cancelRetry(keepAttempt = 0): void {
+  if (retryTimer !== null) {
+    clearTimeout(retryTimer);
+    retryTimer = null;
+  }
+
+  retryAttempt = keepAttempt;
+}
 
 /**
  * A foreground pass (T4 §8.1).

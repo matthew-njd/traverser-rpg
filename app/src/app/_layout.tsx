@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { AppState, type AppStateStatus, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { bootRuntime, syncNow } from '@/runtime';
+import { bootRuntime, cancelRetry, syncNow } from '@/runtime';
 import { initSentry, wrapRoot } from '@/sentry';
 import { useAppStore } from '@/state/appStore';
 import { useBattleStore } from '@/state/battleStore';
@@ -53,6 +53,8 @@ function RootLayout() {
     const subscription = AppState.addEventListener('change', (next: AppStateStatus) => {
       if (next === 'active') {
         runSync();
+      } else {
+        cancelRetry();
       }
     });
 
@@ -82,30 +84,51 @@ function RootLayout() {
           }}
         />
       </Stack>
-      <OveractivityBanner />
+      <Notices />
     </SafeAreaProvider>
   );
 }
 
-/** GDD 13 §6.5 — over whichever screen is frontmost when the sync lands (tech-04 §4.4). */
-function OveractivityBanner() {
+/**
+ * The banners a sync raises, over whichever screen is frontmost when it lands (GDD 13 §6.5,
+ * tech-04 §4.4): the overactivity warning, and the notice that a read skipped days (T3 §4.1).
+ */
+function Notices() {
   const overactive = useAppStore((state) => state.overactive);
+  const missed = useAppStore((state) => state.missedBefore);
   const fighting = useBattleStore((state) => state.snapshot !== null);
   const insets = useSafeAreaInsets();
 
-  if (!overactive || fighting) {
+  if ((!overactive && missed === null) || fighting) {
     return null;
   }
 
   return (
-    <View style={{ position: 'absolute', top: insets.top + space.sm, left: space.md, right: space.md }}>
-      <Banner
-        message="You've been at it a while — the road will still be here after you rest."
-        action="Dismiss"
-        onPress={() => useAppStore.getState().dismissOveractivity()}
-      />
+    <View
+      style={{ position: 'absolute', top: insets.top + space.sm, left: space.md, right: space.md, gap: space.sm }}
+    >
+      {overactive ? (
+        <Banner
+          message="You've been at it a while — the road will still be here after you rest."
+          action="Dismiss"
+          onPress={() => useAppStore.getState().dismissOveractivity()}
+        />
+      ) : null}
+
+      {missed === null ? null : (
+        <Banner
+          message={`Welcome back. Traverser reads the last 3 days of activity when it opens, so steps before ${monthDay(missed)} weren't counted. Opening it every few days keeps every step.`}
+          action="Dismiss"
+          onPress={() => useAppStore.getState().dismissMissed()}
+        />
+      )}
     </View>
   );
 }
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** `2026-10-21` → `October 21`, without depending on the device's Intl data. */
+const monthDay = (date: string) => `${MONTHS[Number(date.slice(5, 7)) - 1]} ${Number(date.slice(8, 10))}`;
 
 export default wrapRoot(RootLayout);

@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { BackHandler, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
 import { getDatabase } from '@/db/open';
@@ -13,7 +13,7 @@ import {
 import { refreshIdentity, syncNow } from '@/runtime';
 import { ApiUnreachableError } from '@/sync/api';
 import { Body, Button, Field, Screen, Title } from '@/ui/primitives';
-import { colors, space, type } from '@/ui/theme';
+import { MIN_TOUCH_TARGET, colors, space, type } from '@/ui/theme';
 
 /**
  * GDD 10 screen 4 — naming, **plus the birth year** (tech-03 §1.4).
@@ -114,6 +114,18 @@ export default function NameYourTraverser() {
           You can change either of these later in Settings. Changing your birth year adjusts future
           workouts only — earned XP is never taken back.
         </Body>
+
+        {/* M3 note 17: the last screen before the tutorial, which is what closes the restore door. */}
+        <Pressable
+          accessibilityRole="link"
+          disabled={busy}
+          onPress={() => router.push('/restore')}
+          style={styles.restore}
+        >
+          <Text style={styles.restoreText}>
+            Restoring a traverser instead? Do it now — restore closes once the tutorial starts. ›
+          </Text>
+        </Pressable>
       </View>
 
       <Button
@@ -129,4 +141,6 @@ export default function NameYourTraverser() {
 const styles = StyleSheet.create({
   body: { flex: 1, justifyContent: 'center', gap: space.md, paddingVertical: space.lg },
   error: { ...type.body, color: colors.gold },
+  restore: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
+  restoreText: { ...type.small, color: colors.accent },
 });

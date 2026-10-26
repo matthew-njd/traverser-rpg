@@ -109,3 +109,14 @@ export function readWindowFor(
 
   return { startMs: dates.startOfDay(start), endMs: now };
 }
+
+/**
+ * The first local date this read could reach, when the last read ended before it — the days between
+ * were never read and never will be (tech-03 §4.1). Null on a first read, which is a baseline.
+ */
+export function missedBefore(watermark: string | null, now: number, dates: LocalDateResolver): string | null {
+  const last = watermark === null ? NaN : Date.parse(watermark);
+  const { startMs } = readWindowFor(watermark, now, dates);
+
+  return last < startMs ? dates.dateOf(startMs) : null;
+}

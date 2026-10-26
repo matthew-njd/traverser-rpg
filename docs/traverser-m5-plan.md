@@ -225,6 +225,29 @@ cannot be selected.
 **Tests:** the actor-change beat is longer than the line beat; backoff follows T2 §5's schedule;
 coalescing keeps the queue at the cap with nothing lost.
 
+### P7c — The combat log, redesigned (GDD 13 §6.1)
+
+Split from P7 on 2026-10-25 (DECISIONS), and built before P7b. Found on the device: when the enemy
+is faster it strikes first, its line lands before the player's, and no line names who acted.
+
+- Name the actor on every line, and say why a side went first ("Harpy is faster — it strikes first").
+- Separate the two sides at a glance, and mark where a round begins.
+- Revisit note 16's beat: where it falls once lines name their actor, or whether it is needed.
+- A layout proposal and mockup go to Matthew before building. Amend GDD 13 §6.1 when built.
+
+**Tests:** every line names its actor; turn order is stated when the enemy goes first; the beat
+falls where the design puts it.
+
+### P7b — The balance pass (GDD 2 §7)
+
+Split from P7 on 2026-10-25 (DECISIONS). The full-level sweep found four enemies over §7's ceilings.
+
+- Make `balance.test.ts` sweep every level from each gate to 60, not eight samples.
+- Trim the growth rates of Valkyrie, Draugr, Fenrir and Lemures until every level holds.
+- Amend GDDs 6–7 and the fixtures as a recorded design change, and regenerate the content.
+
+**Tests:** the sweep passes at every level for all twelve enemies.
+
 ### P8 — Device build, drills
 
 The M4 form: a sheet with a result column and a notes table.

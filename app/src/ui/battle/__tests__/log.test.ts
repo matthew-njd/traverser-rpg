@@ -1,5 +1,5 @@
 import type { BattleEvent } from '../../../battle/state';
-import { RESISTED, SUPER_EFFECTIVE, calloutFor, calloutOf, chevronFor, logLines } from '../log';
+import { RESISTED, SUPER_EFFECTIVE, calloutFor, calloutOf, chevronFor, logEntries, logLines } from '../log';
 
 /**
  * The event queue turned into what the player reads (GDD 13 §6.2).
@@ -32,6 +32,21 @@ const used = (moveId: string): BattleEvent => ({
   actor: 'player',
   moveId,
   usesLeft: null,
+});
+
+/** Note 16: the beat keys on whose turn a line belongs to. */
+describe('logEntries', () => {
+  it('gives each line the side whose turn produced it', () => {
+    const events: BattleEvent[] = [
+      { type: 'item_used', itemDefId: 'item_travelers_salve', healed: 12 },
+      { type: 'move_used', actor: 'enemy', moveId: 'skill_basic_attack', usesLeft: null },
+      hit({ actor: 'enemy', target: 'player' }),
+      used('skill_basic_attack'),
+      hit(),
+    ];
+
+    expect(logEntries(events, LABELS).map((line) => line.actor)).toEqual(['player', 'enemy', 'player']);
+  });
 });
 
 describe('calloutFor', () => {

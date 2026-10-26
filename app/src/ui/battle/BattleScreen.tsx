@@ -13,8 +13,8 @@ import { colors, radius, space, tabular, type } from '../theme';
 import { ActionMenu, type ItemOption } from './ActionMenu';
 import { CombatLog } from './CombatLog';
 import { VigorBar } from './VigorBar';
-import { type Callout, calloutOf, logLines } from './log';
-import { usePacedLines } from './paced';
+import { type Callout, calloutOf, logEntries } from './log';
+import { ACTOR_CHANGE_DELAY_MS, LINE_DELAY_MS, usePacedLines } from './paced';
 import { skillOptions, slotsFor } from './options';
 
 /**
@@ -87,10 +87,13 @@ export function BattleScreen({
   onFlee: () => void;
   onDone: () => void;
 }) {
-  const lines = useMemo(() => logLines(events, labels), [events, labels]);
+  const entries = useMemo(() => logEntries(events, labels), [events, labels]);
+  const lines = useMemo(() => entries.map((entry) => entry.text), [entries]);
 
-  // GDD 13 §6 pacing — one line at a time, so a turn cannot resolve in a single frame.
-  const paced = usePacedLines(lines);
+  // GDD 13 §6 pacing — one line at a time, and a longer beat where the turn changes hands.
+  const paced = usePacedLines(lines, (index) =>
+    index > 0 && entries[index]?.actor !== entries[index - 1]?.actor ? ACTOR_CHANGE_DELAY_MS : LINE_DELAY_MS,
+  );
   const catchingUp = paced.length < lines.length;
 
   const options = useMemo(

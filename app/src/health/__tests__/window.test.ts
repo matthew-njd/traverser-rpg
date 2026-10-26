@@ -1,5 +1,5 @@
 import { MINUTE_MS, dayBefore, deviceLocalDates, fixedOffsetDates, minuteOf } from '../localDate';
-import { READ_WINDOW_HOURS, readWindowFor } from '../provider';
+import { READ_WINDOW_HOURS, missedBefore, readWindowFor } from '../provider';
 import { edt, edtDates } from './fixtures';
 
 const HOUR_MS = 60 * MINUTE_MS;
@@ -90,5 +90,24 @@ describe('the read window (tech-03 §4.1)', () => {
     expect(readWindowFor('not an instant', NOW, edtDates).startMs).toBe(
       edtDates.startOfDay(NOW - READ_WINDOW_HOURS * HOUR_MS),
     );
+  });
+});
+
+/** T3 §4.1 — the days a read cannot reach once the app has been closed for more than 72 hours. */
+describe('missedBefore', () => {
+  const NOW = edt('2026-07-19T18:30');
+  const iso = (local: string) => new Date(edt(local)).toISOString();
+
+  it('names the first date read after a gap longer than the window', () => {
+    expect(missedBefore(iso('2026-07-14T20:00'), NOW, edtDates)).toBe('2026-07-16');
+  });
+
+  it('says nothing when the last read is inside the window', () => {
+    expect(missedBefore(iso('2026-07-17T09:00'), NOW, edtDates)).toBeNull();
+  });
+
+  /** A first read is a baseline (T3 §4.1), and the restore screens already warn about that one. */
+  it('says nothing on a first read', () => {
+    expect(missedBefore(null, NOW, edtDates)).toBeNull();
   });
 });

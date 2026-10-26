@@ -51,3 +51,10 @@ export function coalescePasses<T>(start: (now?: number) => Promise<T>) {
     return queued;
   };
 }
+
+/**
+ * T2 §5's retry: capped exponential backoff, 1s → 60s, with full jitter. `attempt` counts from 0.
+ */
+export function retryDelay(attempt: number, random: () => number = Math.random): number {
+  return Math.floor(random() * Math.min(60_000, 1_000 * 2 ** attempt));
+}

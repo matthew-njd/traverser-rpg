@@ -14,14 +14,21 @@ import { useEffect, useRef, useState } from 'react';
 export const LINE_DELAY_MS = 450;
 
 /**
- * The prefix of `lines` revealed so far, growing by one every `delayMs` until it catches up.
+ * The longer beat when the turn passes to the other side (M3 note 16), so a counter reads as a
+ * reply rather than as more of the same turn. Tuned on the device, not derived.
+ */
+export const ACTOR_CHANGE_DELAY_MS = 900;
+
+/**
+ * The prefix of `lines` revealed so far, growing by one at a time until it catches up. `delayAt`
+ * gives the wait before line `index` appears.
  *
  * Mounts fully caught up: a battle resumed after a process death (T5 §8) must not replay its whole
  * log from the beginning, and neither must a re-render.
  */
 export function usePacedLines(
   lines: readonly string[],
-  delayMs: number = LINE_DELAY_MS,
+  delayAt: (index: number) => number = () => LINE_DELAY_MS,
 ): readonly string[] {
   const [shown, setShown] = useState(lines.length);
   const previous = useRef(lines.length);
@@ -40,10 +47,11 @@ export function usePacedLines(
 
     // ↯ One timer per line, cleared on every change. A single interval would keep firing after the
     // screen unmounts mid-turn — which on Android is an update on a dead component, not a no-op.
-    const timer = setTimeout(() => setShown((count) => count + 1), delayMs);
+    const timer = setTimeout(() => setShown((count) => count + 1), delayAt(shown));
 
     return () => clearTimeout(timer);
-  }, [shown, lines.length, delayMs]);
+    // `delayAt` is read when each timer starts; a new function identity must not restart it.
+  }, [shown, lines.length]);
 
   useEffect(() => {
     if (shown > lines.length) {
