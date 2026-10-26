@@ -1,4 +1,4 @@
-import { acknowledge } from '../db/outbox';
+import { acknowledge, peek } from '../db/outbox';
 import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
 import type {
@@ -323,10 +323,16 @@ export function applySyncResponse(db: SqliteDatabase, response: SyncResponse): v
       );
     }
 
-    // The whole unresolved list, so a reward resolved on the server leaves here too.
+    // The whole unresolved list, so a reward resolved on the server leaves here too. A reward this
+    // device resolved after the response was computed is still on it: re-adding it re-asks the
+    // question, and a second keep mints an id the server ignores (DECISIONS 2026-10-26).
+    const resolved = new Set(
+      peek(db, 1_000, 'resolve_reward').map((entry) => (JSON.parse(entry.payload) as { rewardId: string }).rewardId),
+    );
+
     db.runSync('DELETE FROM pending_reward');
 
-    for (const reward of response.pendingRewards) {
+    for (const reward of response.pendingRewards.filter((each) => !resolved.has(each.id))) {
       db.runSync(
         `INSERT INTO pending_reward (id, kind, def_id, level_at_drop, bonus_primary, bonus_secondary, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,

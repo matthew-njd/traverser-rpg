@@ -31,6 +31,22 @@ const queueDelta = (db: SqliteDatabase, id: string) =>
   });
 
 describe('applying a sync response', () => {
+  /** A response computed before the device's keep replayed. Found on the device at M5/P8. */
+  it('does not bring back a reward this device has resolved but not yet replayed', () => {
+    const db = registeredDatabase();
+    const parked = { id: 'r1', kind: 'gear', def_id: 'gear_accessory_mortal', level_at_drop: 21, bonus_primary: 2, bonus_secondary: null, created_at: '2026-10-26T22:39:07Z' };
+
+    enqueue(db, {
+      clientOpId: 'keep-1',
+      kind: 'resolve_reward',
+      payload: { rewardId: 'r1', kept: true, newId: 'g1' },
+      createdAt: '2026-10-26T22:39:11.000Z',
+    });
+    applySyncResponse(db, response({ pending_rewards: [parked, { ...parked, id: 'r2' }] }));
+
+    expect(db.getAllSync<{ id: string }>('SELECT id FROM pending_reward').map((row) => row.id)).toEqual(['r2']);
+  });
+
   it('writes the player block through', () => {
     const db = registeredDatabase();
 
