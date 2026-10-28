@@ -293,11 +293,15 @@ export function backAction(snapshot: BattleSnapshot | null): 'leave' | 'cancel' 
  * starting.
  */
 export function battleInProgress(): boolean {
-  const snapshot = useBattleStore.getState().snapshot;
-
-  // Until settled, not until it has an outcome: a won fight still on its victory panel is unrecorded,
-  // and opening a battle over it lost a boss win and its drops (DECISIONS 2026-10-24).
-  return snapshot !== null && snapshot.state.phase !== 'settled';
+  return fightOpen(useBattleStore.getState());
 }
+
+/**
+ * The selector form, for anything that hides while a fight is open. Until settled, not until it has
+ * an outcome: a won fight still on its victory panel is unrecorded, and opening a battle over it lost
+ * a boss win and its drops (DECISIONS 2026-10-24).
+ */
+export const fightOpen = (store: BattleStore): boolean =>
+  store.snapshot !== null && store.snapshot.state.phase !== 'settled';
 /** The state a screen renders, or null when no battle is open. */
 export const currentBattle = (store: BattleStore): BattleState | null => store.snapshot?.state ?? null;

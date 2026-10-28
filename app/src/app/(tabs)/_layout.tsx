@@ -10,7 +10,7 @@ import { syncNow } from '@/runtime';
 import { discardGear, discardItem, resolvePendingReward } from '@/sync/writes';
 import { type OverflowPick, OverflowPrompt } from '@/ui/OverflowPrompt';
 import { useAppStore } from '@/state/appStore';
-import { useBattleStore } from '@/state/battleStore';
+import { fightOpen, useBattleStore } from '@/state/battleStore';
 import { RewardReveal } from '@/ui/RewardReveal';
 import { colors } from '@/ui/theme';
 
@@ -31,7 +31,7 @@ import { colors } from '@/ui/theme';
 export default function TabsLayout() {
   const rewardsSeq = useAppStore((state) => state.rewardsSeq);
   // ↯ A Modal is drawn over every route, the battle included, so the reveal waits out the fight.
-  const fighting = useBattleStore((state) => state.snapshot !== null);
+  const fighting = useBattleStore(fightOpen);
   const levelUps = useAppStore((state) => state.pendingLevelUps);
   const [fresh, setFresh] = useState<readonly FreshReward[]>([]);
   const [labels, setLabels] = useState<Labels>(new Map());

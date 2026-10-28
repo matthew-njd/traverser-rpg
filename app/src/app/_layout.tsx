@@ -7,7 +7,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { bootRuntime, cancelRetry, syncNow } from '@/runtime';
 import { initSentry, wrapRoot } from '@/sentry';
 import { useAppStore } from '@/state/appStore';
-import { useBattleStore } from '@/state/battleStore';
+import { fightOpen, useBattleStore } from '@/state/battleStore';
 import { Banner } from '@/ui/primitives';
 import { colors, space } from '@/ui/theme';
 
@@ -96,7 +96,7 @@ function RootLayout() {
 function Notices() {
   const overactive = useAppStore((state) => state.overactive);
   const missed = useAppStore((state) => state.missedBefore);
-  const fighting = useBattleStore((state) => state.snapshot !== null);
+  const fighting = useBattleStore(fightOpen);
   const insets = useSafeAreaInsets();
 
   if ((!overactive && missed === null) || fighting) {

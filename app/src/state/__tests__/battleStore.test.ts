@@ -6,7 +6,7 @@ import { peek } from '../../db/outbox';
 import type { SqliteDatabase } from '../../db/types';
 import { PLAYER_ID, registeredDatabase } from '../../sync/__tests__/fixtures';
 import { readPlayer } from '../../sync/mirror';
-import { backAction, battleInProgress, useBattleStore } from '../battleStore';
+import { backAction, battleInProgress, fightOpen, useBattleStore } from '../battleStore';
 
 /**
  * T5 §9's adapter. The engine is proven elsewhere; what is only observable here is **durability** —
@@ -250,6 +250,18 @@ describe('battleInProgress', () => {
 
     expect(useBattleStore.getState().snapshot).not.toBeNull();
     expect(battleInProgress()).toBe(false);
+  });
+
+  /** The reveal, the overflow prompt and the banners hid after every fight until a restart (M5/P8). */
+  it('reads the same through the selector the layouts subscribe with', () => {
+    const db = battleReady();
+
+    open(db);
+    fightOut(db);
+    expect(fightOpen(useBattleStore.getState())).toBe(true);
+
+    useBattleStore.getState().settle(db, '2026-08-19');
+    expect(fightOpen(useBattleStore.getState())).toBe(false);
   });
 });
 
