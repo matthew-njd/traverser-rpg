@@ -53,11 +53,14 @@ packet is small and goes last so the drills feel every fix at once.
 | Sound design and the audio bus | M6 | GDD 14. "The Song" is the milestone's name. |
 | Audio sliders in Settings | M6 | No audio bus until M6 (M1 §2.2). |
 | Fixed-time daily notification, and its permission screen | M6 | GDD 11 §6–7, GDD 10 screen 10. Local notifications only (CLAUDE.md). |
-| The art phase: sprites, tier art, iconography | M6 | GDD 13 §10. Has never had a milestone (M4 §7.2 item 8). M6's plan decides how art is sourced on a $0 stack. |
+| The art phase: sprites, tier art, iconography | M6 | GDD 13 §10. Has never had a milestone (M4 §7.2 item 8). M6's plan decides how art is sourced on a $0 stack. It carries M4's three art rows by name: battle sprites and animation choreography (T5 §13), zone visual identity and Road art (GDD 9 §6), and layered gear sprites with tier colours (GDD 8). |
+| The `›` on **Battle ›** and **Battle again ›** reads as a dot | M6 | Drill note 5. Iconography, so the art phase replaces it. |
 | `metro.config.js`, source-map upload | M6 | Release work. Recorded at M0 close-out. |
 | The home-lab decision and the second restore drill | M6 | T6 §11 and §10.6 named "M5"; that meant the ship milestone, which is now M6. |
 | A respec | undecided | Carried from M4 §2.2. A design question, not a gap. |
 | In-game codex or help screen | undecided | Carried from M4 §2.2. Still needs a GDD 13 amendment first. May fold into the bestiary decision (§3.2). |
+| Shorten or skip a boss's intro on a rematch | undecided | Drill note 4. GDD 12 §2 plays the intro at every boss encounter start; changing it is a GDD 12 amendment first. |
+| A further pass on the battle screen's UI | undecided | Matthew may revisit it after P7c. No known defect. |
 | The Egyptian zone | Phase 2 | GDD 9, GDD 12 §9. |
 
 ---
