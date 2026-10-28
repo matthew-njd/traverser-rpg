@@ -1,6 +1,7 @@
 # Traverser M5 build plan — "The Realm"
 
 **Milestone:** M5. **Predecessor:** `traverser-m4-plan.md` (complete, 2026-10-24).
+**Status:** complete, 2026-10-28. See §7.
 **Theme:** finish the game before dressing it.
 
 M4 made the loop pay off: gear equips, the game explains its stats and moves, the streak counts, and
@@ -296,5 +297,59 @@ Verified at P8, before the wrap-up. M5 is done when, on the Pixel:
   Section 12. GDD 12 does not cover it. P2 gives every Trinket effect a combat-log line; the
   one-time overlay GDD 13 §6.4 lists goes with P5's other overlays.
 - **Note 2 (encounters never expire) remains spec-correct and unaddressed.** Carried from M4 §6.
-- **T6 names "M5" for the home-lab decision and the second restore drill.** Both now mean M6. Amend
-  T6 when M6 is planned, not before.
+- ~~**T6 names "M5" for the home-lab decision and the second restore drill.**~~ **Closed at P10:** T6
+  is amended, and both are in `traverser-m6-plan.md`.
+
+---
+
+## 7. Packets, as delivered
+
+| Plan packet | Commit(s) | Date | Contents |
+|---|---|---|---|
+| **P1** | `070b41e` | 10-25 | The Satchel tab: Gear with four slots including the Trinket, and Items. The Gear card leaves Character. Healing items usable from the Satchel, and T2 gains the endpoint. The caps and the overflow prompt were moved into P3 here. |
+| **P2** | `f8bd9e9`, `3571f3b` | 10-25 | The skill loadout, never built before: from Level 22, every later skill had been unreachable. Gear-granted moves in the same four slots. Then Character's four sub-views, Avatar, Stats, Skills and Activity, at Matthew's request. GDD 13 and T1 amended. |
+| **P3** | `b4c039e` | 10-25 | T2 §4 step 10: the daily goal's road find and Mortal piece, level and streak milestones, zone-entry grants, the reveal and the streak popover. `milestone_grant` gains `daily_goal`. T1, T2 and fixtures §7 amended. |
+| **P3b** | `6582993` | 10-25 | Split from P3. The 12-piece and 20-item caps, per-item maximums, the keep/discard prompt and parked-reward resolution. |
+| **P4** | `08cf5b2` | 10-25 | T2 §4 step 11: the overactivity warning and its banner host. |
+| **P5** | `6bfd0e5` | 10-25 | GDD 12's text, verbatim, in columns on `enemy` and `zone`: boss intros and defeat text, zone-entry narratives, wild flavour. The Bestiary moves to the Road as Path \| Bestiary. GDD 13 and T1 amended. |
+| **P5b** | `fb0ada2` | 10-25 | Split from P5. The one-time type and secondary-effect screens. GDD 13 §4.4 and §6.4 amended. |
+| **P6** | `bb1489e` | 10-25 | The Road layout: the two-line encounters card, one Explore button acting on a selected zone, the ◆ return button and the Battle labels. Many rounds on the device with Matthew. GDD 13 §4.2 amended. |
+| **P7** | `e3d41a1` | 10-25 | Restore warnings and the gap banner, T2 §5's retry backoff and the queue cap, and note 16's beat. A full-level balance sweep found four enemies over GDD 2 §7, and P7b and P7c were split off. |
+| **P7c** | `be9a09e` | 10-25 | The combat log, redesigned: two-sided, every line names its actor, a beat when the side changes, the enemy's Vigour as x/y. GDD 13 §6.1 amended. |
+| **P7b** | `d488422` | 10-26 | Four growth-rate trims (Valkyrie and Fenrir Vigor, Draugr Favor, Lemures Resolve), and `balance.test.ts` sweeps every level. GDDs 6–7 and fixtures §6 amended, content version 6. |
+| **P8** | `3176be5`, `08a1d16` | 10-26 – 10-28 | Ten drills, all ten exit criteria pass. Two defects found and fixed. Drill 5 ran at a temporary threshold. |
+| **P9** | `0135564` | 10-28 | Close-out review, ten items. Item 5 failed as found and was corrected in §2.2. See §7.2. |
+| **P10** | *this packet* | 10-28 | Wrap-up: this section, T3 §4.1, GDD 13 §6.5 and T6 amended, the README, and `traverser-m6-plan.md`. |
+
+### 7.1 Where the delivery diverged from the intent
+
+- **Four packets split, and none was planned to.** P3b, P5b, P7b and P7c each came out of a packet that turned out to hold two decisions. Every split was Matthew's call, made before the second half was built, so no packet landed half-done. *Lesson: when a packet's work reaches a choice the player will see, split it there rather than guess.*
+
+- **"Unscheduled" kept meaning "already owned by a GDD".** The skill loadout (GDD 2 §5), healing between fights (GDD 4 §4), the caps and the overflow prompt (GDD 8 §5.5, GDD 4 §5.1), the Level 6 type screen (GDD 10 §7.2) and the Bestiary's place (GDD 13 §5.3) were each found unbuilt, and each was in a locked section all along. The loadout cost the most: from Level 22, every later skill had been unreachable since M2. *Lesson: before calling anything unowned, grep the GDDs for it.*
+
+- **The balance test passed while four enemies broke the ceilings.** GDD 2 §7 says its invariants hold "at every level", and the test checked eight. A full sweep found Valkyrie at 40% against 30%, Draugr at 32%, Fenrir at 77% against 75%, and Lemures at 6 rounds against 5, all just below the L22 skill unlock M4 flagged. §3.3 said nothing would be retuned unless a ceiling broke, and four did. Drill 10's three Lemures fights then cost 12–15% at 3 rounds each. *Lesson: a property stated for every level needs a test at every level.*
+
+- **A trap documented at one call site was missed at two others.** `battleInProgress` already explained that a settled fight stays in the store, so `snapshot !== null` reads a finished fight as open. Both layouts used that check anyway. After any fight, the reward reveal, the keep/discard prompt and both banners stayed hidden until a restart. Drill 3 found it, and drill 5 would have failed on it. The fix is one selector the three share. *Lesson: when a comment warns against an expression, give the right expression a name, so the wrong one has no reason to exist.*
+
+- **The first defect was found while writing the drill sheet, not while running it.** Reading the server's state for the expected values showed a piece the phone held and the server didn't. A sync response computed before the device's keep replayed brought the reward back, and the second answer discarded the piece just kept. *Lesson: reconciling one row by hand pays even before the drills, which is why drill 9 is never skipped.*
+
+- **A 90-minute session doesn't fit a drill schedule.** Drill 5 needed a real long workout, and the dev build can't start without Metro. It ran at a temporary 10-minute threshold that was never committed, with the device path real and `OveractivityTests` pinning the 90. *Lesson: a drill whose input takes hours should plan its simulation upfront. M6's release build also removes the Metro tether.*
+
+- **The packets absorbed the polish this time, not the drills.** P6 and P7c went through many rounds on the device with Matthew before they were committed, so the drills found two defects and no design changes. M4 was the opposite.
+
+### 7.2 Close-out review (P9) result
+
+Ten items, M4's checklist unchanged.
+
+| # | Item | Result |
+|---|---|---|
+| 1 | Every spec amendment has code behind it | PASS, with one owed amendment. All 25 M5 amendments were built in their packets. P7's gap banner existed only in `DECISIONS.md`; T3 §4.1 and GDD 13 §6.5 are amended at P10. |
+| 2 | Tests assert against fixtures | PASS. Every packet's stated tests exist, including P7b's every-level sweep and fixtures §10.10's Trinket moves. |
+| 3 | In-scope T2 §4 steps built | PASS. Step 10 at P3 and P3b, step 11 at P4. |
+| 4 | Obligations discharged | PASS. The backup task ran nightly through M5, with Drive dumps from 10-25 to 10-28 and a last result of 0. |
+| 5 | Nothing deferred silently | **FAILED as found, corrected at P9.** Drill notes 4 and 5 and a possible battle-UI pass had no row, and M4's three art rows had folded into one unnamed row. All four are now in §2.2. Every M4 §2.2 row and inherited flag maps to a packet or a row. |
+| 6 | Suites green, tree clean | PASS. 285 API and 804 client tests, `tsc` exit 0, clean at `08a1d16`. |
+| 7 | `⟨verify⟩` markers resolved | PASS. M5 introduced none. |
+| 8 | The visual style has a named owner | PASS. GDD 13 §11 owns the skin, and the art phase is M6's. |
+| 9 | The review takes no new work | PASS. Every correction is documentation. |
+| 10 | One row of real production data reconciled | PASS. Drill 9: Paragon's Guard matched by id on both sides, six claims. |

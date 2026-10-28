@@ -125,6 +125,15 @@ One read pass per sync, immediately before the payload is assembled.
 
 If the app has not been opened for longer than the window, days beyond it are simply never credited for streak purposes. That is not a bug: GDD 11 §3.2 caps the grace at 48 hours by design, and steps outside it still credit XP and Leagues if they fall inside the read window.
 
+> **Amended 2026-10-28 (M5/P10; built at P7, DECISIONS 2026-10-25).** The loss is still not a bug,
+> but it is no longer silent. A read whose window starts after the watermark, so the days between
+> were never read and never will be, reports the first local date it counted. The app shows that
+> once, as a dismissible banner: *"Welcome back. Traverser reads the last 3 days of activity when it
+> opens, so steps before {date} weren't counted. Opening it every few days keeps every step."* A
+> first read reports nothing, because it is a baseline (the 2026-08-05 amendment below). The banner
+> shares the overactivity warning's host and its rule (GDD 13 §6.5). Recorded here at M5's P10
+> because it lived only in `DECISIONS.md`, the failure mode the close-out's item 1 exists to catch.
+
 > **Amended 2026-08-05 (P9, found on the device).** **A device's first read establishes a baseline
 > and credits nothing** — it raises the high-water marks (§8.1, §8.2) and advances the watermark
 > without minting a single delta.

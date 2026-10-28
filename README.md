@@ -516,6 +516,33 @@ sync loses nothing. Adding any of the three would be a regression (tech-06 §8.4
 
 ---
 
+## M5 is complete
+
+**All ten exit criteria verified on the Pixel, 2026-10-28** (`traverser-m5-plan.md` §5, §7, and
+the ten drills in `traverser-m5-drills.md`).
+
+The game is finished; M6 dresses it. The Satchel holds Gear with four slots, including the Trinket,
+and Items. A worn Mythic or Divine Trinket adds its move to the four-skill loadout, which was never
+built before: from Level 22, every later skill had been out of reach. Daily goals, level and streak
+milestones, and new zones pay rewards once, past the gear and item caps through a keep/discard
+prompt. A long session raises a quiet overactivity banner. Bosses speak GDD 12's lines, a final
+boss's first defeat opens the next zone with its story, and the Bestiary sits beside the Road.
+
+**Four enemies were retuned.** `balance.test.ts` checked eight levels of a rule GDD 2 §7 states for
+every level. Swept level by level, Valkyrie, Draugr, Fenrir and Lemures each broke a ceiling. One
+growth rate each was trimmed, and the test now checks every level.
+
+**The drills found two defects, and both are fixed.** A reward answered on the phone could come back
+in a sync response already on its way, and the second answer discarded the piece just kept. And
+after any fight, the reveal, the keep/discard prompt and both banners stayed hidden until a restart,
+a trap `battleInProgress` had documented and two layouts still fell into. Drill 5 ran at a temporary
+10-minute overactivity threshold, never committed, because a 90-minute session wouldn't fit the
+schedule.
+
+The close-out review found four deferrals with no row and gave them one (`traverser-m5-plan.md`
+§7.2). Next is `traverser-m6-plan.md`: sound, the daily notification, the art phase, the release
+build and the home-lab decision.
+
 ## M4 is complete
 
 **All eleven exit criteria verified on the Pixel, 2026-10-24** (`traverser-m4-plan.md` §5, §7, and

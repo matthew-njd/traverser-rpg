@@ -226,6 +226,12 @@ All six share one underlying **Tooltip/Overlay component** with two size variant
 
 Per Section 11 §8, the trigger logic fires at sync time (app open/foreground), which may land the player on *any* screen depending on what they had open when they last backgrounded the app. Rendering rule: the warning is a **dismissible top-of-screen banner**, using the same banner component as the Character screen's permission-denied banner (§3.1), rendered on whichever screen is frontmost at the moment sync completes. It never interrupts an in-progress battle (sync only happens on app foreground/open, and a battle in progress means the app was already open — so this case cannot occur in practice, consistent with Section 11's "never fires retroactively for a session never checked in during"). Copy is fixed per Section 11 §8.4: *"You've been at it a while — the road will still be here after you rest."*
 
+> **Amended 2026-10-28 (M5/P10; built at P7).** The same host carries a second banner, the **gap
+> notice**: after the app has been closed for more than tech-03 §4.1's 72-hour window, it says once
+> which date steps were counted from. Both banners stack at the top, each with its own **Dismiss**,
+> and neither renders over an open battle; they appear when the fight settles, not on the next
+> launch (DECISIONS 2026-10-26).
+
 ---
 
 ## 7. Settings Screen

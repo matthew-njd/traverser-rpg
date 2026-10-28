@@ -351,6 +351,10 @@ Then a spot-check query — a known `activity_day` row, the player's level, the 
 
 Short by intention — this is a note for a decision to be made at **M5**, not a plan to execute now.
 
+> **Amended 2026-10-28 (M5/P10).** Every "M5" in §10.6, §11, §12 and §13 means the ship milestone,
+> which became **M6 "The Song"** when M5 was split on 2026-10-24 (M4 plan §7). The home-lab decision
+> and the second restore drill belong to `traverser-m6-plan.md`.
+
 **11.1 What makes the move cheap.** If T6 is built as specified, the entire deployment is: `docker-compose.yml`, `.env`, one named volume, one `tailscale serve` invocation, and the API image's Dockerfile. That is the complete inventory. The migration is correspondingly dull:
 
 1. `pg_dump -Fc` on the old host (§10.2) — the backup that already runs nightly is the migration tool.
@@ -395,7 +399,7 @@ Every external dependency, its free-tier limit, and this project's usage against
 - **GDD 15 (Analytics):** §1.5 adopts GDD 15 §5.2's recommendation and extends it to the server tier. The analytics trim is unchanged — crash/error only, no event pipeline, no health or gameplay data through Sentry (§9.3).
 - **M0 (Scaffolding):** this doc's primary consumer. M0 owes the Dockerfile, `docker-compose.yml`, `.env.example`, the migration/seed commands, §5.4's validation pass, the release keystore and its config plugin, the `tailscale serve` setup, and the README that records the manual host steps.
 - **M1 (The Walk):** **§10 becomes mandatory before the first real step sync, not after it.** The M1 restore drill (§10.6) is a checklist item, not an aspiration.
-- **M5 (The Song):** the home-lab decision (§11) and the second restore drill.
+- **M6 (The Song; named M5 before the 2026-10-24 split):** the home-lab decision (§11) and the second restore drill.
 - **Manifest:** T6 adds no content IDs, but §5.4 makes the manifest load-bearing at seed time in the same way T4 §9.2 made it load-bearing at build time. The two ID families flagged on 2026-07-25 and escalated by T4 (six `gate_*` keys, twelve concrete `gear_{slot}_{tier}` keys) block the seed as well as the build.
 
 ### 13.1 ~~Open~~ **Decided 2026-07-26**: recovering the device identity after an uninstall
