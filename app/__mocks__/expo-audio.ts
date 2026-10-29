@@ -11,6 +11,7 @@ export interface FakePlayer {
   removed: boolean;
   play(): void;
   pause(): void;
+  seekTo(seconds: number): Promise<void>;
   remove(): void;
   addListener(event: string, listener: (status: { didJustFinish: boolean }) => void): { remove(): void };
   /** Test-only: what the native side reports when a non-looping file reaches its end. */
@@ -33,6 +34,7 @@ export function createAudioPlayer(source: unknown): FakePlayer {
     pause() {
       player.playing = false;
     },
+    async seekTo() {},
     remove() {
       player.playing = false;
       player.removed = true;

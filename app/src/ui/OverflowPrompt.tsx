@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { type Labels, labelFor } from '../content/labels';
 import type { Overflow } from '../progression/overflow';
+import { playSfx } from '../audio/bus';
 import { Button, Heading } from './primitives';
 import { MIN_TOUCH_TARGET, colors, radius, space, type } from './theme';
 
@@ -28,6 +29,12 @@ export function OverflowPrompt({
 }) {
   const [picked, setPicked] = useState<OverflowPick | null>(null);
   const key = overflow === null ? '' : `${overflow.pendingId ?? overflow.incoming.id}`;
+
+  useEffect(() => {
+    if (overflow !== null) {
+      playSfx('sfx_modal_open');
+    }
+  }, [key]);
 
   // A new decision starts from the suggestion, never from the last one's pick.
   useEffect(() => {

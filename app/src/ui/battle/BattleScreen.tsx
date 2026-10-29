@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { enterBattle, exitBattle, playMusic, playSting } from '../../audio/bus';
-import { battleMusic, dropRevealTier, entryMusic, isBoss, revealSting } from '../../audio/cues';
+import { enterBattle, exitBattle, playMusic, playSfx, playSting } from '../../audio/bus';
+import { ITEM_SFX, battleMusic, dropRevealTier, entryMusic, hitSfx, isBoss, revealSting } from '../../audio/cues';
 
 import type { BattleContext, BattleEvent, BattleState } from '../../battle/state';
 import type { Move } from '../../battle/types';
@@ -315,6 +315,8 @@ function useBattleAudio({
   outcome.current = state.outcome;
 
   useEffect(() => {
+    playSfx('sfx_modal_open');
+
     // A fight resumed past its intro crossfades in rather than replaying the boss flourish.
     enterBattle(
       battleMusic(state.enemyId, state.encounterKind, context.enemy.zoneId),
@@ -326,22 +328,47 @@ function useBattleAudio({
     return () => exitBattle(outcome.current ?? 'flee', finalBoss);
   }, []);
 
-  useEffect(() => {
-    if (over && state.outcome !== null) {
-      exitBattle(state.outcome, finalBoss);
-    }
-  }, [over]);
-
-  // §3.6 — when the hit's line appears, not when the engine resolved it a beat earlier.
+  // §3.6 and §6.1–6.2 — when the line appears, not when the engine resolved it a beat earlier.
+  // Before the outcome below, so the faint lands ahead of the fanfare it precedes.
   useEffect(() => {
     for (const line of entries.slice(heard.current, shown)) {
-      if (line.typeMultiplier !== undefined && line.typeMultiplier !== 1) {
-        playSting(line.typeMultiplier > 1 ? 'stg_type_super' : 'stg_type_resisted');
+      const cue = line.cue;
+
+      if (cue?.kind === 'hit') {
+        playSfx(hitSfx(cue.moveId === null ? null : (context.moves.get(cue.moveId)?.typeId ?? null)));
+
+        if (cue.crit) {
+          playSfx('sfx_crit');
+        }
+
+        if (cue.typeMultiplier !== null && cue.typeMultiplier !== 1) {
+          playSting(cue.typeMultiplier > 1 ? 'stg_type_super' : 'stg_type_resisted');
+        }
+      } else if (cue?.kind === 'item') {
+        const item = context.items.get(cue.itemDefId);
+
+        if (item !== undefined) {
+          playSfx(ITEM_SFX[item.category]);
+        }
+      }
+
+      if (line.changes.some((change) => change.side === 'enemy' && change.to === 0)) {
+        playSfx('sfx_enemy_faint');
       }
     }
 
     heard.current = shown;
   }, [shown]);
+
+  useEffect(() => {
+    if (over && state.outcome !== null) {
+      if (state.outcome === 'flee') {
+        playSfx('sfx_flee_success');
+      }
+
+      exitBattle(state.outcome, finalBoss);
+    }
+  }, [over]);
 
   const teasing = won && !closed && lore.tease === true;
 
@@ -382,7 +409,14 @@ function useBattleAudio({
 /** GDD 13 §6.4's dialogue box: one beat's lines together, one tap to continue. */
 function Dialogue({ lines, onDone }: { lines: readonly string[]; onDone: () => void }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onDone} style={styles.dialogue}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => {
+        playSfx('sfx_dialogue_advance');
+        onDone();
+      }}
+      style={styles.dialogue}
+    >
       {lines.map((line) => (
         <Text key={line} style={styles.dialogueLine}>
           {line}

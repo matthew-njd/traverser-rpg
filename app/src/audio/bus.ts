@@ -1,6 +1,6 @@
 import { type AudioPlayer, createAudioPlayer } from 'expo-audio';
 
-import type { MusicKey, StingKey } from '../assets/keys.generated';
+import type { MusicKey, SfxKey, StingKey } from '../assets/keys.generated';
 import { AUDIO } from '../assets/registry.generated';
 import type { AudioSettings } from '../sync/mirror';
 import { DUCK, FADE_MS, LAYERED, arbitrate, stingRank } from './cues';
@@ -40,6 +40,8 @@ let duckRamp: Ramp | null = null;
 let sting: Sting | null = null;
 let queue: StingKey[] = [];
 let tailTimer: ReturnType<typeof setTimeout> | null = null;
+/** One warm player per effect, restarted on each play (tech-04 §10.3). */
+const effects = new Map<SfxKey, AudioPlayer>();
 /** The track a fled or cancelled battle hands back to (GDD 14 §5.3). */
 let battle: { readonly resumeTo: MusicKey | null } | null = null;
 const ramps = new Set<Ramp>();
@@ -56,6 +58,19 @@ function applyMusic(): void {
   }
 
   outgoing.forEach(applyVoice);
+}
+
+/**
+ * Loudness is not linear in gain, so neither is a fade (GDD 14 §5.1, amended 2026-10-28). Between
+ * two audible levels the ramp is straight in decibels; to or from silence it follows a quarter sine,
+ * and a crossfade's two halves then sum to constant power instead of dipping in the middle.
+ */
+export function fadeShape(from: number, to: number, t: number): number {
+  if (from > 0 && to > 0) {
+    return from * Math.pow(to / from, t);
+  }
+
+  return to > from ? from + (to - from) * Math.sin((t * Math.PI) / 2) : to + (from - to) * Math.cos((t * Math.PI) / 2);
 }
 
 /**
@@ -90,7 +105,7 @@ function ramp(from: number, to: number, ms: number, apply: (value: number) => vo
       return;
     }
 
-    apply(from + (to - from) * t);
+    apply(fadeShape(from, to, t));
     frame = requestAnimationFrame(tick);
   };
 
@@ -157,6 +172,27 @@ export function configureAudio(next: AudioSettings): void {
   if (sting !== null) {
     sting.player.volume = gain(settings.sfx);
   }
+
+  effects.forEach((player) => {
+    player.volume = gain(settings.sfx);
+  });
+}
+
+/**
+ * GDD 14 §6. A replay of an effect still sounding restarts it rather than stacking a second voice,
+ * which is what keeps a burst of taps from turning into a smear.
+ */
+export function playSfx(key: SfxKey): void {
+  let player = effects.get(key);
+
+  if (player === undefined) {
+    player = createAudioPlayer(AUDIO[key]);
+    effects.set(key, player);
+  }
+
+  player.volume = gain(settings.sfx);
+  void player.seekTo(0);
+  player.play();
 }
 
 /** GDD 14 §5.1's crossfade by default. Null is silence; the playing track is a no-op. */
@@ -239,6 +275,11 @@ export function exitBattle(outcome: 'win' | 'loss' | 'flee', finalBoss: boolean)
 
 /** GDD 14 §5.5 decides whether this plays now, waits its turn, or is dropped. */
 export function playSting(key: StingKey, onEnd?: () => void): void {
+  // §6.4 — the card's flip is the presentation itself, so it sounds even when its sting waits.
+  if (key.startsWith('stg_reveal_')) {
+    playSfx('sfx_reveal_card_flip');
+  }
+
   const verdict = arbitrate(sting?.key ?? null, key);
 
   if (verdict === 'drop') {
@@ -318,6 +359,7 @@ export function suspendAudio(): void {
 
   [...ramps].forEach((pending) => pending.finish());
   music?.player.pause();
+  effects.forEach((player) => player.pause());
 }
 
 export function resumeAudio(): void {

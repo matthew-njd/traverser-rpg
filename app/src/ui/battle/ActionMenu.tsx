@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { playSfx } from '../../audio/bus';
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from '../theme';
 import type { MoveCategory } from '../../battle/types';
 import type { Chevron } from './log';
@@ -85,12 +86,15 @@ export function ActionMenu({
   const [open, setOpen] = useState<PendingMenu>(null);
   const [note, setNote] = useState<string | null>(null);
 
-  const locked = (message: string) => {
+  // GDD 14 §6.2 — every refusal shares the denial tone, and Flee's has its own key.
+  const locked = (message: string, sound: 'sfx_skill_locked' | 'sfx_flee_denied' = 'sfx_skill_locked') => {
+    playSfx(sound);
     setOpen(null);
     setNote(message);
   };
 
   const act = (run: () => void) => {
+    playSfx('sfx_menu_select_action');
     setOpen(null);
     setNote(null);
     run();
@@ -180,6 +184,7 @@ export function ActionMenu({
               return;
             }
 
+            playSfx('sfx_menu_select_action');
             setNote(null);
             setOpen((current) => (current === 'item' ? null : 'item'));
           }}
@@ -188,7 +193,7 @@ export function ActionMenu({
           label="Flee"
           dimmed={!fleeable}
           disabled={disabled}
-          onPress={() => (fleeable ? act(onFlee) : locked(fleeLockedNote))}
+          onPress={() => (fleeable ? act(onFlee) : locked(fleeLockedNote, 'sfx_flee_denied'))}
         />
       </View>
     </View>

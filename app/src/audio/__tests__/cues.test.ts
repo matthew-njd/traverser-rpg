@@ -10,6 +10,7 @@ import {
   bucketOf,
   dropRevealTier,
   entryMusic,
+  hitSfx,
   musicForRoute,
   rewardRevealTier,
 } from '../cues';
@@ -66,9 +67,9 @@ describe('GDD 14 §3 trigger table', () => {
   });
 });
 
-/** GDD 14 §3.7 — a streak reset is silent by decision, so the key exists and nothing plays it. */
-it('never plays stg_streak_break', () => {
-  const callers: string[] = [];
+/** Every non-test, non-generated source file under `src/`, keyed by name. */
+function sources(): Map<string, string> {
+  const found = new Map<string, string>();
   const walk = (dir: string) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
@@ -77,16 +78,38 @@ it('never plays stg_streak_break', () => {
         if (entry.name !== '__tests__') {
           walk(full);
         }
-      } else if (!entry.name.includes('.generated.') && fs.readFileSync(full, 'utf8').includes('stg_streak_break')) {
-        callers.push(full);
+      } else if (!entry.name.includes('.generated.')) {
+        found.set(path.relative(path.join(__dirname, '..', '..'), full), fs.readFileSync(full, 'utf8'));
       }
     }
   };
 
   walk(path.join(__dirname, '..', '..'));
 
+  return found;
+}
+
+/** GDD 14 §3.7 — a streak reset is silent by decision, so the key exists and nothing plays it. */
+it('never plays stg_streak_break', () => {
+  const callers = [...sources()].filter(([, text]) => text.includes('stg_streak_break')).map(([file]) => file);
+
   // cues.ts names it only to say why it is absent from the priority table.
   expect(callers.map((file) => path.basename(file))).toEqual(['cues.ts']);
+});
+
+/**
+ * GDD 14 §6 — every effect has a trigger. A typed hit is reached through `hitSfx` from the content's
+ * types rather than by name. `sfx_footstep_loop` waits for the Waymarker's animation (M6/P5).
+ */
+it('triggers every sound effect from somewhere', () => {
+  const text = [...sources().values()].join(' ');
+  const typed = new Set(EMBEDDED_BUNDLE.game_types.map((type) => hitSfx(type.id)));
+  const silent = (Object.keys(AUDIO) as (keyof typeof AUDIO)[]).filter(
+    (key) => key.startsWith('sfx_') && !typed.has(key as never) && !text.includes(`'${key}'`),
+  );
+
+  expect(typed.size).toBe(6);
+  expect(silent).toEqual(['sfx_footstep_loop']);
 });
 
 describe('GDD 14 §5.5 priority', () => {

@@ -5,6 +5,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import { type BestiaryEntry, readBestiaryBook } from '@/battle/mirror';
 import { type Labels, labelFor, loadLabels } from '@/content/labels';
 import { type EnemyLore, readRoster } from '@/content/lore';
+import { playSfx } from '@/audio/bus';
 import { getDatabase } from '@/db/open';
 import { deviceLocalDates } from '@/health/localDate';
 import { type PendingEncounter, type RoadState, readEncounters, readRoad } from '@/progression/road';
@@ -68,6 +69,8 @@ export default function MapScreen() {
    * the button simply settles and the encounter appears later, which is the honest outcome.
    */
   const explore = (zoneId: string) => {
+    const waiting = readEncounters(getDatabase()).length;
+
     setExploring(zoneId);
 
     requestExplore(getDatabase(), zoneId, deviceLocalDates.dateOf(Date.now()), Date.now());
@@ -75,6 +78,11 @@ export default function MapScreen() {
     void syncNow(Date.now(), { withNewWork: true })
       .catch(() => undefined)
       .finally(() => {
+        // GDD 14 §6.4, Explore only (DECISIONS 2026-10-28): the roll found a fight.
+        if (readEncounters(getDatabase()).length > waiting) {
+          playSfx('sfx_encounter_start');
+        }
+
         reload();
         setExploring(null);
       });

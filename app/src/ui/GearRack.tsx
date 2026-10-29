@@ -5,6 +5,7 @@ import type { OwnedGear } from '../battle/mirror';
 import { type Labels, labelFor } from '../content/labels';
 import { gearBonuses } from '../progression/stats';
 import type { StatDeltas } from '../sync/writes';
+import { playSfx } from '../audio/bus';
 import { Button, Card } from './primitives';
 import { GRADE_BORDER } from './RevealCard';
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme';
@@ -70,7 +71,12 @@ export function GearRack({
               key={slot}
               accessibilityRole="tab"
               accessibilityState={{ selected: slot === open }}
-              onPress={() => setOpen(slot)}
+              onPress={() => {
+                if (slot !== open) {
+                  playSfx('sfx_modal_open');
+                  setOpen(slot);
+                }
+              }}
               style={[
                 styles.slot,
                 { borderColor: piece === undefined ? colors.border : (GRADE_BORDER[piece.tier] ?? colors.border) },
@@ -94,7 +100,7 @@ export function GearRack({
           <Text style={styles.note}>Nothing worn.</Text>
         ) : (
           <Row piece={worn} labels={labels} lines={[...wornBonus].map(([stat, bonus]) => `+${bonus} ${nameOf(stat)}`)}>
-            <Button label="Take off" variant="secondary" disabled={fighting} onPress={() => onEquip(worn.playerGearId, false)} />
+            <Button label="Take off" variant="secondary" sound="sfx_toggle" disabled={fighting} onPress={() => onEquip(worn.playerGearId, false)} />
           </Row>
         )}
 
@@ -115,7 +121,7 @@ export function GearRack({
                 return `${nameOf(stat)} ${stats[stat]} → ${stats[stat] + delta} (${signed(delta)})`;
               })}
             >
-              <Button label="Wear" variant="secondary" disabled={fighting} onPress={() => onEquip(piece.playerGearId, true)} />
+              <Button label="Wear" variant="secondary" sound="sfx_toggle" disabled={fighting} onPress={() => onEquip(piece.playerGearId, true)} />
             </Row>
           );
         })}

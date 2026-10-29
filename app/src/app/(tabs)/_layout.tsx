@@ -6,6 +6,7 @@ import { type FreshReward, clearFreshRewards, isRoadFind, readFreshRewards } fro
 import { type Labels, type RevealDetail, loadLabels, loadRevealDetails } from '@/content/labels';
 import { getDatabase } from '@/db/open';
 import { type Overflow, readOverflow } from '@/progression/overflow';
+import { playSfx } from '@/audio/bus';
 import { syncNow } from '@/runtime';
 import { discardGear, discardItem, resolvePendingReward } from '@/sync/writes';
 import { type OverflowPick, OverflowPrompt } from '@/ui/OverflowPrompt';
@@ -83,6 +84,7 @@ export default function TabsLayout() {
   return (
     <>
       <Tabs
+        screenListeners={{ tabPress: () => playSfx('sfx_tab_switch') }}
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: colors.accent,

@@ -107,9 +107,19 @@ export interface LogLine {
   readonly actor: BattleSide;
   readonly round: number;
   readonly changes: readonly VigorChange[];
-  /** Set on the player's typed hits only, which are the only ones that carry a callout (GDD 2). */
-  readonly typeMultiplier?: number;
+  /** What the line sounds like (GDD 14 §6). Absent on lines that make no sound. */
+  readonly cue?: LineCue;
 }
+
+export type LineCue =
+  | {
+      readonly kind: 'hit';
+      readonly moveId: string | null;
+      readonly crit: boolean;
+      /** The player's hits only — enemy moves never take a type multiplier (GDD 2). */
+      readonly typeMultiplier: number | null;
+    }
+  | { readonly kind: 'item'; readonly itemDefId: string };
 
 /**
  * What a bar shows while the log is still revealing: its value before the first change on a line
@@ -134,6 +144,7 @@ export function logLines(events: readonly BattleEvent[], labels: Labels): string
 export function logEntries(events: readonly BattleEvent[], labels: Labels): LogLine[] {
   const lines: LogLine[] = [];
   let pending: string | null = null;
+  let moveId: string | null = null;
   // An item is the player's, and a Trinket's effect line belongs to the move before it.
   let actor: BattleSide = 'player';
   let round = 0;
@@ -141,8 +152,8 @@ export function logEntries(events: readonly BattleEvent[], labels: Labels): LogL
   // after `damage_dealt` joins the line just pushed, and any other waits for the next one.
   let changes: VigorChange[] = [];
 
-  const push = (text: string, typeMultiplier?: number) => {
-    lines.push({ text, actor, round, changes, typeMultiplier });
+  const push = (text: string, cue?: LineCue) => {
+    lines.push({ text, actor, round, changes, cue });
     changes = [];
   };
 
@@ -175,6 +186,7 @@ export function logEntries(events: readonly BattleEvent[], labels: Labels): LogL
       case 'move_used':
         flush();
         actor = event.actor;
+        moveId = event.moveId;
         pending = labelFor(labels, event.moveId);
         break;
 
@@ -189,7 +201,12 @@ export function logEntries(events: readonly BattleEvent[], labels: Labels): LogL
 
         pending = null;
         actor = event.actor;
-        push(parts.join(' — '), event.target === 'enemy' ? event.typeMultiplier : undefined);
+        push(parts.join(' — '), {
+          kind: 'hit',
+          moveId,
+          crit: event.wasCrit,
+          typeMultiplier: event.target === 'enemy' ? event.typeMultiplier : null,
+        });
         break;
       }
 
@@ -200,6 +217,7 @@ export function logEntries(events: readonly BattleEvent[], labels: Labels): LogL
           event.healed === null || event.healed === 0
             ? `${labelFor(labels, event.itemDefId)} used.`
             : `${labelFor(labels, event.itemDefId)} — ${event.healed} Vigour restored.`,
+          { kind: 'item', itemDefId: event.itemDefId },
         );
         break;
 

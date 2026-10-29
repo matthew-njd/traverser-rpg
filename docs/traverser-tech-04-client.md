@@ -458,6 +458,8 @@ The web reflex is `gainNode.gain.linearRampToValueAtTime(...)`. There is no equi
 
 Every timing rule GDD 14 §5 specifies — the 0.8s crossfade, the 0.3s duck to 20% on battle entry, the 1.5s defeat fade, the 0.5s flee fade, the duck-to-60%-and-return in §5.4 — is implemented by a single shared fade helper driving `player.volume` from a `requestAnimationFrame` loop, cancellable, with the target volume applied exactly on completion so no fade can leave a player at 0.97.
 
+> **Amended 2026-10-28 (M6/P3):** the helper shapes its ramp rather than interpolating linearly, per GDD 14 §5.1's amendment. Between two audible levels it is exponential in gain (straight in decibels); to or from zero it follows a quarter sine, so a crossfade holds constant power. `fadeShape` in `src/audio/bus.ts`.
+
 Per §7.2: a fade in progress when the app backgrounds is **cancelled and snapped to its target**, never resumed by elapsed-time assumption.
 
 ### 10.3 Warming and lifetime

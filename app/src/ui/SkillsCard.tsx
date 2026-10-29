@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LOADOUT_SLOTS, type LimitedMove } from '../battle/session';
 import { type Labels, labelFor } from '../content/labels';
+import { playSfx } from '../audio/bus';
 import { Button, Card, Heading } from './primitives';
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme';
 
@@ -71,7 +72,10 @@ export function SkillsCard({
             accessibilityState={{ checked: on, disabled: locked }}
             accessibilityLabel={labelFor(labels, move.id)}
             disabled={locked}
-            onPress={() => toggle(move.id)}
+            onPress={() => {
+              playSfx('sfx_toggle');
+              toggle(move.id);
+            }}
             style={[styles.row, on && styles.rowOn]}
           >
             <View style={styles.text}>

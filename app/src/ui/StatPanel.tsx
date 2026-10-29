@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { StatDeltas } from '../sync/writes';
 import { NO_STATS, totalPoints } from '../sync/writes';
+import { playSfx } from '../audio/bus';
 import { Button, Card, Heading } from './primitives';
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme';
 
@@ -172,7 +173,10 @@ function Step({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
       disabled={disabled}
-      onPress={onPress}
+      onPress={() => {
+        playSfx('sfx_toggle');
+        onPress();
+      }}
       style={({ pressed }) => [styles.step, pressed && styles.stepPressed, disabled && styles.stepOff]}
     >
       <Text style={styles.stepLabel}>{label}</Text>

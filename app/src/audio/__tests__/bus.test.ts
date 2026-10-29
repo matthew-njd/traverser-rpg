@@ -180,3 +180,29 @@ it('snaps a fade and hands a cut-short boss intro to its theme on background (te
   bus.resumeAudio();
   expect(only('mus_boss_fenrir').playing).toBe(true);
 });
+
+it('replays an effect on its one warm player, at the effects volume (tech-04 §10.3)', () => {
+  bus.configureAudio({ music: 1, sfx: 0.3, muted: false });
+  bus.playSfx('sfx_button_tap');
+  bus.playSfx('sfx_button_tap');
+
+  expect(only('sfx_button_tap').volume).toBeCloseTo(0.3);
+
+  bus.configureAudio({ music: 1, sfx: 0.3, muted: true });
+  expect(only('sfx_button_tap').volume).toBe(0);
+});
+
+describe('fade shape (GDD 14 §5.1, amended 2026-10-28)', () => {
+  it('holds constant power through a crossfade', () => {
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+      const power = bus.fadeShape(1, 0, t) ** 2 + bus.fadeShape(0, 1, t) ** 2;
+
+      expect(power).toBeCloseTo(1);
+    }
+  });
+
+  it('ducks in a straight line of decibels', () => {
+    // Halfway from 1.0 to 0.2 is half of −14 dB, not the linear 0.6.
+    expect(20 * Math.log10(bus.fadeShape(1, 0.2, 0.5))).toBeCloseTo((20 * Math.log10(0.2)) / 2);
+  });
+});

@@ -1,8 +1,8 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Linking, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { configureAudio } from '@/audio/bus';
+import { configureAudio, playSfx } from '@/audio/bus';
 import { getDatabase } from '@/db/open';
 import { parked } from '@/db/outbox';
 import { apiBaseUrl } from '@/env';
@@ -30,6 +30,13 @@ import { MIN_TOUCH_TARGET, colors, radius, space, type } from '@/ui/theme';
  */
 export default function Settings() {
   const slice = usePlayerStore();
+
+  // GDD 14 §6.3 — Settings is the pushed screen; its back is the pop.
+  useEffect(() => {
+    playSfx('sfx_screen_push');
+
+    return () => playSfx('sfx_screen_pop');
+  }, []);
   const health = useAppStore((state) => state.health);
 
   const [goal, setGoal] = useState(String(slice.dailyStepGoal));
@@ -367,14 +374,21 @@ function Audio() {
         label="Sound effects"
         value={audio.sfx}
         onChange={(sfx) => preview({ ...audio, sfx })}
-        onCommit={(sfx) => commit({ ...audio, sfx })}
+        onCommit={(sfx) => {
+          commit({ ...audio, sfx });
+          // A sample at the new level, so the slider is judged by ear.
+          playSfx('sfx_volume');
+        }}
       />
 
       <View style={styles.row}>
         <Text style={styles.rowLabel}>Mute all</Text>
         <Switch
           value={audio.muted}
-          onValueChange={(muted) => commit({ ...audio, muted })}
+          onValueChange={(muted) => {
+            playSfx('sfx_toggle');
+            commit({ ...audio, muted });
+          }}
           trackColor={{ true: colors.accent, false: colors.border }}
         />
       </View>

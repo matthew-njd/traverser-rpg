@@ -1,5 +1,6 @@
-import type { AudioKey, MusicKey, StingKey } from '../assets/keys.generated';
+import type { AudioKey, MusicKey, SfxKey, StingKey } from '../assets/keys.generated';
 import { AUDIO } from '../assets/registry.generated';
+import type { BattleItem } from '../battle/state';
 import type { EncounterKind } from '../battle/types';
 
 /**
@@ -181,3 +182,18 @@ export function rewardRevealTier(
 
   return Math.max(1, ...tiers) as RevealTier;
 }
+
+/** §6.1 — typed by the move, not per move. A Physical move has no type, and gets the neutral clack. */
+export function hitSfx(typeId: string | null): SfxKey {
+  const key = `sfx_hit_${typeId ?? 'physical'}`;
+
+  return key in AUDIO ? (key as SfxKey) : 'sfx_hit_physical';
+}
+
+/** §6.2. Surge and Breach are both Type Charms. */
+export const ITEM_SFX: Readonly<Record<BattleItem['category'], SfxKey>> = {
+  heal: 'sfx_item_heal',
+  buff: 'sfx_item_buff',
+  surge: 'sfx_item_charm',
+  breach: 'sfx_item_charm',
+};

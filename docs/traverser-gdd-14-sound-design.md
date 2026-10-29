@@ -167,6 +167,8 @@ Chiptune tracks follow three structural templates depending on category:
 ### 5.1 Standard crossfades
 Map ↔ Hub ↔ Settings-adjacent screen transitions: **0.8-second linear crossfade**, outgoing track fades out while incoming fades in simultaneously. This applies to all Map-to-Hub, Hub-to-Map, and zone-to-zone Waymarker-position transitions.
 
+> **Amended 2026-10-28 (M6/P3): equal-power, not linear.** Loudness is not linear in gain, so a linear crossfade dips audibly at its midpoint. The two halves follow a quarter sine and cosine, whose powers sum to a constant. The same applies to every fade in this section: a fade to or from silence follows the quarter sine, and a duck between two audible levels (§5.2's 20%, §5.4's 60%) moves in a straight line of decibels. Every timing here is unchanged.
+
 ### 5.2 Battle entry
 1. Whatever track was playing underneath ducks to 20% volume over 0.3 seconds (not a full stop — a battle opening as a modal should feel like it's overlaying the world, not erasing it).
 2. If entering a mid-boss or final-boss fight: `stg_boss_intro` plays at full volume over the ducked underlying track, timed to the dialogue overlay (Section 12 §5–7 — mid-bosses and final bosses both get intro dialogue; wild encounters never do).
@@ -240,6 +242,8 @@ Impact SFX are typed, not per-move — six type-flavored hit sounds plus a Physi
 |---|---|
 | `sfx_footstep_loop` | Ambient walking-cadence loop, used only where the Map has actual traversal animation (post-MVP full Map, not the MVP placeholder) — per the planning doc's explicit footstep-SFX callout |
 | `sfx_encounter_start` | A wild encounter checkpoint or Explore roll triggers a battle (distinct from `stg_boss_intro`, which only fires for scripted boss gates) |
+
+> **Amended 2026-10-28 (M6/P3): Explore only.** An encounter is *granted*, and the player starts the fight later, so this sounds when an Explore roll comes back with a fight. Checkpoint grants arrive with the sync on opening the app, alongside level-up reveals and banners, and stay silent. Opening the fight itself plays `sfx_modal_open`.
 | `sfx_banner_appear` | Any banner renders (permission-denied, overactivity) — a single soft appearance tone shared by both, tone-differentiated only by the sting layered on top (`stg_overactivity` for the overactivity case; the permission banner uses this SFX alone, no additional sting, since it's not a Section-11-defined event) |
 | `sfx_reveal_card_flip` | Reveal Card's visual flip/presentation animation, layered with (not replacing) the appropriate `stg_reveal_*` sting |
 

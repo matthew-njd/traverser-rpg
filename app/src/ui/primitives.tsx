@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { playSfx } from '../audio/bus';
 import { MIN_TOUCH_TARGET, colors, radius, space, type } from './theme';
 
 /**
@@ -79,12 +80,15 @@ export function Button({
   variant = 'primary',
   disabled = false,
   busy = false,
+  sound = 'sfx_button_tap',
 }: {
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary';
   disabled?: boolean;
   busy?: boolean;
+  /** GDD 14 §6.3. A stepper or toggle passes `sfx_toggle` instead of the generic tap. */
+  sound?: 'sfx_button_tap' | 'sfx_toggle';
 }) {
   const inactive = disabled || busy;
 
@@ -92,12 +96,23 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
-      disabled={inactive}
-      onPress={onPress}
+      // Not `disabled={inactive}`, which would swallow the tap that `sfx_button_disabled` answers.
+      // ↯ And `undefined` rather than `false`: any `disabled` prop overwrites
+      // `accessibilityState.disabled`, announcing a refused button as live.
+      disabled={busy ? true : undefined}
+      onPress={() => {
+        if (disabled) {
+          playSfx('sfx_button_disabled');
+          return;
+        }
+
+        playSfx(sound);
+        onPress();
+      }}
       style={({ pressed }) => [
         styles.button,
         variant === 'secondary' && styles.buttonSecondary,
-        pressed && styles.buttonPressed,
+        pressed && !inactive && styles.buttonPressed,
         inactive && styles.buttonDisabled,
       ]}
     >
@@ -133,6 +148,9 @@ export function Field({
 
 /** GDD 13 §3.1 and §6.5 share this: low-key, never an alert colour. */
 export function Banner({ message, action, onPress }: { message: string; action: string; onPress: () => void }) {
+  // GDD 14 §6.4 — one soft tone for every banner; the overactivity sting layers on its own.
+  useEffect(() => playSfx('sfx_banner_appear'), []);
+
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.banner}>
       <Text style={styles.bannerMessage}>{message}</Text>
@@ -171,7 +189,12 @@ export function SegmentedControl<T extends string>({
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             key={option.value}
-            onPress={() => onChange(option.value)}
+            onPress={() => {
+              if (!selected) {
+                playSfx('sfx_subtab_switch');
+                onChange(option.value);
+              }
+            }}
             style={[styles.segment, selected && styles.segmentSelected]}
           >
             <Text style={[styles.segmentLabel, selected && styles.segmentLabelSelected]}>

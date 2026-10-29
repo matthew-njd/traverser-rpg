@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { playSfx } from '../audio/bus';
 import { colors, space, type } from './theme';
 
 /** GDD 10 §4's story-intro pages, reused for GDD 12 §4's zone narratives: one line a tap. */
@@ -8,6 +9,8 @@ export function TapThrough({ lines, onDone }: { lines: readonly string[]; onDone
   const [index, setIndex] = useState(0);
 
   const advance = () => {
+    playSfx('sfx_dialogue_advance');
+
     if (index + 1 < lines.length) {
       setIndex(index + 1);
 
