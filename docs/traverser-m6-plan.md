@@ -116,6 +116,8 @@ Expo documentation through Context7 at the packet, not recalled.
 - Music by screen and zone, crossfades, battle entry and exit, stinger layering and priority (§5.5).
 - `stg_overactivity` fires when the banner renders, and never mid-session (GDD 14 §3.7).
 - Settings sliders, mapped to GDD 14 §2.8's volume buckets, persisted.
+- Not here: GDD 14 §4.2's low-Vigor boss layer. It needs six manifest keys, added when sound is
+  sourced (DECISIONS 2026-10-28).
 
 **Tests:** the trigger table maps every GDD 14 §3 condition to one key; §5.5's priority resolves
 concurrent triggers; a slider at zero mutes its bucket.
@@ -144,6 +146,8 @@ midnight; no code path schedules on a streak reset.
 - Gear: layered sprites and tier colours (GDD 8, GDD 13 §5.1).
 - The Road: zone identity and segment art (GDD 9 §6).
 - Iconography: the type chevrons (GDD 13 §6.2) and the Battle `›` (M5 note 5).
+- The Waymarker's forward-sync animation (GDD 9 §5), which `stg_waymarker` fires on. Found
+  unbuilt at P2 (DECISIONS 2026-10-28).
 
 **Tests:** every manifest art key resolves to a delivered file; no placeholder is reachable in
 normal play.

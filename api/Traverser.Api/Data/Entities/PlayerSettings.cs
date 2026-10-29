@@ -15,6 +15,9 @@ public class PlayerSettings
 
     public decimal SfxVolume { get; set; } = 1.0m;
 
+    /// <summary>GDD 13 §7's Mute All. The volumes stay as they were, so unmuting restores them.</summary>
+    public bool AudioMuted { get; set; }
+
     /// <summary>
     /// For HRmax = 220 − age (GDD 1 §2.2), collected at onboarding Screen 3 (T3 §1.4). Null means
     /// *not yet collected* — HR tier thresholds cannot be derived and tier minutes are not charged,

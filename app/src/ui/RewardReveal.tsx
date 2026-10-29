@@ -1,4 +1,8 @@
+import { useEffect } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { playSting } from '../audio/bus';
+import { revealSting, rewardRevealTier } from '../audio/cues';
 
 import type { FreshReward } from '../battle/mirror';
 import { type Labels, type RevealDetail, labelFor } from '../content/labels';
@@ -33,9 +37,23 @@ export function RewardReveal({
   details: ReadonlyMap<string, RevealDetail>;
   onDone: () => void;
 }) {
+  const visible = levelUps.length + rewards.length > 0;
+
+  // GDD 14 §3.5 — one sting for the sheet, at the tier of its most significant card.
+  useEffect(() => {
+    if (visible) {
+      const tier = rewardRevealTier(
+        levelUps.map((up) => up.level),
+        rewards.map((reward) => ({ source: reward.source, grade: details.get(reward.defId)?.grade ?? '' })),
+      );
+
+      playSting(revealSting(tier));
+    }
+  }, [visible]);
+
   return (
     <Modal
-      visible={levelUps.length + rewards.length > 0}
+      visible={visible}
       transparent
       animationType="fade"
       onRequestClose={onDone}

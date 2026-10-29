@@ -107,6 +107,8 @@ export interface LogLine {
   readonly actor: BattleSide;
   readonly round: number;
   readonly changes: readonly VigorChange[];
+  /** Set on the player's typed hits only, which are the only ones that carry a callout (GDD 2). */
+  readonly typeMultiplier?: number;
 }
 
 /**
@@ -139,8 +141,8 @@ export function logEntries(events: readonly BattleEvent[], labels: Labels): LogL
   // after `damage_dealt` joins the line just pushed, and any other waits for the next one.
   let changes: VigorChange[] = [];
 
-  const push = (text: string) => {
-    lines.push({ text, actor, round, changes });
+  const push = (text: string, typeMultiplier?: number) => {
+    lines.push({ text, actor, round, changes, typeMultiplier });
     changes = [];
   };
 
@@ -187,7 +189,7 @@ export function logEntries(events: readonly BattleEvent[], labels: Labels): LogL
 
         pending = null;
         actor = event.actor;
-        push(parts.join(' — '));
+        push(parts.join(' — '), event.target === 'enemy' ? event.typeMultiplier : undefined);
         break;
       }
 

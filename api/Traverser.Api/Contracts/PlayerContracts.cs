@@ -123,7 +123,8 @@ public sealed record PlayerSettingsResponse(
     TimeOnly? DailyReminderTime,
     string MusicVolume,
     string SfxVolume,
-    int? BirthYear);
+    int? BirthYear,
+    bool AudioMuted);
 
 /// <summary>
 /// <c>GET /api/v1/players/me/map</c> — GDD 9's Road, derived on every read.

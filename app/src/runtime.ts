@@ -1,3 +1,4 @@
+import { configureAudio } from './audio/bus';
 import { seedEmbeddedContent } from './content/store';
 import { getDatabase, openTraverserDatabase } from './db/open';
 import { type DeviceIdentity, loadIdentity } from './db/secureToken';
@@ -8,6 +9,7 @@ import { deviceLocalDates } from './health/localDate';
 import { apiBaseUrl } from './env';
 import { type TraverserApi, createApi } from './sync/api';
 import { coalescePasses, retryDelay } from './sync/coalesce';
+import { readAudioSettings } from './sync/mirror';
 import { type SyncPassResult, runForegroundSync } from './sync/pass';
 import { useAppStore } from './state/appStore';
 import { useBattleStore } from './state/battleStore';
@@ -37,6 +39,7 @@ export async function bootRuntime(): Promise<SqliteDatabase> {
   identity = await loadIdentity();
 
   usePlayerStore.getState().hydrate(db);
+  configureAudio(readAudioSettings(db));
 
   // T5 §8 — a cold start with an unresolved snapshot re-enters the fight. Before `markBooted`, so
   // the boot router's first render already knows and cannot flash the hub on the way to the battle.
@@ -52,6 +55,7 @@ export async function refreshIdentity(): Promise<void> {
   identity = await loadIdentity();
 
   usePlayerStore.getState().hydrate(getDatabase());
+  configureAudio(readAudioSettings(getDatabase()));
   useAppStore.getState().setRegistered(identity !== null);
 }
 
@@ -81,6 +85,7 @@ const runPass = coalescePasses(async (now = Date.now()): Promise<SyncPassResult>
 
     // SQLite first, store second, always (tech-04 §5.2).
     usePlayerStore.getState().hydrate(db);
+    configureAudio(readAudioSettings(db));
     useAppStore.getState().syncFinished(result, bannerFor(result.health));
     scheduleRetry(result);
 

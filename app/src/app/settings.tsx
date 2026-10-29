@@ -1,7 +1,8 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Alert, Linking, Share, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, Linking, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
+import { configureAudio } from '@/audio/bus';
 import { getDatabase } from '@/db/open';
 import { parked } from '@/db/outbox';
 import { apiBaseUrl } from '@/env';
@@ -14,18 +15,18 @@ import {
 } from '@/onboarding/registration';
 import { currentIdentity, refreshIdentity, syncNow } from '@/runtime';
 import { ApiStatusError, ApiUnreachableError } from '@/sync/api';
-import { readBirthYear, readPlayer } from '@/sync/mirror';
+import { type AudioSettings, readAudioSettings, readBirthYear, readPlayer } from '@/sync/mirror';
 import { MIN_DAILY_STEP_GOAL, changeSettings } from '@/sync/writes';
 import { useAppStore } from '@/state/appStore';
 import { usePlayerStore } from '@/state/playerStore';
 import { Body, Button, Card, Field, Heading, Screen } from '@/ui/primitives';
-import { colors, radius, space, type } from '@/ui/theme';
+import { MIN_TOUCH_TARGET, colors, radius, space, type } from '@/ui/theme';
 
 /**
  * GDD 13 §7 — Settings, at M1's scope.
  *
- * Here: identity export (tech-06 §13.1), step goal, birth year, health status and deep link.
- * Not here: audio sliders and notifications (M5), wearables, sign-in (guest-only is a sanctioned trim).
+ * Here: identity export (tech-06 §13.1), step goal, birth year, audio, health status and deep link.
+ * Not here: notifications (M6/P4), wearables, sign-in (guest-only is a sanctioned trim).
  */
 export default function Settings() {
   const slice = usePlayerStore();
@@ -98,6 +99,8 @@ export default function Settings() {
       </Card>
 
       <Button label={saved ? 'Saved' : 'Save'} disabled={!goalValid || !yearValid} onPress={save} />
+
+      <Audio />
 
       <HealthStatus
         availability={health?.availability ?? null}
@@ -321,6 +324,120 @@ function messageForRestore(caught: unknown): string {
   return 'That identity could not be restored.';
 }
 
+/**
+ * GDD 13 §7's Audio row, mapped to GDD 14 §2.8's two buckets. It applies as it moves and saves on
+ * release, apart from the step goal's Save — a volume is heard, not submitted.
+ */
+function Audio() {
+  const [audio, setAudio] = useState<AudioSettings>(() => readAudioSettings(getDatabase()));
+
+  const preview = (next: AudioSettings) => {
+    setAudio(next);
+    configureAudio(next);
+  };
+
+  const commit = (next: AudioSettings) => {
+    preview(next);
+    changeSettings(
+      getDatabase(),
+      {
+        dailyStepGoal: null,
+        birthYear: null,
+        musicVolume: next.music.toFixed(2),
+        sfxVolume: next.sfx.toFixed(2),
+        audioMuted: next.muted,
+      },
+      Date.now(),
+    );
+
+    void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
+  };
+
+  return (
+    <Card>
+      <Heading>Audio</Heading>
+
+      <VolumeSlider
+        label="Music"
+        value={audio.music}
+        onChange={(music) => preview({ ...audio, music })}
+        onCommit={(music) => commit({ ...audio, music })}
+      />
+      <VolumeSlider
+        label="Sound effects"
+        value={audio.sfx}
+        onChange={(sfx) => preview({ ...audio, sfx })}
+        onCommit={(sfx) => commit({ ...audio, sfx })}
+      />
+
+      <View style={styles.row}>
+        <Text style={styles.rowLabel}>Mute all</Text>
+        <Switch
+          value={audio.muted}
+          onValueChange={(muted) => commit({ ...audio, muted })}
+          trackColor={{ true: colors.accent, false: colors.border }}
+        />
+      </View>
+    </Card>
+  );
+}
+
+const STEP = 0.05;
+const snap = (value: number) => Math.round(Math.min(1, Math.max(0, value)) / STEP) * STEP;
+
+/** A drag-to-set track, so a volume needs no native slider and no rebuild. */
+function VolumeSlider({
+  label,
+  value,
+  onChange,
+  onCommit,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  onCommit: (value: number) => void;
+}) {
+  const width = useRef(1);
+  const at = (x: number) => snap(x / width.current);
+
+  return (
+    <View style={styles.slider}>
+      <View style={styles.row}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowValue}>{Math.round(value * 100)}%</Text>
+      </View>
+
+      <View
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel={label}
+        accessibilityValue={{ min: 0, max: 100, now: Math.round(value * 100) }}
+        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+        onAccessibilityAction={(event) =>
+          onCommit(snap(value + (event.nativeEvent.actionName === 'increment' ? 0.1 : -0.1)))
+        }
+        onLayout={(event) => (width.current = event.nativeEvent.layout.width || 1)}
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        // Settings scrolls: without this the ScrollView takes the gesture back mid-drag.
+        onResponderTerminationRequest={() => false}
+        onResponderGrant={(event) => onChange(at(event.nativeEvent.locationX))}
+        onResponderMove={(event) => onChange(at(event.nativeEvent.locationX))}
+        onResponderRelease={(event) => onCommit(at(event.nativeEvent.locationX))}
+        style={styles.track}
+      >
+        {/*
+          ↯ `pointerEvents="none"`, or a touch on the fill reports `locationX` relative to the fill
+          rather than the track — and the value jumps to wherever the finger sits inside it.
+        */}
+        <View pointerEvents="none" style={styles.rail}>
+          <View style={[styles.fill, { width: `${value * 100}%` }]} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function HealthStatus({
   availability,
   steps,
@@ -414,4 +531,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   rowLabel: { ...type.body, color: colors.textDim },
   rowValue: { ...type.body, color: colors.text },
+  slider: { gap: space.xs },
+  track: { height: MIN_TOUCH_TARGET, justifyContent: 'center' },
+  rail: { height: 6, borderRadius: 3, backgroundColor: colors.border, overflow: 'hidden' },
+  fill: { height: '100%', backgroundColor: colors.accent },
 });

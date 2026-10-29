@@ -1,5 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { enterBattle, exitBattle, playMusic, playSting } from '../../audio/bus';
+import { battleMusic, dropRevealTier, entryMusic, isBoss, revealSting } from '../../audio/cues';
 
 import type { BattleContext, BattleEvent, BattleState } from '../../battle/state';
 import type { Move } from '../../battle/types';
@@ -13,7 +16,7 @@ import { colors, radius, space, tabular, type } from '../theme';
 import { ActionMenu, type ItemOption } from './ActionMenu';
 import { CombatLog } from './CombatLog';
 import { VigorBar } from './VigorBar';
-import { type Callout, calloutOf, logEntries, shownVigor } from './log';
+import { type Callout, type LogLine, calloutOf, logEntries, shownVigor } from './log';
 import { ACTOR_CHANGE_DELAY_MS, LINE_DELAY_MS, usePacedLines } from './paced';
 import { skillOptions, slotsFor } from './options';
 
@@ -57,6 +60,7 @@ export function BattleScreen({
   onItem,
   onFlee,
   onDone,
+  onTease,
 }: {
   state: BattleState;
   context: BattleContext;
@@ -86,6 +90,8 @@ export function BattleScreen({
   onItem: (item: ItemOption) => void;
   onFlee: () => void;
   onDone: () => void;
+  /** Records that `stg_egypt_tease` has played, so a resumed fight cannot play it again. */
+  onTease?: () => void;
 }) {
   const entries = useMemo(() => logEntries(events, labels), [events, labels]);
   const lines = useMemo(() => entries.map((entry) => entry.text), [entries]);
@@ -141,6 +147,8 @@ export function BattleScreen({
   const [closed, setClosed] = useState(lore.defeat.length === 0);
   const [walked, setWalked] = useState(lore.narrative.length === 0);
   const won = over && state.outcome === 'win';
+
+  useBattleAudio({ state, context, entries, shown: paced.length, over, won, closed, walked, lore, reveals, onTease });
 
   // GDD 12 §2: the next zone's screens follow the defeat text, before the victory panel.
   if (won && closed && !walked) {
@@ -273,6 +281,103 @@ export function BattleScreen({
 }
 
 const NO_LORE: BattleLore = { opening: [], defeat: [], narrative: [] };
+
+/** GDD 14 §3.4–3.8 and §5.2–5.3, keyed to what the player can see rather than to the engine. */
+function useBattleAudio({
+  state,
+  context,
+  entries,
+  shown,
+  over,
+  won,
+  closed,
+  walked,
+  lore,
+  reveals,
+  onTease,
+}: {
+  state: BattleState;
+  context: BattleContext;
+  entries: readonly LogLine[];
+  shown: number;
+  over: boolean;
+  won: boolean;
+  closed: boolean;
+  walked: boolean;
+  lore: BattleLore;
+  reveals: readonly Reveal[];
+  onTease: (() => void) | undefined;
+}) {
+  const finalBoss = state.encounterKind === 'zone_boss';
+  const outcome = useRef(state.outcome);
+  const heard = useRef(shown);
+
+  outcome.current = state.outcome;
+
+  useEffect(() => {
+    // A fight resumed past its intro crossfades in rather than replaying the boss flourish.
+    enterBattle(
+      battleMusic(state.enemyId, state.encounterKind, context.enemy.zoneId),
+      isBoss(state.encounterKind) && state.phase === 'enemy_intro',
+    );
+
+    // The tutorial leaves on its outcome, before the panel; a fight cancelled at its intro, before
+    // any. Either way this is the exit, and the bus ignores a second one.
+    return () => exitBattle(outcome.current ?? 'flee', finalBoss);
+  }, []);
+
+  useEffect(() => {
+    if (over && state.outcome !== null) {
+      exitBattle(state.outcome, finalBoss);
+    }
+  }, [over]);
+
+  // §3.6 — when the hit's line appears, not when the engine resolved it a beat earlier.
+  useEffect(() => {
+    for (const line of entries.slice(heard.current, shown)) {
+      if (line.typeMultiplier !== undefined && line.typeMultiplier !== 1) {
+        playSting(line.typeMultiplier > 1 ? 'stg_type_super' : 'stg_type_resisted');
+      }
+    }
+
+    heard.current = shown;
+  }, [shown]);
+
+  const teasing = won && !closed && lore.tease === true;
+
+  useEffect(() => {
+    if (teasing) {
+      playSting('stg_egypt_tease');
+      onTease?.();
+    }
+  }, [teasing]);
+
+  const entering = won && closed && !walked;
+
+  useEffect(() => {
+    if (!entering) {
+      return;
+    }
+
+    playMusic(lore.opensZone == null ? null : entryMusic(lore.opensZone), 0);
+
+    return () => playMusic(null, 0);
+  }, [entering]);
+
+  const revealing = won && closed && walked && reveals.length > 0;
+
+  useEffect(() => {
+    if (revealing) {
+      const tier = dropRevealTier(
+        reveals.map((reveal) => reveal.grade),
+        state.firstKill,
+        state.drops?.trinket != null,
+      );
+
+      playSting(revealSting(tier));
+    }
+  }, [revealing]);
+}
 
 /** GDD 13 §6.4's dialogue box: one beat's lines together, one tap to continue. */
 function Dialogue({ lines, onDone }: { lines: readonly string[]; onDone: () => void }) {

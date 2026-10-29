@@ -3269,6 +3269,12 @@ namespace Traverser.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("player_id");
 
+                    b.Property<bool>("AudioMuted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("audio_muted");
+
                     b.Property<int?>("BirthYear")
                         .HasColumnType("integer")
                         .HasColumnName("birth_year");

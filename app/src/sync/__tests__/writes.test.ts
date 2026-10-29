@@ -5,7 +5,7 @@ import { count, enqueue, peek } from '../../db/outbox';
 import type { SqliteDatabase } from '../../db/types';
 import { recordingDatabase } from '../../health/__tests__/fixtures';
 import { effectiveStats } from '../../progression/stats';
-import { isRestTagged, readBirthYear, readPlayer } from '../mirror';
+import { isRestTagged, readAudioSettings, readBirthYear, readPlayer } from '../mirror';
 import {
   AllocationError,
   EquipError,
@@ -163,6 +163,20 @@ describe('settings', () => {
     changeSettings(db, { dailyStepGoal: null, birthYear: null }, NOW);
 
     expect(count(db)).toBe(0);
+  });
+
+  it('applies the volumes and Mute All locally and queues them, touching nothing else', () => {
+    const db = registeredDatabase();
+
+    changeSettings(
+      db,
+      { dailyStepGoal: null, birthYear: null, musicVolume: '0.40', sfxVolume: '0.00', audioMuted: true },
+      NOW,
+    );
+
+    expect(readAudioSettings(db)).toEqual({ music: 0.4, sfx: 0, muted: true });
+    expect(readBirthYear(db)).toBe(1990);
+    expect(peek(db, 10)[0]?.kind).toBe('settings');
   });
 });
 

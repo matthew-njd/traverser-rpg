@@ -454,11 +454,12 @@ export function parseContentVersion(value: unknown): number {
 
 export interface PlayerSettings {
   readonly dailyReminderTime: string | null;
-  /** Decimal *strings*, not numbers — tech-02 §2. M5 owns the sliders; the mirror carries them. */
+  /** Decimal *strings*, not numbers — tech-02 §2. */
   readonly musicVolume: string;
   readonly sfxVolume: string;
   /** Null means *not yet collected*, not "unknown age" (tech-03 §1.4). */
   readonly birthYear: number | null;
+  readonly audioMuted: boolean;
 }
 
 /**
@@ -527,6 +528,8 @@ export function parseProfile(value: unknown, at = 'profile'): PlayerProfile {
       musicVolume: text(settings.music_volume, `${at}.settings.music_volume`),
       sfxVolume: text(settings.sfx_volume, `${at}.settings.sfx_volume`),
       birthYear: nullableInt(settings.birth_year, `${at}.settings.birth_year`),
+      // Absent from an API older than M6/P2, which must not fail every profile read.
+      audioMuted: settings.audio_muted === undefined ? false : flag(settings.audio_muted, `${at}.settings.audio_muted`),
     },
     unlockedZoneIds: array(body.unlocked_zone_ids, `${at}.unlocked_zone_ids`).map((id, index) =>
       text(id, `${at}.unlocked_zone_ids[${index}]`),
@@ -607,10 +610,20 @@ export function toWireAllocation(payload: AllocationPayload): Json {
 export interface SettingsPayload {
   readonly dailyStepGoal: number | null;
   readonly birthYear: number | null;
+  /** Decimal strings, `0.00` to `1.00` (tech-02 §2). */
+  readonly musicVolume?: string | null;
+  readonly sfxVolume?: string | null;
+  readonly audioMuted?: boolean | null;
 }
 
 export function toWireSettings(payload: SettingsPayload): Json {
-  return { daily_step_goal: payload.dailyStepGoal, birth_year: payload.birthYear };
+  return {
+    daily_step_goal: payload.dailyStepGoal,
+    birth_year: payload.birthYear,
+    music_volume: payload.musicVolume ?? null,
+    sfx_volume: payload.sfxVolume ?? null,
+    audio_muted: payload.audioMuted ?? null,
+  };
 }
 
 /**

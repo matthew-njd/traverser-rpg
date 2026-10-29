@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { playSting } from '@/audio/bus';
 import { getDatabase } from '@/db/open';
 import { loadBattleContent } from '@/battle/content';
 import { readEquippedGear, readSnapshot } from '@/battle/mirror';
@@ -178,6 +179,7 @@ export default function Character() {
 
     usePlayerStore.getState().hydrate(getDatabase());
     reload();
+    playSting('stg_rest_day');
 
     void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
   };

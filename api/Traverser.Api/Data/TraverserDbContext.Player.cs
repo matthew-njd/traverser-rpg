@@ -51,6 +51,7 @@ public partial class TraverserDbContext
             entity.HasKey(e => e.PlayerId);
             entity.Property(e => e.MusicVolume).HasPrecision(3, 2).HasDefaultValue(1.0m);
             entity.Property(e => e.SfxVolume).HasPrecision(3, 2).HasDefaultValue(1.0m);
+            entity.Property(e => e.AudioMuted).HasDefaultValue(false);
 
             entity.HasOne(e => e.Player).WithOne()
                 .HasForeignKey<PlayerSettings>(e => e.PlayerId).OnDelete(DeleteBehavior.Cascade);

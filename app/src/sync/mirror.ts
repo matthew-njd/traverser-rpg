@@ -374,19 +374,21 @@ export function writeActivityDays(
 
 function writeSettingsRow(db: SqliteDatabase, playerId: string, settings: PlayerSettings): void {
   db.runSync(
-    `INSERT INTO player_settings (player_id, daily_reminder_time, music_volume, sfx_volume, birth_year)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO player_settings (player_id, daily_reminder_time, music_volume, sfx_volume, birth_year, audio_muted)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT (player_id) DO UPDATE SET
        daily_reminder_time = excluded.daily_reminder_time,
        music_volume = excluded.music_volume,
        sfx_volume = excluded.sfx_volume,
-       birth_year = excluded.birth_year`,
+       birth_year = excluded.birth_year,
+       audio_muted = excluded.audio_muted`,
     [
       playerId,
       settings.dailyReminderTime,
       settings.musicVolume,
       settings.sfxVolume,
       settings.birthYear,
+      settings.audioMuted ? 1 : 0,
     ],
   );
 }
@@ -482,6 +484,35 @@ export function writeSettings(db: SqliteDatabase, settings: SettingsPayload): vo
   if (settings.birthYear !== null) {
     db.runSync('UPDATE player_settings SET birth_year = ?', [settings.birthYear]);
   }
+
+  if (settings.musicVolume != null) {
+    db.runSync('UPDATE player_settings SET music_volume = ?', [settings.musicVolume]);
+  }
+
+  if (settings.sfxVolume != null) {
+    db.runSync('UPDATE player_settings SET sfx_volume = ?', [settings.sfxVolume]);
+  }
+
+  if (settings.audioMuted != null) {
+    db.runSync('UPDATE player_settings SET audio_muted = ?', [settings.audioMuted ? 1 : 0]);
+  }
+}
+
+/** GDD 13 §7's Audio row. Full volume and unmuted before registration creates the row. */
+export function readAudioSettings(db: SqliteDatabase): AudioSettings {
+  const row = db.getFirstSync<{ music_volume: string; sfx_volume: string; audio_muted: number }>(
+    'SELECT music_volume, sfx_volume, audio_muted FROM player_settings',
+  );
+
+  return row === null
+    ? { music: 1, sfx: 1, muted: false }
+    : { music: Number(row.music_volume), sfx: Number(row.sfx_volume), muted: row.audio_muted === 1 };
+}
+
+export interface AudioSettings {
+  readonly music: number;
+  readonly sfx: number;
+  readonly muted: boolean;
 }
 
 /**

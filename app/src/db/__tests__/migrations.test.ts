@@ -96,15 +96,20 @@ describe('schema migrations', () => {
     db.execSync('DROP TABLE player_item');
     db.execSync('DROP TABLE battle_snapshot');
     db.execSync('DROP TABLE activity_day');
+    db.execSync('DROP TABLE player_settings');
     db.execSync('DROP TABLE player');
     db.execSync('DROP TABLE content_version');
     for (const table of CONTENT_TABLE_NAMES) {
       db.execSync(`DROP TABLE ${table}`);
     }
     for (const statement of MIGRATIONS[0]?.statements ?? []) {
-      // Both tables a later migration adds a column to, so the rewind has to be genuine — a v1
+      // Every table a later migration adds a column to, so the rewind has to be genuine — a v1
       // shape carrying a v7 column would let the upgrade pass without ever running.
-      if (statement.includes('CREATE TABLE player ') || statement.includes('CREATE TABLE activity_day ')) {
+      if (
+        statement.includes('CREATE TABLE player ') ||
+        statement.includes('CREATE TABLE player_settings ') ||
+        statement.includes('CREATE TABLE activity_day ')
+      ) {
         db.execSync(statement);
       }
     }

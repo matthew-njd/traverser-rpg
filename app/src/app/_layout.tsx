@@ -1,14 +1,19 @@
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { playMusic, playSting, resumeAudio, suspendAudio } from '@/audio/bus';
+import { musicForRoute } from '@/audio/cues';
+import { getDatabase } from '@/db/open';
+import { readRoad } from '@/progression/road';
 import { bootRuntime, cancelRetry, syncNow } from '@/runtime';
 import { initSentry, wrapRoot } from '@/sentry';
 import { useAppStore } from '@/state/appStore';
 import { fightOpen, useBattleStore } from '@/state/battleStore';
 import { Banner } from '@/ui/primitives';
+import { waymarkerZone } from '@/ui/Road';
 import { colors, space } from '@/ui/theme';
 
 // Before anything else renders, so a crash during first paint is still reported (tech-06 §9).
@@ -52,9 +57,11 @@ function RootLayout() {
 
     const subscription = AppState.addEventListener('change', (next: AppStateStatus) => {
       if (next === 'active') {
+        resumeAudio();
         runSync();
       } else {
         cancelRetry();
+        suspendAudio();
       }
     });
 
@@ -85,8 +92,34 @@ function RootLayout() {
         />
       </Stack>
       <Notices />
+      <Score />
     </SafeAreaProvider>
   );
+}
+
+/**
+ * GDD 14 §3.1–3.2 — the route picks the track. Re-read after every sync too, since a sync is what
+ * moves the Waymarker into a new zone while the Road is open.
+ */
+function Score() {
+  const pathname = usePathname();
+  const booted = useAppStore((state) => state.booted);
+  const rewardsSeq = useAppStore((state) => state.rewardsSeq);
+
+  useEffect(() => {
+    if (!booted) {
+      return;
+    }
+
+    const zone = pathname === '/map' ? waymarkerZone(readRoad(getDatabase())) : null;
+    const wanted = musicForRoute(pathname, zone);
+
+    if (wanted !== 'keep') {
+      playMusic(wanted);
+    }
+  }, [booted, pathname, rewardsSeq]);
+
+  return null;
 }
 
 /**
@@ -98,6 +131,17 @@ function Notices() {
   const missed = useAppStore((state) => state.missedBefore);
   const fighting = useBattleStore(fightOpen);
   const insets = useSafeAreaInsets();
+  const sounded = useRef(false);
+
+  // GDD 14 §3.7 — once, when the banner first renders. A fight that hides it does not replay it.
+  useEffect(() => {
+    if (!overactive) {
+      sounded.current = false;
+    } else if (!fighting && !sounded.current) {
+      sounded.current = true;
+      playSting('stg_overactivity');
+    }
+  }, [overactive, fighting]);
 
   if ((!overactive && missed === null) || fighting) {
     return null;

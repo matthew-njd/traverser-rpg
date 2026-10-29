@@ -504,6 +504,11 @@ const V13_SEEN_SCREEN: readonly string[] = [
    )`,
 ];
 
+/** Version 14 — GDD 13 §7's Mute All, mirrored like the two volumes beside it. */
+const V14_AUDIO_MUTED: readonly string[] = [
+  'ALTER TABLE player_settings ADD COLUMN audio_muted INTEGER NOT NULL DEFAULT 0',
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
@@ -518,6 +523,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 11, statements: [...V11_PENDING_REWARD] },
   { version: 12, statements: [...V12_LORE] },
   { version: 13, statements: [...V13_SEEN_SCREEN] },
+  { version: 14, statements: [...V14_AUDIO_MUTED] },
 ];
 
 /** The version a fully-migrated database reports. */

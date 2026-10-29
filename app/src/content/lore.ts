@@ -21,7 +21,15 @@ export interface BattleLore {
   readonly defeat: readonly string[];
   /** The next zone's screens, after a final boss's first defeat only (§2's timing). */
   readonly narrative: readonly string[];
+  /** The zone `narrative` opens, for its entry music (GDD 14 §3.3). */
+  readonly opensZone?: string | null;
+  /** GDD 14 §3.8 — Cacus's first-kill text carries `stg_egypt_tease`, once per account. */
+  readonly tease?: boolean;
 }
+
+/** GDD 12 §7.2's last boss, whose first defeat points past the road. */
+const EGYPT_TEASE_ENEMY = 'enemy_cacus';
+export const EGYPT_TEASE_SEEN = 'egypt_tease';
 
 interface EnemyRow {
   id: string;
@@ -78,14 +86,18 @@ export function battleLore(db: SqliteDatabase, enemyId: string, met: BestiaryEnt
   }
 
   const first = met.defeatCount === 0;
-  const opens = db.getFirstSync<{ entry_narrative: string | null }>(
-    `SELECT z.entry_narrative FROM zone_gate g JOIN zone z ON z.id = g.unlocks_zone_id WHERE g.enemy_id = ?`,
+  const opens = db.getFirstSync<{ id: string; entry_narrative: string | null }>(
+    `SELECT z.id, z.entry_narrative FROM zone_gate g JOIN zone z ON z.id = g.unlocks_zone_id WHERE g.enemy_id = ?`,
     [enemyId],
   );
+  const teased =
+    db.getFirstSync('SELECT 1 FROM seen_screen WHERE id = ?', [EGYPT_TEASE_SEEN]) !== null;
 
   return {
     opening: lore.intro,
     defeat: first ? lore.defeatFirst : lore.defeatRepeat,
     narrative: first && opens?.entry_narrative != null ? (JSON.parse(opens.entry_narrative) as string[]) : [],
+    opensZone: opens?.id ?? null,
+    tease: first && enemyId === EGYPT_TEASE_ENEMY && !teased,
   };
 }

@@ -1,4 +1,5 @@
 using System.Data;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Traverser.Api.Auth;
 using Traverser.Api.Contracts;
@@ -500,6 +501,16 @@ public static class ProgressionEndpoints
                 $"birth_year must be between {MinBirthYear} and {MaxBirthYear}.");
         }
 
+        decimal? music = null, sfx = null;
+
+        if ((request.MusicVolume is not null && (music = ParseVolume(request.MusicVolume)) is null)
+            || (request.SfxVolume is not null && (sfx = ParseVolume(request.SfxVolume)) is null))
+        {
+            return ApiProblem.BadRequest(
+                ApiProblem.ValidationFailed,
+                "music_volume and sfx_volume are decimal strings from 0.00 to 1.00.");
+        }
+
         var player = await db.Players.FirstOrDefaultAsync(p => p.Id == current.PlayerId, ct);
         var settings = await db.PlayerSettings.FirstOrDefaultAsync(s => s.PlayerId == current.PlayerId, ct);
 
@@ -523,6 +534,10 @@ public static class ProgressionEndpoints
             settings.BirthYear = newYear;
         }
 
+        settings.MusicVolume = music ?? settings.MusicVolume;
+        settings.SfxVolume = sfx ?? settings.SfxVolume;
+        settings.AudioMuted = request.AudioMuted ?? settings.AudioMuted;
+
         await db.SaveChangesAsync(ct);
 
         var profile = await PlayerProfile.LoadAsync(db, current.PlayerId, ct)
@@ -530,6 +545,14 @@ public static class ProgressionEndpoints
 
         return Results.Ok(profile);
     }
+
+    /// <summary>Null unless it fits <c>numeric(3,2)</c> and the 0–1 range exactly — never rounded.</summary>
+    private static decimal? ParseVolume(string value) =>
+        decimal.TryParse(value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var volume)
+        && volume is >= 0m and <= 1m
+        && decimal.Round(volume, 2) == volume
+            ? volume
+            : null;
 
     /// <summary>
     /// GDD 11 §3.1's manual Rest Day tag. Unlimited, uncapped, no explanation asked for — a cap here

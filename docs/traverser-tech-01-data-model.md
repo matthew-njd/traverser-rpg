@@ -291,6 +291,8 @@ Split from `player` so UI preference writes never contend with progression write
 >
 > The CHECK is a **data-sanity bound with no GDD source**, present only so a typo cannot produce a negative or absurd HRmax. Real validation (a plausible minimum age) belongs on the client at Screen 3.
 
+> **Amended 2026-10-28 (M6/P2):** `audio_muted boolean not null default false` added, for GDD 13 §7's Mute All toggle, which this table had no column for. It is last-write-wins like the volumes beside it, and muting leaves both volumes untouched, so unmuting restores them (`DECISIONS.md` 2026-10-28).
+
 ```sql
 create table auth_token (
   token_hash   bytea primary key,           -- sha256 of the opaque token; the token itself is never stored

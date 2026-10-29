@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler } from 'react-native';
 
 import { readBestiary } from '@/battle/mirror';
-import { battleLore } from '@/content/lore';
+import { EGYPT_TEASE_SEEN, battleLore } from '@/content/lore';
 import { getDatabase } from '@/db/open';
 import { mintUuidV7 } from '@/health/deltaId';
 import { deviceLocalDates } from '@/health/localDate';
@@ -187,6 +187,7 @@ export default function Battle() {
       }
       onFlee={() => store.dispatch(getDatabase(), { kind: 'flee' })}
       onDone={finish}
+      onTease={() => markSeen(getDatabase(), [EGYPT_TEASE_SEEN], Date.now())}
     />
   );
 }

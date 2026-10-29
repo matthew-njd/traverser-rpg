@@ -330,6 +330,46 @@ public class ProgressionTests(TraverserApiFixture api)
         Assert.Equal(8_500, profile.GetProperty("player").GetProperty("daily_step_goal").GetInt32());
     }
 
+    [Fact]
+    public async Task Settings_update_the_volumes_and_mute_and_leave_the_rest_alone()
+    {
+        var (_, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        await client.PatchAsJsonAsync("/api/v1/players/me/settings", new { birth_year = 1985 }, TraverserApiFixture.Json);
+
+        var response = await client.PatchAsJsonAsync(
+            "/api/v1/players/me/settings",
+            new { music_volume = "0.40", sfx_volume = "0.00", audio_muted = true },
+            TraverserApiFixture.Json);
+
+        response.EnsureSuccessStatusCode();
+
+        var settings = (await response.Content.ReadFromJsonAsync<JsonElement>(TraverserApiFixture.Json))
+            .GetProperty("settings");
+
+        Assert.Equal("0.40", settings.GetProperty("music_volume").GetString());
+        Assert.Equal("0.00", settings.GetProperty("sfx_volume").GetString());
+        Assert.True(settings.GetProperty("audio_muted").GetBoolean());
+        Assert.Equal(1985, settings.GetProperty("birth_year").GetInt32());
+    }
+
+    /// <summary>Out of range, a float that would round, or not a decimal string at all.</summary>
+    [Theory]
+    [InlineData("1.01")]
+    [InlineData("-0.10")]
+    [InlineData("0.555")]
+    [InlineData("loud")]
+    public async Task A_volume_outside_numeric_3_2_is_rejected(string volume)
+    {
+        var (_, token) = await api.RegisterAsync();
+
+        var response = await api.CreateAuthenticatedClient(token).PatchAsJsonAsync(
+            "/api/v1/players/me/settings", new { music_volume = volume }, TraverserApiFixture.Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     /// <summary>GDD 11 §2.1's hard floor, returned as a 400 naming the field rather than a 500 out
     /// of the CHECK constraint.</summary>
     [Theory]

@@ -128,13 +128,13 @@ export function allocateStatPoints(
 }
 
 /**
- * Step goal and/or birth year. Null means leave alone, matching the wire.
+ * Any of the settings fields. Null means leave alone, matching the wire.
  *
  * A new birth year re-derives thresholds for future reads only (tech-03 §1.4) — XP is never taken
  * back (GDD 1 §1), so correcting an age does not correct history.
  */
 export function changeSettings(db: SqliteDatabase, settings: SettingsPayload, now: number): void {
-  if (settings.dailyStepGoal === null && settings.birthYear === null) {
+  if (Object.values(settings).every((value) => value === null || value === undefined)) {
     return;
   }
 

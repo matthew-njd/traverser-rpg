@@ -102,7 +102,8 @@ internal static class PlayerProfile
                 DailyReminderTime: row.Settings.DailyReminderTime,
                 MusicVolume: Decimal2(row.Settings.MusicVolume),
                 SfxVolume: Decimal2(row.Settings.SfxVolume),
-                BirthYear: row.Settings.BirthYear),
+                BirthYear: row.Settings.BirthYear,
+                AudioMuted: row.Settings.AudioMuted),
 
             UnlockedZoneIds: row.ZoneIds,
 
