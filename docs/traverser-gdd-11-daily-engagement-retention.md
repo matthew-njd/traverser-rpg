@@ -116,6 +116,13 @@ Four notification types, each with a single fixed copy string (no A/B variants a
 
 All copy avoids guilt, urgency framing beyond a simple factual time reference ("before midnight"), and any medical or alarmist language — consistent with the tone already established for the overactivity warning (Section 7).
 
+> **Amended 2026-10-29 (M6/P4): the Daily Nudge says what it knew, and when.** Nothing runs in the background (§7, amended), so a nudge knows only the steps read at the last app open. The original copy implied the player hadn't walked, and on 2026-10-28 it arrived at 7 PM for a player 1,000 steps past the goal. Tonight's nudge is now built from the open that scheduled it:
+>
+> - **Without a streak, or with a 1-day streak:** "As of [time of open], [Traverser Name] was [goal − steps at that open] steps short of today's goal. Walked since? Open Traverser to count it."
+> - **With a current streak of 2 or more:** the same, ending "…Open Traverser to count it and keep a [N]-day streak going."
+>
+> This keeps Streak-at-Risk's idea, framed only as something to keep. It never names a break or a loss (§7.2), and never a deadline: Auto Sync Grace credits a sync up to 48 hours late (§3), so "before midnight" would not be true. The later days in the week-ahead schedule have had no open read them, so they keep the original Daily Nudge copy above.
+
 ---
 
 ## 7. Notification Send-Time & Frequency Strategy

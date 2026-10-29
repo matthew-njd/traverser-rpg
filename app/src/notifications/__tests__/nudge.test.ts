@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 
-import { NUDGE_DAYS, nudgeBody, nudgeTimes, refreshNudges, reminderWindow } from '../nudge';
+import { NUDGE_DAYS, type NudgeFacts, nudgeBody, nudgeTimes, refreshNudges, reminderWindow, todayBody } from '../nudge';
 
 jest.mock('expo-notifications', () => {
   const scheduled: unknown[] = [];
@@ -21,13 +21,23 @@ jest.mock('expo-notifications', () => {
   };
 });
 
-const mock = Notifications as unknown as { scheduled: { trigger: { date: Date } }[] };
+const mock = Notifications as unknown as { scheduled: { content: { body: string }; trigger: { date: Date } }[] };
 
 beforeEach(() => {
   mock.scheduled.length = 0;
 });
 
-const at = (y: number, m: number, d: number, h: number) => new Date(y, m - 1, d, h, 0, 0, 0);
+const at = (y: number, m: number, d: number, h: number, min = 0) => new Date(y, m - 1, d, h, min, 0, 0);
+
+const facts = (over: Partial<NudgeFacts> = {}): NudgeFacts => ({
+  traverserName: 'Emdir',
+  hour: 19,
+  todayDone: false,
+  stepsToday: 5760,
+  dailyStepGoal: 7000,
+  currentStreak: 0,
+  ...over,
+});
 
 describe('which evenings get a nudge (GDD 11 §7)', () => {
   it('includes tonight while the goal is unmet and 7 PM is still ahead', () => {
@@ -59,23 +69,23 @@ describe('which evenings get a nudge (GDD 11 §7)', () => {
 
 describe('scheduling', () => {
   it('replaces rather than adds, however often the app opens', async () => {
-    await refreshNudges(at(2026, 10, 28, 9), false, 'Emdir', 19);
-    await refreshNudges(at(2026, 10, 28, 12), false, 'Emdir', 19);
+    await refreshNudges(at(2026, 10, 28, 9), facts({ todayDone: false }));
+    await refreshNudges(at(2026, 10, 28, 12), facts({ todayDone: false }));
 
     expect(mock.scheduled).toHaveLength(NUDGE_DAYS);
   });
 
   it('drops tonight when an open finds the goal met', async () => {
-    await refreshNudges(at(2026, 10, 28, 9), false, 'Emdir', 19);
-    await refreshNudges(at(2026, 10, 28, 17), true, 'Emdir', 19);
+    await refreshNudges(at(2026, 10, 28, 9), facts({ todayDone: false }));
+    await refreshNudges(at(2026, 10, 28, 17), facts({ todayDone: true }));
 
     expect(mock.scheduled[0]?.trigger.date).toEqual(at(2026, 10, 29, 19));
   });
 
   it('schedules nothing, and clears what was there, without permission', async () => {
-    await refreshNudges(at(2026, 10, 28, 9), false, 'Emdir', 19);
+    await refreshNudges(at(2026, 10, 28, 9), facts({ todayDone: false }));
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValueOnce({ granted: false } as never);
-    await refreshNudges(at(2026, 10, 28, 10), false, 'Emdir', 19);
+    await refreshNudges(at(2026, 10, 28, 10), facts({ todayDone: false }));
 
     expect(mock.scheduled).toHaveLength(0);
   });
@@ -124,5 +134,50 @@ describe('the player-chosen hour (GDD 11 §7.1, amended 2026-10-28)', () => {
     expect(reminderWindow(6)).toBe('between 6 and 7 AM');
     expect(reminderWindow(11)).toBe('between 11 AM and 12 PM');
     expect(reminderWindow(21)).toBe('between 9 and 10 PM');
+  });
+});
+
+describe("tonight's nudge says what it knew (GDD 11 §6, amended 2026-10-29)", () => {
+  const twoFourteen = at(2026, 10, 29, 14, 14);
+
+  it('names the time of the open, the shortfall, and how to count steps since', () => {
+    expect(todayBody(facts(), twoFourteen)).toBe(
+      "As of 2:14 PM, Emdir was 1,240 steps short of today's goal. Walked since? Open Traverser to count it.",
+    );
+  });
+
+  it('adds the streak only from two days, and only as something to keep', () => {
+    expect(todayBody(facts({ currentStreak: 0 }), twoFourteen)).not.toMatch(/streak/);
+    expect(todayBody(facts({ currentStreak: 1 }), twoFourteen)).not.toMatch(/streak/);
+    expect(todayBody(facts({ currentStreak: 6 }), twoFourteen)).toBe(
+      "As of 2:14 PM, Emdir was 1,240 steps short of today's goal. Walked since? Open Traverser to count it and keep a 6-day streak going.",
+    );
+  });
+
+  it('never names a break, a loss, or a deadline', () => {
+    for (const streak of [0, 1, 2, 30]) {
+      expect(todayBody(facts({ currentStreak: streak }), twoFourteen)).not.toMatch(/break|lose|lost|midnight|before/i);
+    }
+  });
+
+  it('carries numbers on tonight only; the days no open has read keep the original copy', async () => {
+    await refreshNudges(at(2026, 10, 29, 9, 5), facts({ currentStreak: 3 }));
+
+    expect(mock.scheduled[0]?.content.body).toBe(
+      "As of 9:05 AM, Emdir was 1,240 steps short of today's goal. Walked since? Open Traverser to count it and keep a 3-day streak going.",
+    );
+
+    for (const later of mock.scheduled.slice(1)) {
+      expect(later.content.body).toBe(nudgeBody('Emdir'));
+    }
+  });
+
+  it('still skips tonight when the goal is met, the day is rested, or the hour has passed', async () => {
+    await refreshNudges(at(2026, 10, 29, 9), facts({ todayDone: true }));
+    expect(mock.scheduled.every((entry) => entry.content.body === nudgeBody('Emdir'))).toBe(true);
+
+    await refreshNudges(at(2026, 10, 29, 19, 30), facts());
+    expect(mock.scheduled[0]?.trigger.date).toEqual(at(2026, 10, 30, 19));
+    expect(mock.scheduled[0]?.content.body).toBe(nudgeBody('Emdir'));
   });
 });

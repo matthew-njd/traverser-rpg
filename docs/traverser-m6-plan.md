@@ -133,7 +133,9 @@ concurrent triggers; a slider at zero mutes its bucket.
 - Answer §3.2 question 4.
 - Screen 10 asks after the tutorial and the account prompt, not at first launch. A denied answer
   changes nothing else.
-- GDD 11 §6's Daily Nudge copy, at 7:00 PM local, one a day at most (§7.2).
+- GDD 11 §6's Daily Nudge copy, at 7:00 PM local, one a day at most (§7.2). Amended while building: the
+  player chooses the hour, and tonight's nudge states the steps known at the last open and when
+  (DECISIONS 2026-10-28, 2026-10-29).
 - No notification of any kind for a broken streak (GDD 11 §7.2, CLAUDE.md).
 
 **Tests:** scheduling is idempotent across opens; the cancel rule from question 4 holds across

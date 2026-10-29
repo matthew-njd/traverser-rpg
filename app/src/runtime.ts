@@ -10,7 +10,14 @@ import { apiBaseUrl } from './env';
 import { type TraverserApi, createApi } from './sync/api';
 import { coalescePasses, retryDelay } from './sync/coalesce';
 import { refreshNudges } from './notifications/nudge';
-import { isCredited, readActivityDay, readAudioSettings, readPlayer, readReminderHour } from './sync/mirror';
+import {
+  isCredited,
+  readActivityDay,
+  readAudioSettings,
+  readPlayer,
+  readReminderHour,
+  readStreak,
+} from './sync/mirror';
 import { type SyncPassResult, runForegroundSync } from './sync/pass';
 import { useAppStore } from './state/appStore';
 import { useBattleStore } from './state/battleStore';
@@ -73,12 +80,17 @@ export function rescheduleNudges(now = Date.now()): void {
   }
 
   const today = deviceLocalDates.dateOf(now);
-  const done = readActivityDay(db, today)?.goalMet === true || isCredited(db, today);
+  const day = readActivityDay(db, today);
 
   // Best-effort, like the sync it follows: a failure leaves last open's schedule standing.
-  void refreshNudges(new Date(now), done, player.traverserName || 'your Traverser', readReminderHour(db)).catch(
-    () => undefined,
-  );
+  void refreshNudges(new Date(now), {
+    traverserName: player.traverserName || 'your Traverser',
+    hour: readReminderHour(db),
+    todayDone: day?.goalMet === true || isCredited(db, today),
+    stepsToday: day?.steps ?? 0,
+    dailyStepGoal: player.dailyStepGoal,
+    currentStreak: readStreak(db).current,
+  }).catch(() => undefined);
 }
 
 export function currentIdentity(): DeviceIdentity | null {

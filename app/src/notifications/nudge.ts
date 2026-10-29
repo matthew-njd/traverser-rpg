@@ -29,9 +29,45 @@ export function reminderWindow(hour: number): string {
 }
 const CHANNEL = 'daily-nudge';
 
-/** GDD 11 §6, verbatim. Nothing here may name a streak — a break is never announced (§7.2). */
+/**
+ * GDD 11 §6's original copy, for the days ahead that no open has read yet. It makes no claim about
+ * steps, because there is nothing to claim.
+ */
 export const nudgeBody = (traverserName: string) =>
   `The road is waiting. A little more distance today keeps ${traverserName}'s journey moving.`;
+
+/** What the open that schedules knows. Steps walked after it are invisible until the next open. */
+export interface NudgeFacts {
+  readonly traverserName: string;
+  readonly hour: number;
+  /** The goal is met, or the day is tagged for rest (GDD 11 §7.2). */
+  readonly todayDone: boolean;
+  readonly stepsToday: number;
+  readonly dailyStepGoal: number;
+  readonly currentStreak: number;
+}
+
+/**
+ * GDD 11 §6, amended 2026-10-29: tonight's nudge says what the app knew and when, so a player who
+ * walked since is told how to count it rather than that they haven't walked. A streak is named only
+ * as something to keep — never a break, and never a midnight deadline, since Auto Sync Grace credits
+ * a late sync (§7.2, §3).
+ */
+export function todayBody(facts: NudgeFacts, readAt: Date): string {
+  const short = Math.max(0, facts.dailyStepGoal - facts.stepsToday);
+  const open =
+    facts.currentStreak >= 2
+      ? `Open Traverser to count it and keep a ${facts.currentStreak}-day streak going.`
+      : 'Open Traverser to count it.';
+
+  return `As of ${clock(readAt)}, ${facts.traverserName} was ${grouped(short)} steps short of today's goal. Walked since? ${open}`;
+}
+
+/** `2:14 PM`. Built by hand, like the rest of the app's dates, rather than from the device's Intl. */
+const clock = (at: Date) =>
+  `${at.getHours() % 12 === 0 ? 12 : at.getHours() % 12}:${String(at.getMinutes()).padStart(2, '0')} ${at.getHours() < 12 ? 'AM' : 'PM'}`;
+
+const grouped = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
 /**
  * The instants to schedule, local time. Built from calendar fields rather than by adding 24 hours,
@@ -49,12 +85,7 @@ export function nudgeTimes(now: Date, todayDone: boolean, hour: number): Date[] 
  * Idempotent: whatever an earlier open scheduled is replaced, never added to. Without permission
  * it only clears, so a revoked grant leaves nothing queued behind it.
  */
-export async function refreshNudges(
-  now: Date,
-  todayDone: boolean,
-  traverserName: string,
-  hour: number,
-): Promise<void> {
+export async function refreshNudges(now: Date, facts: NudgeFacts): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 
   if (!(await Notifications.getPermissionsAsync()).granted) {
@@ -63,9 +94,11 @@ export async function refreshNudges(
 
   await ensureChannel();
 
-  for (const date of nudgeTimes(now, todayDone, hour)) {
+  for (const date of nudgeTimes(now, facts.todayDone, facts.hour)) {
+    const tonight = date.toDateString() === now.toDateString();
+
     await Notifications.scheduleNotificationAsync({
-      content: { title: 'Traverser', body: nudgeBody(traverserName) },
+      content: { title: 'Traverser', body: tonight ? todayBody(facts, now) : nudgeBody(facts.traverserName) },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: CHANNEL },
     });
   }
