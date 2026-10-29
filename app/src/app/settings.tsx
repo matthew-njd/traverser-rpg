@@ -1,19 +1,20 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Linking, Share, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, AppState, Linking, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { configureAudio, playSfx } from '@/audio/bus';
 import { getDatabase } from '@/db/open';
 import { parked } from '@/db/outbox';
 import { apiBaseUrl } from '@/env';
 import { healthConnectProvider } from '@/health/healthconnect';
+import { askForNudges, nudgePermission } from '@/notifications/nudge';
 import {
   RestoreError,
   handOverTo,
   isProfileReplaceable,
   parseIdentityDocument,
 } from '@/onboarding/registration';
-import { currentIdentity, refreshIdentity, syncNow } from '@/runtime';
+import { currentIdentity, refreshIdentity, rescheduleNudges, syncNow } from '@/runtime';
 import { ApiStatusError, ApiUnreachableError } from '@/sync/api';
 import { type AudioSettings, readAudioSettings, readBirthYear, readPlayer } from '@/sync/mirror';
 import { MIN_DAILY_STEP_GOAL, changeSettings } from '@/sync/writes';
@@ -25,8 +26,9 @@ import { MIN_TOUCH_TARGET, colors, radius, space, type } from '@/ui/theme';
 /**
  * GDD 13 §7 — Settings, at M1's scope.
  *
- * Here: identity export (tech-06 §13.1), step goal, birth year, audio, health status and deep link.
- * Not here: notifications (M6/P4), wearables, sign-in (guest-only is a sanctioned trim).
+ * Here: identity export (tech-06 §13.1), step goal, birth year, audio, notifications, health status
+ * and deep link.
+ * Not here: wearables, sign-in (guest-only is a sanctioned trim).
  */
 export default function Settings() {
   const slice = usePlayerStore();
@@ -108,6 +110,8 @@ export default function Settings() {
       <Button label={saved ? 'Saved' : 'Save'} disabled={!goalValid || !yearValid} onPress={save} />
 
       <Audio />
+
+      <Reminders />
 
       <HealthStatus
         availability={health?.availability ?? null}
@@ -392,6 +396,57 @@ function Audio() {
           trackColor={{ true: colors.accent, false: colors.border }}
         />
       </View>
+    </Card>
+  );
+}
+
+/**
+ * GDD 13 §7's Notifications row: the OS permission and a way to change it, and no timing controls —
+ * GDD 11's schedule is automatic. Also the only door for a player who finished onboarding before
+ * Screen 10 existed.
+ */
+function Reminders() {
+  const [state, setState] = useState<'granted' | 'ask' | 'settings' | null>(null);
+
+  const read = useCallback(() => {
+    void nudgePermission().then(setState).catch(() => undefined);
+  }, []);
+
+  useFocusEffect(read);
+
+  // Returning from Android's settings is a foreground, not a focus.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') {
+        read();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [read]);
+
+  const ask = async () => {
+    if (await askForNudges().catch(() => false)) {
+      rescheduleNudges();
+    }
+
+    read();
+  };
+
+  return (
+    <Card>
+      <Heading>Daily reminder</Heading>
+      <Body dim>
+        {state === 'granted'
+          ? "On. One reminder at 7 PM, and only on a day you haven't reached your goal or tagged for rest."
+          : "Off. Traverser can remind you at 7 PM on days you haven't reached your goal."}
+      </Body>
+
+      {state === 'ask' ? (
+        <Button label="Allow reminders" variant="secondary" onPress={() => void ask()} />
+      ) : state === null ? null : (
+        <Button label="Open notification settings" variant="secondary" onPress={() => void Linking.openSettings()} />
+      )}
     </Card>
   );
 }

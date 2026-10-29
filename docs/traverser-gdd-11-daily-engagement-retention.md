@@ -135,6 +135,13 @@ All copy avoids guilt, urgency framing beyond a simple factual time reference ("
 - No Daily Nudge or Streak-at-Risk is sent on a day the goal is already met — these exist purely to close the gap on days it isn't, never to nag an already-active player.
 - No notification of any kind is sent for a streak *break* itself (Section 4).
 
+> **Amended 2026-10-28 (M6/P4): under the local-only trim, the Daily Nudge is the only push notification.** §7.1's architecture note assumed a background task and a server-side send, and the build has neither: nothing runs in the background (CLAUDE.md), and notifications are local only, at $0, with no push service. So:
+>
+> - **Streak-at-Risk is trimmed.** It needs today's total at 9 PM, which only a background read could know.
+> - **The Streak Milestone push is trimmed.** It was a server-side send. The in-app Reveal Card already announces the milestone.
+> - **The Daily Nudge is evaluated on each app open, not at 7 PM.** Every open replaces the schedule with a one-off 7 PM nudge for each of the next 7 days, leaving today out once its goal is met or 7 PM has passed. "Never nag an active player" therefore holds on any day the app was opened after the goal was reached. A player who stops opening the app gets a week of nudges, then none.
+> - The one-per-day cap holds trivially: one notification type, one per day.
+
 ### 7.3 Sign-in resurfacing cadence
 
 Closes Section 10's open question on cadence beyond its single first-backgrounding prompt:

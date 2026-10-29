@@ -114,6 +114,13 @@ const config: ExpoConfig = {
       { recordAudioAndroid: false, enableBackgroundPlayback: false },
     ],
     [
+      // ↯ Android draws a notification's small icon from its alpha channel alone, so the full-colour
+      // launcher icon would show as a white square. The monochrome adaptive layer is a placeholder
+      // until the art phase (M6/P5). Rebuild boundary: a change here is a prebuild.
+      'expo-notifications',
+      { icon: './assets/images/android-icon-monochrome.png', color: '#C08A3E' },
+    ],
+    [
       'expo-splash-screen',
       {
         backgroundColor: '#208AEF',

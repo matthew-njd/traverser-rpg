@@ -59,7 +59,7 @@ export default function Victory() {
       <Button
         label="Begin your journey"
         disabled={!settled}
-        onPress={() => router.replace('/map')}
+        onPress={() => router.replace('/10-notifications')}
       />
     </Screen>
   );

@@ -9,7 +9,8 @@ import { deviceLocalDates } from './health/localDate';
 import { apiBaseUrl } from './env';
 import { type TraverserApi, createApi } from './sync/api';
 import { coalescePasses, retryDelay } from './sync/coalesce';
-import { readAudioSettings } from './sync/mirror';
+import { refreshNudges } from './notifications/nudge';
+import { isCredited, readActivityDay, readAudioSettings, readPlayer } from './sync/mirror';
 import { type SyncPassResult, runForegroundSync } from './sync/pass';
 import { useAppStore } from './state/appStore';
 import { useBattleStore } from './state/battleStore';
@@ -59,6 +60,25 @@ export async function refreshIdentity(): Promise<void> {
   useAppStore.getState().setRegistered(identity !== null);
 }
 
+/**
+ * GDD 11 §7.2 on every open: today drops out of the nudge schedule once its goal is met or it is
+ * tagged for rest — a rest day is not one to be told to walk on.
+ */
+export function rescheduleNudges(now = Date.now()): void {
+  const db = getDatabase();
+  const player = readPlayer(db);
+
+  if (player === null) {
+    return;
+  }
+
+  const today = deviceLocalDates.dateOf(now);
+  const done = readActivityDay(db, today)?.goalMet === true || isCredited(db, today);
+
+  // Best-effort, like the sync it follows: a failure leaves last open's schedule standing.
+  void refreshNudges(new Date(now), done, player.traverserName || 'your Traverser').catch(() => undefined);
+}
+
 export function currentIdentity(): DeviceIdentity | null {
   return identity;
 }
@@ -86,6 +106,7 @@ const runPass = coalescePasses(async (now = Date.now()): Promise<SyncPassResult>
     // SQLite first, store second, always (tech-04 §5.2).
     usePlayerStore.getState().hydrate(db);
     configureAudio(readAudioSettings(db));
+    rescheduleNudges(now);
     useAppStore.getState().syncFinished(result, bannerFor(result.health));
     scheduleRetry(result);
 

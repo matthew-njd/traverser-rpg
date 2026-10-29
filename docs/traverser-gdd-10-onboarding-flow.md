@@ -190,6 +190,8 @@ OS-level permission dialog only, framed briefly:
 
 No specific copy variants, send-time logic, or streak-tied triggers are specified here — see §9.
 
+> **Amended 2026-10-28 (M6/P4):** built as `10-notifications`, directly after Screen 7. Screen 8's placeholder map was superseded by the full Road, and Screen 9's account prompt falls under the guest-only trim, so the tutorial's "Begin your journey" now leads here. A denial changes nothing else, and Settings' Daily reminder row asks again, or deep-links to Android's settings once Android stops offering the prompt.
+
 ---
 
 ## 9. Cross-Section Flags
