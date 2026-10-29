@@ -496,6 +496,19 @@ export function writeSettings(db: SqliteDatabase, settings: SettingsPayload): vo
   if (settings.audioMuted != null) {
     db.runSync('UPDATE player_settings SET audio_muted = ?', [settings.audioMuted ? 1 : 0]);
   }
+
+  if (settings.dailyReminderTime != null) {
+    db.runSync('UPDATE player_settings SET daily_reminder_time = ?', [settings.dailyReminderTime]);
+  }
+}
+
+/** The Daily Nudge's hour. Never chosen is GDD 11 §7.1's 7 PM. */
+export function readReminderHour(db: SqliteDatabase): number {
+  const time = db.getFirstSync<{ daily_reminder_time: string | null }>(
+    'SELECT daily_reminder_time FROM player_settings',
+  )?.daily_reminder_time;
+
+  return time == null ? 19 : Number(time.slice(0, 2));
 }
 
 /** GDD 13 §7's Audio row. Full volume and unmuted before registration creates the row. */

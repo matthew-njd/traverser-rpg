@@ -275,7 +275,7 @@ create table player (
 ```sql
 create table player_settings (
   player_id             uuid primary key references player on delete cascade,
-  daily_reminder_time   time,               -- null = off; fixed-time local notification
+  daily_reminder_time   time,               -- the nudge's hour; null = never chosen = 19:00 (amended M6/P4)
   music_volume          numeric(3,2) not null default 1.0,
   sfx_volume            numeric(3,2) not null default 1.0,
   birth_year            int check (birth_year between 1900 and 2100)

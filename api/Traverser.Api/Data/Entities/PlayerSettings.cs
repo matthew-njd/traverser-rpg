@@ -8,7 +8,10 @@ public class PlayerSettings
 {
     public Guid PlayerId { get; set; }
 
-    /// <summary>Null = off. A fixed-time local notification; nothing here schedules a push.</summary>
+    /// <summary>
+    /// The Daily Nudge's hour, chosen in Settings. Null means never chosen, which is 19:00 (GDD 11
+    /// §7.1). The device schedules it locally; nothing here sends a push.
+    /// </summary>
     public TimeOnly? DailyReminderTime { get; set; }
 
     public decimal MusicVolume { get; set; } = 1.0m;

@@ -264,18 +264,16 @@ public sealed record AllocateStatPointsRequest(
 /// <summary>
 /// <c>PATCH /api/v1/players/me/settings</c>. Null means "leave alone"; last-write-wins is correct
 /// here because these are point-in-time preferences rather than accumulating values (T2 §6.3).
-/// <para>
-/// Reminder time is not here yet. It arrives with the notification (M6/P4), and a settable field
-/// nothing reads would be a promise the app does not keep.
-/// </para>
 /// </summary>
 /// <param name="MusicVolume">A decimal string, <c>0.00</c> to <c>1.00</c> (tech-02 §2).</param>
+/// <param name="DailyReminderTime">On the hour, 06:00 to 21:00 (GDD 11 §7.1, amended 2026-10-28).</param>
 public sealed record UpdateSettingsRequest(
     int? DailyStepGoal,
     int? BirthYear,
     string? MusicVolume = null,
     string? SfxVolume = null,
-    bool? AudioMuted = null);
+    bool? AudioMuted = null,
+    TimeOnly? DailyReminderTime = null);
 
 /// <summary>
 /// <c>POST /api/v1/players/me/rest-days</c> — GDD 11 §3.1's manual tag, which is also GDD 2 §6's

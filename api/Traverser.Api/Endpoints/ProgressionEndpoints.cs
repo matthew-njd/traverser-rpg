@@ -511,6 +511,15 @@ public static class ProgressionEndpoints
                 "music_volume and sfx_volume are decimal strings from 0.00 to 1.00.");
         }
 
+        // The device schedules on the hour, and every window must end by 22:00.
+        if (request.DailyReminderTime is TimeOnly reminder
+            && (reminder.Minute != 0 || reminder.Second != 0 || reminder.Hour is < 6 or > 21))
+        {
+            return ApiProblem.BadRequest(
+                ApiProblem.ValidationFailed,
+                "daily_reminder_time must be on the hour, from 06:00 to 21:00.");
+        }
+
         var player = await db.Players.FirstOrDefaultAsync(p => p.Id == current.PlayerId, ct);
         var settings = await db.PlayerSettings.FirstOrDefaultAsync(s => s.PlayerId == current.PlayerId, ct);
 
@@ -537,6 +546,7 @@ public static class ProgressionEndpoints
         settings.MusicVolume = music ?? settings.MusicVolume;
         settings.SfxVolume = sfx ?? settings.SfxVolume;
         settings.AudioMuted = request.AudioMuted ?? settings.AudioMuted;
+        settings.DailyReminderTime = request.DailyReminderTime ?? settings.DailyReminderTime;
 
         await db.SaveChangesAsync(ct);
 

@@ -614,6 +614,8 @@ export interface SettingsPayload {
   readonly musicVolume?: string | null;
   readonly sfxVolume?: string | null;
   readonly audioMuted?: boolean | null;
+  /** `HH:00:00`, the Daily Nudge's hour (GDD 11 §7.1, amended 2026-10-28). */
+  readonly dailyReminderTime?: string | null;
 }
 
 export function toWireSettings(payload: SettingsPayload): Json {
@@ -623,6 +625,7 @@ export function toWireSettings(payload: SettingsPayload): Json {
     music_volume: payload.musicVolume ?? null,
     sfx_volume: payload.sfxVolume ?? null,
     audio_muted: payload.audioMuted ?? null,
+    daily_reminder_time: payload.dailyReminderTime ?? null,
   };
 }
 

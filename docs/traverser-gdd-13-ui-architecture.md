@@ -242,6 +242,7 @@ Pushed from the Character tab's gear icon. Not driven by any single locked secti
 - **Daily step goal**: current value, editable, hard floor of 3,000 enforced with Section 11 §2.1's exact gentle-nudge copy if set at the floor.
 - **Health & Activity permission**: status + deep-link to OS settings if not granted.
 - **Notifications**: OS permission status + deep-link; no in-app copy/timing controls are exposed here since Section 11's notification logic is fully automatic, not player-configurable.
+  > **Amended 2026-10-28 (M6/P4):** the reminder's hour is player-configurable after all. It defaults to 7 PM and steps an hour at a time from 6 AM to 9 PM, shown as a one-hour window (GDD 11 §7, amended). The copy, and whether a given day gets a nudge, stay automatic.
 - **Wearable connections** (Apple Watch / Fitbit / Garmin): configured here per Section 10 §3.1's note that these are deliberately not requested at first launch.
 - **Audio**: two independent sliders — **Music** (zone ambient tracks, battle themes) and **Sound Effects** (UI taps, combat hits, stings/cues) — plus a single **Mute All** toggle. Split into two controls rather than one master volume because a player may want combat-hit feedback without ambient music (e.g., playing in a quiet public space) or vice versa. Exact track list and per-cue assignment belong to Section 14 (Sound Design); this entry only reserves the control surface, since the planning doc treats audio as a stated priority, not an afterthought, and the Settings screen would otherwise have no home for it at all.
 

@@ -7,7 +7,7 @@ import { getDatabase } from '@/db/open';
 import { parked } from '@/db/outbox';
 import { apiBaseUrl } from '@/env';
 import { healthConnectProvider } from '@/health/healthconnect';
-import { askForNudges, nudgePermission } from '@/notifications/nudge';
+import { EARLIEST_HOUR, LATEST_HOUR, askForNudges, nudgePermission, reminderWindow } from '@/notifications/nudge';
 import {
   RestoreError,
   handOverTo,
@@ -16,7 +16,7 @@ import {
 } from '@/onboarding/registration';
 import { currentIdentity, refreshIdentity, rescheduleNudges, syncNow } from '@/runtime';
 import { ApiStatusError, ApiUnreachableError } from '@/sync/api';
-import { type AudioSettings, readAudioSettings, readBirthYear, readPlayer } from '@/sync/mirror';
+import { type AudioSettings, readAudioSettings, readBirthYear, readPlayer, readReminderHour } from '@/sync/mirror';
 import { MIN_DAILY_STEP_GOAL, changeSettings } from '@/sync/writes';
 import { useAppStore } from '@/state/appStore';
 import { usePlayerStore } from '@/state/playerStore';
@@ -401,12 +401,25 @@ function Audio() {
 }
 
 /**
- * GDD 13 §7's Notifications row: the OS permission and a way to change it, and no timing controls —
- * GDD 11's schedule is automatic. Also the only door for a player who finished onboarding before
+ * GDD 13 §7's Notifications row: the OS permission, a way to change it, and the hour (GDD 13 §7 and
+ * GDD 11 §7.1, amended 2026-10-28). Also the only door for a player who finished onboarding before
  * Screen 10 existed.
  */
 function Reminders() {
   const [state, setState] = useState<'granted' | 'ask' | 'settings' | null>(null);
+  const [hour, setHour] = useState(() => readReminderHour(getDatabase()));
+
+  const move = (next: number) => {
+    setHour(next);
+    changeSettings(
+      getDatabase(),
+      { dailyStepGoal: null, birthYear: null, dailyReminderTime: `${String(next).padStart(2, '0')}:00:00` },
+      Date.now(),
+    );
+    rescheduleNudges();
+
+    void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
+  };
 
   const read = useCallback(() => {
     void nudgePermission().then(setState).catch(() => undefined);
@@ -438,9 +451,32 @@ function Reminders() {
       <Heading>Daily reminder</Heading>
       <Body dim>
         {state === 'granted'
-          ? "On. One reminder at 7 PM, and only on a day you haven't reached your goal or tagged for rest."
-          : "Off. Traverser can remind you at 7 PM on days you haven't reached your goal."}
+          ? `On. One reminder ${reminderWindow(hour)}, and only on a day you haven't reached your goal or tagged for rest.`
+          : `Off. Traverser can remind you ${reminderWindow(hour)} on days you haven't reached your goal.`}
       </Body>
+
+      {state === 'granted' ? (
+        <View style={styles.hours}>
+          <View style={styles.hour}>
+            <Button
+              label="Earlier"
+              variant="secondary"
+              sound="sfx_toggle"
+              disabled={hour <= EARLIEST_HOUR}
+              onPress={() => move(hour - 1)}
+            />
+          </View>
+          <View style={styles.hour}>
+            <Button
+              label="Later"
+              variant="secondary"
+              sound="sfx_toggle"
+              disabled={hour >= LATEST_HOUR}
+              onPress={() => move(hour + 1)}
+            />
+          </View>
+        </View>
+      ) : null}
 
       {state === 'ask' ? (
         <Button label="Allow reminders" variant="secondary" onPress={() => void ask()} />
@@ -598,6 +634,8 @@ const styles = StyleSheet.create({
   error: { ...type.body, color: colors.gold },
   rows: { gap: space.xs },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
+  hours: { flexDirection: 'row', gap: space.sm },
+  hour: { flex: 1 },
   rowLabel: { ...type.body, color: colors.textDim },
   rowValue: { ...type.body, color: colors.text },
   slider: { gap: space.xs },

@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 
-import { NUDGE_DAYS, nudgeBody, nudgeTimes, refreshNudges } from '../nudge';
+import { NUDGE_DAYS, nudgeBody, nudgeTimes, refreshNudges, reminderWindow } from '../nudge';
 
 jest.mock('expo-notifications', () => {
   const scheduled: unknown[] = [];
@@ -31,7 +31,7 @@ const at = (y: number, m: number, d: number, h: number) => new Date(y, m - 1, d,
 
 describe('which evenings get a nudge (GDD 11 §7)', () => {
   it('includes tonight while the goal is unmet and 7 PM is still ahead', () => {
-    const times = nudgeTimes(at(2026, 10, 28, 9), false);
+    const times = nudgeTimes(at(2026, 10, 28, 9), false, 19);
 
     expect(times).toHaveLength(NUDGE_DAYS);
     expect(times[0]).toEqual(at(2026, 10, 28, 19));
@@ -39,43 +39,43 @@ describe('which evenings get a nudge (GDD 11 §7)', () => {
   });
 
   it('skips tonight once the goal is met or the day is tagged for rest', () => {
-    expect(nudgeTimes(at(2026, 10, 28, 9), true)[0]).toEqual(at(2026, 10, 29, 19));
+    expect(nudgeTimes(at(2026, 10, 28, 9), true, 19)[0]).toEqual(at(2026, 10, 29, 19));
   });
 
   it('skips tonight once 7 PM has passed', () => {
-    expect(nudgeTimes(at(2026, 10, 28, 19), false)[0]).toEqual(at(2026, 10, 29, 19));
+    expect(nudgeTimes(at(2026, 10, 28, 19), false, 19)[0]).toEqual(at(2026, 10, 29, 19));
   });
 
   it('holds 7 PM local across midnight and a daylight-saving change', () => {
     // 2026-11-01 is the autumn change in North America; adding 24 h would land on 6 PM.
-    for (const time of nudgeTimes(at(2026, 10, 31, 23), false)) {
+    for (const time of nudgeTimes(at(2026, 10, 31, 23), false, 19)) {
       expect(time.getHours()).toBe(19);
       expect(time.getMinutes()).toBe(0);
     }
 
-    expect(nudgeTimes(at(2026, 10, 31, 23), false)[0]).toEqual(at(2026, 11, 1, 19));
+    expect(nudgeTimes(at(2026, 10, 31, 23), false, 19)[0]).toEqual(at(2026, 11, 1, 19));
   });
 });
 
 describe('scheduling', () => {
   it('replaces rather than adds, however often the app opens', async () => {
-    await refreshNudges(at(2026, 10, 28, 9), false, 'Emdir');
-    await refreshNudges(at(2026, 10, 28, 12), false, 'Emdir');
+    await refreshNudges(at(2026, 10, 28, 9), false, 'Emdir', 19);
+    await refreshNudges(at(2026, 10, 28, 12), false, 'Emdir', 19);
 
     expect(mock.scheduled).toHaveLength(NUDGE_DAYS);
   });
 
   it('drops tonight when an open finds the goal met', async () => {
-    await refreshNudges(at(2026, 10, 28, 9), false, 'Emdir');
-    await refreshNudges(at(2026, 10, 28, 17), true, 'Emdir');
+    await refreshNudges(at(2026, 10, 28, 9), false, 'Emdir', 19);
+    await refreshNudges(at(2026, 10, 28, 17), true, 'Emdir', 19);
 
     expect(mock.scheduled[0]?.trigger.date).toEqual(at(2026, 10, 29, 19));
   });
 
   it('schedules nothing, and clears what was there, without permission', async () => {
-    await refreshNudges(at(2026, 10, 28, 9), false, 'Emdir');
+    await refreshNudges(at(2026, 10, 28, 9), false, 'Emdir', 19);
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValueOnce({ granted: false } as never);
-    await refreshNudges(at(2026, 10, 28, 10), false, 'Emdir');
+    await refreshNudges(at(2026, 10, 28, 10), false, 'Emdir', 19);
 
     expect(mock.scheduled).toHaveLength(0);
   });
@@ -111,4 +111,18 @@ it('schedules from this module and nowhere else', () => {
   walk(root);
 
   expect(callers).toEqual([path.join('notifications', 'nudge.ts')]);
+});
+
+describe('the player-chosen hour (GDD 11 §7.1, amended 2026-10-28)', () => {
+  it('schedules at the chosen hour and skips today once it has passed', () => {
+    expect(nudgeTimes(at(2026, 10, 28, 9), false, 8)[0]).toEqual(at(2026, 10, 29, 8));
+    expect(nudgeTimes(at(2026, 10, 28, 9), false, 18)[0]).toEqual(at(2026, 10, 28, 18));
+  });
+
+  it('names the hour Android may deliver in, never a minute', () => {
+    expect(reminderWindow(19)).toBe('between 7 and 8 PM');
+    expect(reminderWindow(6)).toBe('between 6 and 7 AM');
+    expect(reminderWindow(11)).toBe('between 11 AM and 12 PM');
+    expect(reminderWindow(21)).toBe('between 9 and 10 PM');
+  });
 });

@@ -354,6 +354,37 @@ public class ProgressionTests(TraverserApiFixture api)
         Assert.Equal(1985, settings.GetProperty("birth_year").GetInt32());
     }
 
+    [Fact]
+    public async Task Settings_store_the_reminder_hour()
+    {
+        var (_, token) = await api.RegisterAsync();
+
+        var response = await api.CreateAuthenticatedClient(token).PatchAsJsonAsync(
+            "/api/v1/players/me/settings", new { daily_reminder_time = "18:00:00" }, TraverserApiFixture.Json);
+
+        response.EnsureSuccessStatusCode();
+
+        var settings = (await response.Content.ReadFromJsonAsync<JsonElement>(TraverserApiFixture.Json))
+            .GetProperty("settings");
+
+        Assert.Equal("18:00:00", settings.GetProperty("daily_reminder_time").GetString());
+    }
+
+    /// <summary>Off the hour, or a window that would run past 22:00 or start before 06:00.</summary>
+    [Theory]
+    [InlineData("18:30:00")]
+    [InlineData("22:00:00")]
+    [InlineData("05:00:00")]
+    public async Task A_reminder_time_outside_the_hours_is_rejected(string time)
+    {
+        var (_, token) = await api.RegisterAsync();
+
+        var response = await api.CreateAuthenticatedClient(token).PatchAsJsonAsync(
+            "/api/v1/players/me/settings", new { daily_reminder_time = time }, TraverserApiFixture.Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     /// <summary>Out of range, a float that would round, or not a decimal string at all.</summary>
     [Theory]
     [InlineData("1.01")]

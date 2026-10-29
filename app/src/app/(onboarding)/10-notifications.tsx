@@ -2,7 +2,9 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { askForNudges } from '@/notifications/nudge';
+import { getDatabase } from '@/db/open';
+import { askForNudges, reminderWindow } from '@/notifications/nudge';
+import { readReminderHour } from '@/sync/mirror';
 import { rescheduleNudges } from '@/runtime';
 import { Body, Button, Card, Screen, Title } from '@/ui/primitives';
 import { space } from '@/ui/theme';
@@ -42,8 +44,8 @@ export default function NotificationPermission() {
 
         <Card>
           <Body>
-            One reminder at 7 PM, and only on a day you haven&apos;t reached your goal or tagged for
-            rest.
+            One reminder {reminderWindow(readReminderHour(getDatabase()))}, and only on a day you
+            haven&apos;t reached your goal or tagged for rest. You can change the time in Settings.
           </Body>
         </Card>
       </View>

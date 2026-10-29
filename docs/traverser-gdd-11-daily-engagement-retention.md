@@ -139,7 +139,8 @@ All copy avoids guilt, urgency framing beyond a simple factual time reference ("
 >
 > - **Streak-at-Risk is trimmed.** It needs today's total at 9 PM, which only a background read could know.
 > - **The Streak Milestone push is trimmed.** It was a server-side send. The in-app Reveal Card already announces the milestone.
-> - **The Daily Nudge is evaluated on each app open, not at 7 PM.** Every open replaces the schedule with a one-off 7 PM nudge for each of the next 7 days, leaving today out once its goal is met or 7 PM has passed. "Never nag an active player" therefore holds on any day the app was opened after the goal was reached. A player who stops opening the app gets a week of nudges, then none.
+> - **The Daily Nudge is evaluated on each app open, not at send time.** Every open replaces the schedule with a one-off nudge for each of the next 7 days, leaving today out once its goal is met or the hour has passed.
+> - **The player chooses the hour.** 7 PM is the default, and Settings offers any hour from 6 AM to 9 PM. Android delivers within an hour of the time asked for, so the app always states a window, such as "between 7 and 8 PM", and never a minute. "Never nag an active player" therefore holds on any day the app was opened after the goal was reached. A player who stops opening the app gets a week of nudges, then none.
 > - The one-per-day cap holds trivially: one notification type, one per day.
 
 ### 7.3 Sign-in resurfacing cadence
