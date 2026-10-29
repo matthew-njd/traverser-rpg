@@ -108,6 +108,12 @@ const config: ExpoConfig = {
     // tech-06 §13.1's export is the supported recovery path; Auto Backup is not.
     'expo-secure-store',
     [
+      // Both default to true. Unset, the plugin adds RECORD_AUDIO and a media-playback foreground
+      // service — a microphone grant the game never uses, and music that outlives the app.
+      'expo-audio',
+      { recordAudioAndroid: false, enableBackgroundPlayback: false },
+    ],
+    [
       'expo-splash-screen',
       {
         backgroundColor: '#208AEF',
@@ -135,7 +141,7 @@ const config: ExpoConfig = {
         // Turning upload on needs a SENTRY_AUTH_TOKEN in the build environment plus the sentry-cli
         // binary whose postinstall npm blocks by default — a second credential to manage and back
         // up, for a benefit that only appears in a release build since dev bundles are not
-        // minified. Deferred to M5 (M1 plan §2.2).
+        // minified. Kept off at M6 (DECISIONS 2026-10-28).
         disableAutoUpload: true,
       },
     ],

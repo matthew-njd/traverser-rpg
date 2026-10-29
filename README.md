@@ -713,5 +713,5 @@ Two projects in one free-tier org (tech-06 §9.1), two DSNs, two homes:
 that path is tested, not theoretical. Errors only: no tracing, no profiling, no replay, no screenshots,
 and PII plus request-body capture explicitly off, because sync payloads carry heart-rate data (§9.3).
 
-Source-map upload is off, so release-build JS traces are minified until it's enabled at M5. The
+Source-map upload is off, so release-build JS traces are minified until it's enabled (kept off at M6, DECISIONS 2026-10-28). The
 `Missing config for organization, project` warning during builds is that decision, not a fault.
