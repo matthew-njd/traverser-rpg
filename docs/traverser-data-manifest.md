@@ -131,6 +131,15 @@ The Traverser's figure on the Avatar plate, chosen at onboarding Screen 4 and in
 | `avatar_traverser_male` | Male figure |
 | `avatar_traverser_female` | Female figure |
 
+## Zone Art (GDD 9 §6 — added 2026-10-29, M6/P5d)
+One banner per Road segment, a full-width strip across the top of its zone card. `egypt_tbd`'s is the coming-soon terminus.
+| Key | Zone |
+|---|---|
+| `zone_olympion` | olympion |
+| `zone_valheon` | valheon |
+| `zone_imperion` | imperion |
+| `zone_egypt_tbd` | egypt_tbd |
+
 ## Zone Gates (Section 9 §3 — added 2026-07-26 per DECISIONS 2026-07-25)
 Content keys for the `zone_gate` table (tech-01 §3). Thresholds are fixtures §8; not asset keys — no art or audio export carries these.
 | Key | Zone | Boss | Kind | League threshold | Unlocks |

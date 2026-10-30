@@ -34,12 +34,14 @@ const BASE_DP: readonly (readonly [string, number])[] = [
   ['item_', 64],
   ['gear_', 64],
   ['avatar_', 240],
+  // A Road banner is a full-width strip; its height follows its own viewBox.
+  ['zone_', 360],
 ];
 
 /** Each side's margin, as a share of the canvas, so no shape touches its plate's edge. */
 const MARGIN = 0.0625;
 
-export function inked(svg: string): string {
+export function inked(svg: string, margin = MARGIN): string {
   const viewBox = /viewBox="([\d.\s-]+)"/.exec(svg)?.[1]?.trim().split(/\s+/).map(Number);
 
   if (viewBox?.length !== 4) {
@@ -47,7 +49,7 @@ export function inked(svg: string): string {
   }
 
   const [x, y, w, h] = viewBox as [number, number, number, number];
-  const pad = Math.max(w, h) * MARGIN;
+  const pad = Math.max(w, h) * margin;
 
   return svg
     .replace(new RegExp(`<path d="M${x} ${y}h${w}v${h}H${x}z"\\s*/>`), '')
@@ -70,7 +72,8 @@ if (process.argv[1] === import.meta.filename) {
 
   for (const file of sources) {
     const key = path.basename(file, '.svg');
-    const svg = inked(fs.readFileSync(path.join(artDir, file), 'utf8'));
+    // A banner runs edge to edge of its card, so it takes no margin.
+    const svg = inked(fs.readFileSync(path.join(artDir, file), 'utf8'), key.startsWith('zone_') ? 0 : MARGIN);
 
     for (const [scale, suffix] of [[1, ''], [2, '@2x'], [3, '@3x']] as const) {
       const png = new Resvg(svg, { fitTo: { mode: 'width', value: baseDp(key) * scale } }).render().asPng();

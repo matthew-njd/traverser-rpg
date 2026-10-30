@@ -1,7 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
+
+import { playSfx, playSting } from '../../audio/bus';
 
 import type { RoadGate, RoadState, RoadZone } from '../../progression/road';
 import { Road, waymarkerZone } from '../Road';
+
+jest.mock('../../audio/bus');
 
 /**
  * GDD 9 §4's node states, rendered from a `RoadState` and nothing else.
@@ -227,5 +232,41 @@ describe('waymarkerZone', () => {
     expect(
       waymarkerZone(state({ leagues: 100, zones: [olympion, { ...valheon, unlocked: true }] })),
     ).toBe('olympion');
+  });
+});
+
+/** GDD 9 §5 and GDD 14 §3.8 — the walk is heard as well as seen, and reduced motion keeps the chime. */
+describe('the Waymarker walk', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('stands the Waymarker in its own segment only', async () => {
+    await render(<Road state={state()} />);
+
+    expect(screen.getAllByTestId('waymarker')).toHaveLength(1);
+  });
+
+  it('walks to the footstep loop', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
+
+    await render(<Road state={state()} walk={{ from: 0.1, to: 0.4 }} />);
+
+    await waitFor(() => expect(playSfx).toHaveBeenCalledWith('sfx_footstep_loop', true));
+    screen.unmount();
+  });
+
+  it('skips the walk under reduced motion, but still chimes', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+
+    await render(<Road state={state()} walk={{ from: 0.1, to: 0.4 }} />);
+
+    await waitFor(() => expect(playSting).toHaveBeenCalledWith('stg_waymarker'));
+    expect(playSfx).not.toHaveBeenCalled();
+  });
+
+  it('is silent when there is nothing to walk', async () => {
+    await render(<Road state={state()} walk={null} />);
+
+    expect(playSfx).not.toHaveBeenCalled();
+    expect(playSting).not.toHaveBeenCalled();
   });
 });

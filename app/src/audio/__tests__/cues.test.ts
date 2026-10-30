@@ -99,7 +99,7 @@ it('never plays stg_streak_break', () => {
 
 /**
  * GDD 14 §6 — every effect has a trigger. A typed hit is reached through `hitSfx` from the content's
- * types rather than by name. `sfx_footstep_loop` waits for the Waymarker's animation (M6/P5).
+ * types rather than by name.
  */
 it('triggers every sound effect from somewhere', () => {
   const text = [...sources().values()].join(' ');
@@ -109,7 +109,7 @@ it('triggers every sound effect from somewhere', () => {
   );
 
   expect(typed.size).toBe(6);
-  expect(silent).toEqual(['sfx_footstep_loop']);
+  expect(silent).toEqual([]);
 });
 
 describe('GDD 14 §5.5 priority', () => {

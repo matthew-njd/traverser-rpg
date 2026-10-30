@@ -182,7 +182,7 @@ export function configureAudio(next: AudioSettings): void {
  * GDD 14 §6. A replay of an effect still sounding restarts it rather than stacking a second voice,
  * which is what keeps a burst of taps from turning into a smear.
  */
-export function playSfx(key: SfxKey): void {
+export function playSfx(key: SfxKey, loop = false): void {
   let player = effects.get(key);
 
   if (player === undefined) {
@@ -190,9 +190,20 @@ export function playSfx(key: SfxKey): void {
     effects.set(key, player);
   }
 
+  player.loop = loop;
   player.volume = gain(settings.sfx);
   void player.seekTo(0);
   player.play();
+}
+
+/** Ends a looping effect started with `playSfx(key, true)`. */
+export function stopSfx(key: SfxKey): void {
+  const player = effects.get(key);
+
+  if (player !== undefined) {
+    player.loop = false;
+    player.pause();
+  }
 }
 
 /** GDD 14 §5.1's crossfade by default. Null is silence; the playing track is a no-op. */

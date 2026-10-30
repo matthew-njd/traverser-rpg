@@ -8,8 +8,18 @@ import { type EnemyLore, readRoster } from '@/content/lore';
 import { playSfx } from '@/audio/bus';
 import { getDatabase } from '@/db/open';
 import { deviceLocalDates } from '@/health/localDate';
-import { type PendingEncounter, type RoadState, readEncounters, readRoad } from '@/progression/road';
+import {
+  type PendingEncounter,
+  type RoadState,
+  markSeenLeagues,
+  readEncounters,
+  readRoad,
+  readSeenLeagues,
+  walkSpan,
+} from '@/progression/road';
 import { syncNow } from '@/runtime';
+import type { AvatarFigure } from '@/sync/dto';
+import { readAvatarFigure } from '@/sync/mirror';
 import { requestExplore } from '@/sync/writes';
 import { Bestiary } from '@/ui/Bestiary';
 import { EncounterCard } from '@/ui/EncounterCard';
@@ -43,6 +53,8 @@ export default function MapScreen() {
   const [roster, setRoster] = useState<readonly EnemyLore[]>([]);
   const [met, setMet] = useState<ReadonlyMap<string, BestiaryEntry>>(new Map());
   const [labels, setLabels] = useState<Labels>(new Map());
+  const [figure, setFigure] = useState<AvatarFigure>('male');
+  const [walk, setWalk] = useState<ReturnType<typeof walkSpan>>(null);
 
   const scroll = useRef<ScrollView>(null);
   const offsets = useRef(new Map<string, number>());
@@ -51,7 +63,16 @@ export default function MapScreen() {
   const reload = useCallback(() => {
     const db = getDatabase();
 
-    setRoad(readRoad(db));
+    const next = readRoad(db);
+    const here = next.zones.findIndex((zone) => zone.zoneId === waymarkerZone(next));
+    const zone = next.zones[here];
+
+    // Marked before the walk plays, so leaving mid-walk never replays it (GDD 14 §3.8: once per batch).
+    setWalk(zone === undefined ? null : walkSpan(zone, next.zones[here + 1], readSeenLeagues(db), next.leagues));
+    markSeenLeagues(db, next.leagues);
+
+    setRoad(next);
+    setFigure(readAvatarFigure(db));
     setEncounters(readEncounters(db));
     setRoster(readRoster(db));
     setMet(readBestiaryBook(db));
@@ -186,6 +207,8 @@ export default function MapScreen() {
             <View onLayout={(event) => (roadY.current = event.nativeEvent.layout.y)}>
               <Road
                 state={road}
+                figure={figure}
+                walk={walk}
                 selected={target}
                 onSelect={setSelected}
                 onFace={(gate) =>

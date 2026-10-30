@@ -1,7 +1,14 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { AccessibilityInfo, Animated, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { PLACEHOLDER_SPRITES, SPRITES } from '../assets/registry.generated';
+import type { ZoneArtKey } from '../assets/keys.generated';
+import { playSfx, playSting, stopSfx } from '../audio/bus';
 import type { GateState, RoadGate, RoadState, RoadZone } from '../progression/road';
 import { segmentFill } from '../progression/road';
+import type { AvatarFigure } from '../sync/dto';
+import { Sprite } from './Sprite';
+import { figureKey } from './TraverserSprite';
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme';
 
 /**
@@ -13,12 +20,17 @@ import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme'
  */
 export function Road({
   state,
+  figure = 'male',
+  walk = null,
   selected = null,
   onSelect,
   onFace,
   onZoneLayout,
 }: {
   state: RoadState;
+  figure?: AvatarFigure;
+  /** GDD 9 §5 — the stretch of the Waymarker's segment to walk on arrival, from `walkSpan`. */
+  walk?: Walk | null;
   /** Explore's target (GDD 13 §4.2, amended at M5/P6), highlighted. */
   selected?: string | null;
   /** GDD 9 §4.3 — only an unlocked segment can be Explore's target. */
@@ -37,6 +49,8 @@ export function Road({
           next={state.zones[index + 1]}
           leagues={state.leagues}
           here={zone.zoneId === waymarkerZone(state)}
+          figure={figure}
+          walk={walk}
           selected={zone.zoneId === selected}
           onSelect={onSelect}
           onFace={onFace}
@@ -67,6 +81,8 @@ function ZoneSegment({
   next,
   leagues,
   here,
+  figure,
+  walk,
   selected,
   onSelect,
   onFace,
@@ -76,6 +92,8 @@ function ZoneSegment({
   next: RoadZone | undefined;
   leagues: number;
   here: boolean;
+  figure: AvatarFigure;
+  walk: Walk | null;
   selected: boolean;
   onSelect?: (zoneId: string) => void;
   onFace?: (gate: RoadGate) => void;
@@ -93,6 +111,8 @@ function ZoneSegment({
       style={[styles.segment, zone.unlocked ? null : styles.segmentLocked, selected && styles.segmentSelected]}
       onLayout={(event) => onLayout?.(zone.zoneId, event.nativeEvent.layout.y)}
     >
+      <Banner zoneId={zone.zoneId} dim={!zone.unlocked} />
+
       <View style={styles.bannerRow}>
         <View style={styles.bannerName}>
           {/* The dot says the card can be picked, before any tap; a locked zone has none. */}
@@ -116,10 +136,13 @@ function ZoneSegment({
         to its own threshold range, or Olympion's 220 Leagues would be invisible beside Imperion's
         2,000 and the earliest weeks of play would look like no progress at all.
       */}
-      <View style={styles.track}>
-        <View style={[styles.fill, { width: `${Math.round(fill * 100)}%` }]} />
-        {here ? <Text style={[styles.waymarker, { left: `${Math.round(fill * 100)}%` }]}>◆</Text> : null}
-      </View>
+      {here ? (
+        <Walker fill={fill} walk={walk} figure={figure} />
+      ) : (
+        <View style={styles.track}>
+          <View style={[styles.fill, { width: `${Math.round(fill * 100)}%` }]} />
+        </View>
+      )}
 
       {zone.gates.map((gate) => (
         <GateNode key={gate.gateId} gate={gate} leagues={leagues} onFace={onFace} />
@@ -127,6 +150,94 @@ function ZoneSegment({
     </Pressable>
   );
 }
+
+/** GDD 9 §6's zone identity, across the top of its card; dimmed while the zone is locked. */
+function Banner({ zoneId, dim }: { zoneId: string; dim: boolean }) {
+  const key = `zone_${zoneId}`;
+
+  if (!(key in SPRITES) || PLACEHOLDER_SPRITES.has(key as ZoneArtKey)) {
+    return null;
+  }
+
+  return (
+    <View importantForAccessibility="no-hide-descendants" style={[styles.art, dim && styles.artDim]}>
+      <Image source={SPRITES[key as ZoneArtKey]} style={styles.artImage} resizeMode="contain" />
+    </View>
+  );
+}
+
+type Walk = { readonly from: number; readonly to: number };
+
+/** Long enough to read as a walk, short enough not to hold the Map hostage. */
+const walkMs = (walk: Walk) => Math.min(600 + 3000 * (walk.to - walk.from), 2500);
+
+/**
+ * The Waymarker's segment: the figure stands on the fill's leading edge, and on arrival walks it
+ * forward to the footstep loop, then GDD 14 §3.8's chime. Reduced motion skips the walk, not the chime.
+ */
+function Walker({ fill, walk, figure }: { fill: number; walk: Walk | null; figure: AvatarFigure }) {
+  const progress = useRef(new Animated.Value(walk?.from ?? fill)).current;
+
+  useEffect(() => {
+    if (walk === null) {
+      progress.setValue(fill);
+
+      return;
+    }
+
+    let live = true;
+
+    void AccessibilityInfo.isReduceMotionEnabled().then((reduced) => {
+      if (!live) {
+        return;
+      }
+
+      if (reduced) {
+        progress.setValue(walk.to);
+        playSting('stg_waymarker');
+
+        return;
+      }
+
+      playSfx('sfx_footstep_loop', true);
+
+      // ↯ Not the native driver: it animates only transform and opacity, never a width or a `left`.
+      Animated.timing(progress, {
+        toValue: walk.to,
+        duration: walkMs(walk),
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: false,
+      }).start(({ finished }) => {
+        stopSfx('sfx_footstep_loop');
+
+        if (finished) {
+          playSting('stg_waymarker');
+        }
+      });
+    });
+
+    return () => {
+      live = false;
+      progress.stopAnimation();
+      stopSfx('sfx_footstep_loop');
+    };
+  }, [walk, fill, progress]);
+
+  const width = progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
+
+  return (
+    <View style={styles.walker}>
+      <View style={styles.track}>
+        <Animated.View style={[styles.fill, { width }]} />
+      </View>
+      <Animated.View testID="waymarker" style={[styles.waymarker, { left: width }]}>
+        <Sprite subject={figureKey(figure)} size={WAYMARKER_SIZE - 6} glyph="◆" />
+      </Animated.View>
+    </View>
+  );
+}
+
+const WAYMARKER_SIZE = 36;
 
 function GateNode({
   gate,
@@ -234,11 +345,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fill: { height: 6, borderRadius: radius.pill, backgroundColor: colors.accent },
+  art: { backgroundColor: colors.marble, borderRadius: radius.sm, overflow: 'hidden' },
+  artDim: { opacity: 0.4 },
+  artImage: { width: '100%', height: undefined, aspectRatio: 4 },
+  walker: { height: WAYMARKER_SIZE, justifyContent: 'center' },
+  // GDD 13 §11.4: ink needs its marble plate, and the zone card is dark.
   waymarker: {
     position: 'absolute',
-    marginLeft: -7,
-    fontSize: 14,
-    color: colors.gold,
+    top: 0,
+    width: WAYMARKER_SIZE,
+    height: WAYMARKER_SIZE,
+    marginLeft: -WAYMARKER_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: WAYMARKER_SIZE / 2,
+    borderWidth: 2,
+    borderColor: colors.gold,
+    backgroundColor: colors.marble,
   },
 
   node: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: MIN_TOUCH_TARGET },

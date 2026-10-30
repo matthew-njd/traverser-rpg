@@ -514,6 +514,17 @@ const V15_AVATAR_FIGURE: readonly string[] = [
   "ALTER TABLE player_settings ADD COLUMN avatar_figure TEXT NOT NULL DEFAULT 'male'",
 ];
 
+/**
+ * Version 16 — the Leagues the Waymarker was last shown at, so the Road walks it forward from there
+ * (GDD 9 §5, GDD 14 §3.8). Device-only, like `seen_screen`.
+ */
+const V16_WAYMARKER_SEEN: readonly string[] = [
+  `CREATE TABLE waymarker_seen (
+     player_id TEXT PRIMARY KEY REFERENCES player(id) ON DELETE CASCADE,
+     leagues   INTEGER NOT NULL
+   )`,
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
@@ -530,6 +541,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 13, statements: [...V13_SEEN_SCREEN] },
   { version: 14, statements: [...V14_AUDIO_MUTED] },
   { version: 15, statements: [...V15_AVATAR_FIGURE] },
+  { version: 16, statements: [...V16_WAYMARKER_SEEN] },
 ];
 
 /** The version a fully-migrated database reports. */

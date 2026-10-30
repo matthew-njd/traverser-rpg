@@ -1,7 +1,15 @@
 import { seedEmbeddedContent } from '../../content/store';
 import type { SqliteDatabase } from '../../db/types';
 import { PLAYER_ID, registeredDatabase } from '../../sync/__tests__/fixtures';
-import { type RoadState, readEncounters, readRoad, segmentFill } from '../road';
+import {
+  type RoadState,
+  markSeenLeagues,
+  readEncounters,
+  readRoad,
+  readSeenLeagues,
+  segmentFill,
+  walkSpan,
+} from '../road';
 
 /**
  * GDD 9's Road, derived on the device (M3/P5 decision).
@@ -240,5 +248,43 @@ describe('segmentFill', () => {
   /** The last released zone has no zone after it to bound the fill; its own final gate does. */
   it('bounds the final segment with its own last gate', () => {
     expect(segmentFill(imperion, undefined, 1_900)).toBeCloseTo(0.5);
+  });
+});
+
+/** GDD 9 §5 and GDD 14 §3.8 — the Waymarker walks once per batch of new Leagues, never backwards. */
+describe('the Waymarker walk', () => {
+  const olympion = { entryThresholdLeagues: 0, gates: [{ leagueThreshold: 220 }] } as never;
+  const valheon = { entryThresholdLeagues: 220, gates: [{ leagueThreshold: 900 }] } as never;
+
+  it('walks from where it was last shown to where it stands', () => {
+    const span = walkSpan(olympion, valheon, 55, 110);
+
+    expect(span?.from).toBeCloseTo(0.25);
+    expect(span?.to).toBeCloseTo(0.5);
+  });
+
+  it("starts at the segment's entry when the last showing was in the zone before", () => {
+    expect(walkSpan(valheon, undefined, 100, 560)?.from).toBe(0);
+  });
+
+  /** Otherwise the first open after this shipped would walk a veteran across a whole segment. */
+  it('does not walk before it has ever been shown', () => {
+    expect(walkSpan(olympion, valheon, null, 110)).toBeNull();
+  });
+
+  it('does not walk without new Leagues, or along a segment already full', () => {
+    expect(walkSpan(olympion, valheon, 110, 110)).toBeNull();
+    expect(walkSpan(olympion, valheon, 300, 400)).toBeNull();
+  });
+
+  it('remembers the Leagues it was last shown at', () => {
+    const db = registeredDatabase();
+
+    expect(readSeenLeagues(db)).toBeNull();
+
+    markSeenLeagues(db, 42);
+    markSeenLeagues(db, 57);
+
+    expect(readSeenLeagues(db)).toBe(57);
   });
 });

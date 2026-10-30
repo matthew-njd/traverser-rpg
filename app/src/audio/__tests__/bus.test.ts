@@ -192,6 +192,17 @@ it('replays an effect on its one warm player, at the effects volume (tech-04 §1
   expect(only('sfx_button_tap').volume).toBe(0);
 });
 
+/** The footstep loop must end with the walk, and the same warm player must still fire one-shot later. */
+it('loops an effect until it is stopped', () => {
+  bus.playSfx('sfx_footstep_loop', true);
+
+  expect(only('sfx_footstep_loop')).toMatchObject({ loop: true, playing: true });
+
+  bus.stopSfx('sfx_footstep_loop');
+
+  expect(only('sfx_footstep_loop')).toMatchObject({ loop: false, playing: false });
+});
+
 describe('fade shape (GDD 14 §5.1, amended 2026-10-28)', () => {
   it('holds constant power through a crossfade', () => {
     for (const t of [0, 0.25, 0.5, 0.75, 1]) {

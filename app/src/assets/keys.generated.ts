@@ -113,6 +113,12 @@ export type AvatarKey =
   | 'avatar_traverser_male'
   | 'avatar_traverser_female';
 
+export type ZoneArtKey =
+  | 'zone_olympion'
+  | 'zone_valheon'
+  | 'zone_imperion'
+  | 'zone_egypt_tbd';
+
 export type MusicKey =
   | 'mus_title'
   | 'mus_oldroads'
@@ -183,7 +189,7 @@ export type SfxKey =
   | 'sfx_volume';
 
 /** Keys with art — skills and moves are key types only, with no sprite. */
-export type SpriteKey = EnemyKey | ItemKey | GearKey | AvatarKey;
+export type SpriteKey = EnemyKey | ItemKey | GearKey | AvatarKey | ZoneArtKey;
 
 export type AudioKey = MusicKey | StingKey | SfxKey;
 

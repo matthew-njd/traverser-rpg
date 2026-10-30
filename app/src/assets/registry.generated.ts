@@ -57,6 +57,10 @@ export const SPRITES: Record<SpriteKey, number> = {
   gear_emberwise_verdict: require('../../assets/sprites/gear_emberwise_verdict.png'),
   avatar_traverser_male: require('../../assets/sprites/avatar_traverser_male.png'),
   avatar_traverser_female: require('../../assets/sprites/avatar_traverser_female.png'),
+  zone_olympion: require('../../assets/sprites/zone_olympion.png'),
+  zone_valheon: require('../../assets/sprites/zone_valheon.png'),
+  zone_imperion: require('../../assets/sprites/zone_imperion.png'),
+  zone_egypt_tbd: require('../../assets/sprites/zone_egypt_tbd.png'),
 };
 
 /** Keys still on their generated placeholder. A plate shows its glyph for these instead. */

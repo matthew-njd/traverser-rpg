@@ -134,6 +134,8 @@ Both Section 4 (battle items) and Section 8 (gear/loot) explicitly built their w
 
 Brief art-direction anchors for each Road segment, for Section 12/asset production to expand on:
 
+> **Amended 2026-10-29 (M6/P5d): each anchor is a one-ink skyline banner across the top of its zone card,** composed from game-icons.net parts under GDD 13 §11.4's house rule, so the palettes and lighting above survive as subject matter, not colour. Olympion is a temple on its hill among ruined columns; Valheon a longhouse among pines under far peaks drawn in line; Imperion a bridge and aqueduct among cypresses; the terminus the Sphinx, the pyramids and palms (`zone_*` in the manifest).
+
 - **Olympion:** Sun-bleached marble road, white stone columns and olive groves flanking the path, warm golden-hour lighting.
 - **Valheon:** Packed frost and dark timber planking, pine forest and jagged fjord cliffs, cool blue-grey palette with amber firelight accents near settlements.
 - **Imperion:** Paved Roman stone road (basalt sett pattern) with aqueduct arches in the distance, terracotta and cypress-green palette, more architecturally dense/urban than the prior two zones to sell "empire."

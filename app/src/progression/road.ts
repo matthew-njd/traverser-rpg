@@ -230,3 +230,37 @@ export function readEncounters(db: SqliteDatabase): PendingEncounter[] {
       source: row.source,
     }));
 }
+
+/**
+ * GDD 9 §5's forward-sync animation: the stretch of a segment's fill the Waymarker walks, from where
+ * it was last shown to where it stands now. Null when there is nothing to walk: no new Leagues, the
+ * first open after this shipped, or a segment already full at both ends.
+ */
+export function walkSpan(
+  zone: RoadZone,
+  next: RoadZone | undefined,
+  seenLeagues: number | null,
+  leagues: number,
+): { readonly from: number; readonly to: number } | null {
+  if (seenLeagues === null || leagues <= seenLeagues) {
+    return null;
+  }
+
+  const from = segmentFill(zone, next, seenLeagues);
+  const to = segmentFill(zone, next, leagues);
+
+  return to > from ? { from, to } : null;
+}
+
+/** The Leagues the Waymarker was last shown at, or null before it has ever been shown. */
+export function readSeenLeagues(db: SqliteDatabase): number | null {
+  return db.getFirstSync<{ leagues: number }>('SELECT leagues FROM waymarker_seen')?.leagues ?? null;
+}
+
+export function markSeenLeagues(db: SqliteDatabase, leagues: number): void {
+  db.runSync(
+    `INSERT INTO waymarker_seen (player_id, leagues) SELECT id, ? FROM player WHERE one_row = 1
+     ON CONFLICT (player_id) DO UPDATE SET leagues = excluded.leagues`,
+    [leagues],
+  );
+}

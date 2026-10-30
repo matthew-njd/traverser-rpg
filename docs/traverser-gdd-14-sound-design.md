@@ -240,7 +240,7 @@ Impact SFX are typed, not per-move — six type-flavored hit sounds plus a Physi
 
 | SFX | Trigger |
 |---|---|
-| `sfx_footstep_loop` | Ambient walking-cadence loop, used only where the Map has actual traversal animation (post-MVP full Map, not the MVP placeholder) — per the planning doc's explicit footstep-SFX callout |
+| `sfx_footstep_loop` | Ambient walking-cadence loop, used only where the Map has actual traversal animation (post-MVP full Map, not the MVP placeholder) — per the planning doc's explicit footstep-SFX callout *(Amended 2026-10-29, M6/P5d: the Map now has that traversal. The loop plays for the Waymarker's forward walk, GDD 13 §4.2, and stops on arrival, just before `stg_waymarker`.)* |
 | `sfx_encounter_start` | A wild encounter checkpoint or Explore roll triggers a battle (distinct from `stg_boss_intro`, which only fires for scripted boss gates) |
 
 > **Amended 2026-10-28 (M6/P3): Explore only.** An encounter is *granted*, and the player starts the fight later, so this sounds when an Explore roll comes back with a fight. Checkpoint grants arrive with the sync on opening the app, alongside level-up reveals and banners, and stay silent. Opening the fight itself plays `sfx_modal_open`.

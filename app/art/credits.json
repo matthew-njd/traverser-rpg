@@ -216,5 +216,21 @@
   "item_warhex": {
     "authors": ["Lorc"],
     "source": "https://game-icons.net/1x1/lorc/cracked-helm.html"
+  },
+  "zone_egypt_tbd": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/egyptian-pyramids.html"
+  },
+  "zone_imperion": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/aqueduct.html"
+  },
+  "zone_olympion": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/greek-temple.html"
+  },
+  "zone_valheon": {
+    "authors": ["Delapouite", "Lorc"],
+    "source": "https://game-icons.net/1x1/delapouite/viking-longhouse.html"
   }
 }
