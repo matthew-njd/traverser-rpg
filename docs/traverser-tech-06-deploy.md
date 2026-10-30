@@ -343,6 +343,8 @@ docker compose exec -T db pg_restore -U traverser -d traverser_restore_test --cl
 
 Then a spot-check query — a known `activity_day` row, the player's level, the `xp_curve` row count — and `dropdb`. **Run this once at M1, immediately after the first real step sync, and again at M5.** The M1 drill is the important one: it is the moment the backup stops being hypothetical, and the cheapest possible time to discover that the dump command has a typo in it.
 
+> **Run again at M6: passed 2026-10-30,** against the 2026-10-29 18:33 nightly, restored from its Google Drive copy (byte-identical to the local one). Checked against the ledger, not against remembered numbers: live rows up to the dump's time and the restored rows agree on `sync_delta` (251 rows, 295,960 steps, 27,434 XP), `client_operation`, the bestiary, `xp_curve` (60 rows, Level 60's `xp_to_next` still null), and the migration history. Each difference traced to rows written after the dump: two late Oct 28 step deltas (+80 steps, +4 XP), thirteen HR sessions synced after the dump, and one Warden's Guard Matthew discarded (GDD 8 §5.5). Dropped afterwards.
+
 **10.7 M1, not M5.** M0 contains no real data and nothing worth protecting. The first genuine step sync is the moment this section becomes mandatory, and it should be in place *before* that sync, not after it.
 
 ---
@@ -369,6 +371,8 @@ Step 5 is the only genuinely annoying part, and it is annoying because of an And
 **11.2 What would make it expensive, and is therefore avoided now.** Host-absolute paths in the Compose file (use relative paths and named volumes). Windows-specific scripting anywhere in the critical path — §10.3's Task Scheduler task is the one exception, and it is deliberately a thin wrapper around a portable `pg_dump` command line, so a Linux host replaces it with a cron entry and changes nothing else. Anything baked into the image that should be configuration (§4). Data living anywhere but the named volume.
 
 **11.3 The trigger to watch for.** The scheduled decision point is M5. The one thing that would justify pulling it earlier is wanting the API reachable while the desktop is off — which is a different requirement from the one §8 solves, and would show up as walks routinely syncing a day late rather than during the walk. Until that is an actual annoyance rather than an anticipated one, the desktop is sufficient and §1.1 stands.
+
+> **Decided 2026-10-30 (M6/P6): not yet.** Matthew's call. Walks do not routinely sync a day late, so the trigger above has not fired, and the desktop stays the host. The decision reopens when it does fire, and the move is still §11.1's six steps. $0.
 
 ---
 
