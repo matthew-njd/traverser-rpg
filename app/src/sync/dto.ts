@@ -67,6 +67,16 @@ function flag(value: unknown, field: string): boolean {
   return value;
 }
 
+function figure(value: unknown, field: string): AvatarFigure {
+  const found = AVATAR_FIGURES.find((known) => known === value);
+
+  if (found === undefined) {
+    throw new WireFormatError(field);
+  }
+
+  return found;
+}
+
 // ---- Outbound ---------------------------------------------------------------------------------
 
 /** `client_delta_id` is sent exactly as minted (tech-02 §5) — never regenerated here. */
@@ -460,7 +470,13 @@ export interface PlayerSettings {
   /** Null means *not yet collected*, not "unknown age" (tech-03 §1.4). */
   readonly birthYear: number | null;
   readonly audioMuted: boolean;
+  readonly avatarFigure: AvatarFigure;
 }
+
+/** The Traverser's figure on the Avatar plate (GDD 13 §3.1). */
+export type AvatarFigure = 'male' | 'female';
+
+export const AVATAR_FIGURES: readonly AvatarFigure[] = ['male', 'female'];
 
 /**
  * `GET /players/me` and a registration body — tech-02 §3's one-shot repair path. Drift is fixed by
@@ -530,6 +546,8 @@ export function parseProfile(value: unknown, at = 'profile'): PlayerProfile {
       birthYear: nullableInt(settings.birth_year, `${at}.settings.birth_year`),
       // Absent from an API older than M6/P2, which must not fail every profile read.
       audioMuted: settings.audio_muted === undefined ? false : flag(settings.audio_muted, `${at}.settings.audio_muted`),
+      // Absent from an API older than M6/P5c.
+      avatarFigure: settings.avatar_figure === undefined ? 'male' : figure(settings.avatar_figure, `${at}.settings.avatar_figure`),
     },
     unlockedZoneIds: array(body.unlocked_zone_ids, `${at}.unlocked_zone_ids`).map((id, index) =>
       text(id, `${at}.unlocked_zone_ids[${index}]`),
@@ -616,6 +634,7 @@ export interface SettingsPayload {
   readonly audioMuted?: boolean | null;
   /** `HH:00:00`, the Daily Nudge's hour (GDD 11 §7.1, amended 2026-10-28). */
   readonly dailyReminderTime?: string | null;
+  readonly avatarFigure?: AvatarFigure | null;
 }
 
 export function toWireSettings(payload: SettingsPayload): Json {
@@ -626,6 +645,7 @@ export function toWireSettings(payload: SettingsPayload): Json {
     sfx_volume: payload.sfxVolume ?? null,
     audio_muted: payload.audioMuted ?? null,
     daily_reminder_time: payload.dailyReminderTime ?? null,
+    avatar_figure: payload.avatarFigure ?? null,
   };
 }
 

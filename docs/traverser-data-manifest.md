@@ -124,6 +124,13 @@ Weapon/Armor/Accessory — one tier ladder, zone-agnostic, one silhouette per sl
 Trinkets (zone-specific, the only bespoke per-item art in the game):
 `gear_skyroad_sigil` (Skyroad Sigil, heroic, Cyclops) · `gear_frostroad_sigil` (Frostroad Sigil, heroic, Fenrir) · `gear_sunroad_sigil` (Sunroad Sigil, heroic, Griffin) · `gear_gatekeepers_ruse` (mythic, Cerberus repeat) · `gear_gatekeepers_snare` (divine, Cerberus first kill) · `gear_coilbreakers_oath` (mythic, Jörmungandr repeat) · `gear_coilbreakers_wrath` (divine, Jörmungandr first kill) · `gear_emberwise_ward` (mythic, Cacus repeat) · `gear_emberwise_verdict` (divine, Cacus first kill). Heroic Sigils grant **no move**.
 
+## Avatar (GDD 13 §3.1 — added 2026-10-29, M6/P5c)
+The Traverser's figure on the Avatar plate, chosen at onboarding Screen 4 and in Settings. Gear is shown in the plate's corners from the `gear_` sprites, so a figure carries no gear layers.
+| Key | Display name |
+|---|---|
+| `avatar_traverser_male` | Male figure |
+| `avatar_traverser_female` | Female figure |
+
 ## Zone Gates (Section 9 §3 — added 2026-07-26 per DECISIONS 2026-07-25)
 Content keys for the `zone_gate` table (tech-01 §3). Thresholds are fixtures §8; not asset keys — no art or audio export carries these.
 | Key | Zone | Boss | Kind | League threshold | Unlocks |

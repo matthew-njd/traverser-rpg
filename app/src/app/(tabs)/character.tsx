@@ -13,16 +13,23 @@ import {
 import { playSting } from '@/audio/bus';
 import { getDatabase } from '@/db/open';
 import { loadBattleContent } from '@/battle/content';
-import { readEquippedGear, readSnapshot } from '@/battle/mirror';
+import { type OwnedGear, readEquippedGear, readOwnedGear, readSnapshot } from '@/battle/mirror';
 import { type Loadout, readLoadout } from '@/battle/session';
 import { readContentRows } from '@/content/bundle';
 import { type Labels, loadLabels } from '@/content/labels';
 import { type EquippedBonus, effectiveStats } from '@/progression/stats';
 import { maxVigorFor, vigorReadout } from '@/progression/vigor';
 import { syncNow } from '@/runtime';
-import type { ActivityDay } from '@/sync/dto';
+import type { ActivityDay, AvatarFigure } from '@/sync/dto';
 import { dayBefore, deviceLocalDates } from '@/health/localDate';
-import { type MirrorPlayer, isCredited, isRestTagged, readActivityDays, readPlayer } from '@/sync/mirror';
+import {
+  type MirrorPlayer,
+  isCredited,
+  isRestTagged,
+  readActivityDays,
+  readAvatarFigure,
+  readPlayer,
+} from '@/sync/mirror';
 import { type StatDeltas, allocateStatPoints, setSkills, tagRestDay } from '@/sync/writes';
 import { useAppStore } from '@/state/appStore';
 import { usePlayerStore } from '@/state/playerStore';
@@ -35,6 +42,7 @@ import { type NextStreakMilestone, Streak } from '@/ui/Streak';
 import { XpBar } from '@/ui/XpBar';
 import { SkillsCard } from '@/ui/SkillsCard';
 import { StatPanel } from '@/ui/StatPanel';
+import { TraverserSprite } from '@/ui/TraverserSprite';
 import { colors, radius, space, tabular, type } from '@/ui/theme';
 
 /**
@@ -61,6 +69,8 @@ export default function Character() {
   const [pendingVigor, setPendingVigor] = useState(0);
   const [ladder, setLadder] = useState<readonly NextStreakMilestone[]>([]);
   const [labels, setLabels] = useState<Labels>(new Map());
+  const [worn, setWorn] = useState<readonly OwnedGear[]>([]);
+  const [figure, setFigure] = useState<AvatarFigure>('male');
 
   const slice = usePlayerStore();
   const banner = useAppStore((state) => state.banner);
@@ -83,6 +93,8 @@ export default function Character() {
     }
 
     setEquipped(readEquippedGear(db));
+    setWorn(readOwnedGear(db).filter((piece) => piece.equippedSlot !== null));
+    setFigure(readAvatarFigure(db));
     setDays(readActivityDays(db, ACTIVITY_LOG_LIMIT));
     const today = deviceLocalDates.dateOf(Date.now());
     const yesterday = dayBefore(today);
@@ -230,7 +242,13 @@ export default function Character() {
         lives inside it.
       */}
       <Pane shown={view === 'avatar'} pull={pull}>
-        <Avatar leagues={slice.leagues} lifetimeSteps={slice.lifetimeSteps} />
+        <Avatar
+          leagues={slice.leagues}
+          lifetimeSteps={slice.lifetimeSteps}
+          figure={figure}
+          worn={worn}
+          labels={labels}
+        />
 
         <Streak
           current={slice.streak.current}
@@ -311,13 +329,14 @@ function Pane({
   );
 }
 
-/** Placeholder until the art phase (tech-04 §9.3). The layered-gear sprite is M3. */
-function Avatar({ leagues, lifetimeSteps }: { leagues: number; lifetimeSteps: number }) {
+function Avatar({
+  leagues,
+  lifetimeSteps,
+  ...sprite
+}: { leagues: number; lifetimeSteps: number } & Parameters<typeof TraverserSprite>[0]) {
   return (
     <View style={styles.avatarPane}>
-      <View style={styles.sprite}>
-        <Text style={styles.spriteGlyph}>ᛝ</Text>
-      </View>
+      <TraverserSprite {...sprite} />
 
       <Card>
         <Heading>The Waymarker</Heading>
@@ -339,17 +358,6 @@ const styles = StyleSheet.create({
   hidden: { display: 'none' },
 
   avatarPane: { flex: 1, gap: space.lg, alignItems: 'stretch' },
-  sprite: {
-    flex: 1,
-    minHeight: 160,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  spriteGlyph: { fontSize: 72, color: colors.accent },
 
 
   pending: { ...type.small, ...tabular, color: colors.gold },

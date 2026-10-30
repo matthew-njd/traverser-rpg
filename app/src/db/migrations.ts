@@ -509,6 +509,11 @@ const V14_AUDIO_MUTED: readonly string[] = [
   'ALTER TABLE player_settings ADD COLUMN audio_muted INTEGER NOT NULL DEFAULT 0',
 ];
 
+/** Version 15 — GDD 13 §3.1's figure choice, mirrored like the other synced settings. */
+const V15_AVATAR_FIGURE: readonly string[] = [
+  "ALTER TABLE player_settings ADD COLUMN avatar_figure TEXT NOT NULL DEFAULT 'male'",
+];
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, statements: [...V1_MIRROR, ...V1_DEVICE] },
   { version: 2, statements: [...V2_PROVISIONAL] },
@@ -524,6 +529,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 12, statements: [...V12_LORE] },
   { version: 13, statements: [...V13_SEEN_SCREEN] },
   { version: 14, statements: [...V14_AUDIO_MUTED] },
+  { version: 15, statements: [...V15_AVATAR_FIGURE] },
 ];
 
 /** The version a fully-migrated database reports. */

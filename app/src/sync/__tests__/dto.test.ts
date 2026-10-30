@@ -2,11 +2,12 @@ import type { MintedDelta } from '../../health/deltas';
 import {
   WireFormatError,
   parseContentVersion,
+  parseProfile,
   parseSyncResponse,
   toWireDelta,
   toWireSyncRequest,
 } from '../dto';
-import { wireActivityDay, wirePlayer, wireSyncResponse } from './fixtures';
+import { wireActivityDay, wirePlayer, wireProfile, wireSettings, wireSyncResponse } from './fixtures';
 
 /**
  * tech-04 §8.1's single `snake_case` ↔ `camelCase` boundary. Nowhere else in the app sees a wire key,
@@ -152,5 +153,27 @@ describe('inbound', () => {
   it('reads the content version poll', () => {
     expect(parseContentVersion({ content_version: 7 })).toBe(7);
     expect(() => parseContentVersion({})).toThrow(/version/);
+  });
+});
+
+describe('the figure setting', () => {
+  const figureOf = (settings: Record<string, unknown>) =>
+    parseProfile(wireProfile({ settings: wireSettings(settings) })).settings.avatarFigure;
+
+  it('reads the chosen figure', () => {
+    expect(figureOf({ avatar_figure: 'female' })).toBe('female');
+  });
+
+  /** An API older than M6/P5c sends no figure, and every profile read must not fail for it. */
+  it('treats an absent figure as the male one', () => {
+    const settings = wireSettings();
+
+    delete settings.avatar_figure;
+
+    expect(figureOf(settings)).toBe('male');
+  });
+
+  it('rejects a figure the app cannot draw', () => {
+    expect(() => figureOf({ avatar_figure: 'other' })).toThrow(WireFormatError);
   });
 });

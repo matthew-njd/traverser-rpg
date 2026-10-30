@@ -173,8 +173,10 @@ is the source; the PNGs are built from it and never edited by hand. From `app/`:
 3. **Credit it** in `art/credits.json`: the author or authors, and the icon's game-icons.net URL.
    A test fails until every source is credited. Settings' Credits row is built from this file.
    A composition credits the authors of its parts. Art drawn entirely for Traverser is
-   `{ "authors": [], "source": "original" }`. Gear shares one silhouette per slot (GDD 8), so each
-   of a slot's four tier keys gets its own copy of the same SVG.
+   `{ "authors": [], "source": "original" }`. Public-domain art from elsewhere is
+   `{ "authors": [], "source": "<its page>", "licence": "CC0" }`: check the page says CC0 before
+   you download. Gear shares one silhouette per slot (GDD 8), so each of a slot's four tier keys
+   gets its own copy of the same SVG.
 4. **Export and register:**
    ```
    npm run art:export   # every art/*.svg → assets/sprites/{key}.png, @2x, @3x

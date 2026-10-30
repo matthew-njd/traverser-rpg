@@ -3,6 +3,7 @@ import { transact } from '../db/transaction';
 import type { SqliteDatabase } from '../db/types';
 import type {
   ActivityDay,
+  AvatarFigure,
   PlayerProfile,
   PlayerSettings,
   PlayerState,
@@ -374,14 +375,15 @@ export function writeActivityDays(
 
 function writeSettingsRow(db: SqliteDatabase, playerId: string, settings: PlayerSettings): void {
   db.runSync(
-    `INSERT INTO player_settings (player_id, daily_reminder_time, music_volume, sfx_volume, birth_year, audio_muted)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO player_settings (player_id, daily_reminder_time, music_volume, sfx_volume, birth_year, audio_muted, avatar_figure)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (player_id) DO UPDATE SET
        daily_reminder_time = excluded.daily_reminder_time,
        music_volume = excluded.music_volume,
        sfx_volume = excluded.sfx_volume,
        birth_year = excluded.birth_year,
-       audio_muted = excluded.audio_muted`,
+       audio_muted = excluded.audio_muted,
+       avatar_figure = excluded.avatar_figure`,
     [
       playerId,
       settings.dailyReminderTime,
@@ -389,6 +391,7 @@ function writeSettingsRow(db: SqliteDatabase, playerId: string, settings: Player
       settings.sfxVolume,
       settings.birthYear,
       settings.audioMuted ? 1 : 0,
+      settings.avatarFigure,
     ],
   );
 }
@@ -500,6 +503,17 @@ export function writeSettings(db: SqliteDatabase, settings: SettingsPayload): vo
   if (settings.dailyReminderTime != null) {
     db.runSync('UPDATE player_settings SET daily_reminder_time = ?', [settings.dailyReminderTime]);
   }
+
+  if (settings.avatarFigure != null) {
+    db.runSync('UPDATE player_settings SET avatar_figure = ?', [settings.avatarFigure]);
+  }
+}
+
+/** GDD 13 §3.1's figure. The male figure until registration creates the row. */
+export function readAvatarFigure(db: SqliteDatabase): AvatarFigure {
+  const figure = db.getFirstSync<{ avatar_figure: AvatarFigure }>('SELECT avatar_figure FROM player_settings')?.avatar_figure;
+
+  return figure ?? 'male';
 }
 
 /** The Daily Nudge's hour. Never chosen is GDD 11 §7.1's 7 PM. */

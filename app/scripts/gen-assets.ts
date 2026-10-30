@@ -77,7 +77,9 @@ const musicKeys = atLeast(sectionKeys(manifest, 'Audio IDs', 'mus_'), 19, 'music
 const stingKeys = atLeast(sectionKeys(manifest, 'Audio IDs', 'stg_'), 14, 'stinger');
 const sfxKeys = atLeast(sectionKeys(manifest, 'Audio IDs', 'sfx_'), 30, 'sfx');
 
-const spriteKeys = [...enemyKeys, ...itemKeys, ...gearKeys];
+const avatarKeys = atLeast(sectionKeys(manifest, 'Avatar', 'avatar_'), 2, 'avatar');
+
+const spriteKeys = [...enemyKeys, ...itemKeys, ...gearKeys, ...avatarKeys];
 const audioKeys = [...musicKeys, ...stingKeys, ...sfxKeys];
 
 // ---------------------------------------------------------------------------
@@ -324,11 +326,12 @@ ${union('GearMoveKey', gearMoveKeys)}
 ${union('EnemyMoveKey', enemyMoveKeys)}
 ${union('ItemKey', itemKeys)}
 ${union('GearKey', gearKeys)}
+${union('AvatarKey', avatarKeys)}
 ${union('MusicKey', musicKeys)}
 ${union('StingKey', stingKeys)}
 ${union('SfxKey', sfxKeys)}
 /** Keys with art — skills and moves are key types only, with no sprite. */
-export type SpriteKey = EnemyKey | ItemKey | GearKey;
+export type SpriteKey = EnemyKey | ItemKey | GearKey | AvatarKey;
 
 export type AudioKey = MusicKey | StingKey | SfxKey;
 
@@ -361,6 +364,6 @@ fs.writeFileSync(path.join(generatedDir, 'registry.generated.ts'), registryTs);
 
 console.log(
   `gen-assets: ${spriteKeys.length} sprites, ${audioKeys.length} audio ` +
-    `(${enemyKeys.length} enemies, ${itemKeys.length} items, ${gearKeys.length} gear; ` +
+    `(${enemyKeys.length} enemies, ${itemKeys.length} items, ${gearKeys.length} gear, ${avatarKeys.length} avatar; ` +
     `${musicKeys.length} music, ${stingKeys.length} stingers, ${sfxKeys.length} sfx) — registry written`,
 );

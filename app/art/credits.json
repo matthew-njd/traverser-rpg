@@ -1,4 +1,14 @@
 {
+  "avatar_traverser_female": {
+    "authors": [],
+    "source": "https://svgsilh.com/image/1905054.html",
+    "licence": "CC0"
+  },
+  "avatar_traverser_male": {
+    "authors": [],
+    "source": "https://svgsilh.com/image/2009503.html",
+    "licence": "CC0"
+  },
   "enemy_cacus": {
     "authors": ["Delapouite"],
     "source": "https://game-icons.net/1x1/delapouite/rock-golem.html"

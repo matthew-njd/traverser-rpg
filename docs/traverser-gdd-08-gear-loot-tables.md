@@ -253,6 +253,7 @@ A theoretical full-Divine-loadout Level 60 Traverser (+19 Might/Resolve/Vigor, +
 - **Section 12 (Story & Lore): FULFILLED.** The "next zone's reward comes from this zone's final boss" pattern (§4.2) is surfaced explicitly in Section 12's boss-defeat text — Cerberus's "a trick worth carrying north" (§5.2), Jörmungandr's "a war learned from the Serpent's own fury" (§6.2), and Cacus's defeat text echoing Emberwise Verdict's own flavor line (§7.2).
 - **Section 13 (UI Architecture): FULFILLED.** The Equip/Inventory screen distinct from the battle-item inventory — 4 equip slots + gear comparison view + the keep/discard overflow prompt from §5.5 — is delivered in Section 13 §5.1, and the pre-first-kill Trinket surfacing is delivered via the Boss Gate Detail screen (Section 13 §4.3).
 - **Art phase (future, separate Claude Project per planning prompt):** the layered-PNG gear overlay pipeline (planning prompt item 9) is out of this GDD section's scope but depends on the slot/tier structure defined here — specifically that Weapon/Armor/Accessory are zone-agnostic (one silhouette per slot, palette-varied by tier) while Trinkets need bespoke per-zone art at Mythic/Divine tier. This should be handed off as a structural constraint when that project starts.
+  > **Amended 2026-10-29 (M6/P5c):** there is no overlay pipeline. The avatar shows each worn piece's own sprite in a corner of its plate (GDD 13 §3.1, amended), so one silhouette per slot holds and the tier shows as the corner's border.
 
 ---
 

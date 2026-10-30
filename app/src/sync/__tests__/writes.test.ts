@@ -5,7 +5,7 @@ import { count, enqueue, peek } from '../../db/outbox';
 import type { SqliteDatabase } from '../../db/types';
 import { recordingDatabase } from '../../health/__tests__/fixtures';
 import { effectiveStats } from '../../progression/stats';
-import { isRestTagged, readAudioSettings, readBirthYear, readPlayer } from '../mirror';
+import { isRestTagged, readAudioSettings, readAvatarFigure, readBirthYear, readPlayer } from '../mirror';
 import {
   AllocationError,
   EquipError,
@@ -176,6 +176,17 @@ describe('settings', () => {
 
     expect(readAudioSettings(db)).toEqual({ music: 0.4, sfx: 0, muted: true });
     expect(readBirthYear(db)).toBe(1990);
+    expect(peek(db, 10)[0]?.kind).toBe('settings');
+  });
+
+  it('applies the figure locally and queues it, starting from the male figure', () => {
+    const db = registeredDatabase();
+
+    expect(readAvatarFigure(db)).toBe('male');
+
+    changeSettings(db, { dailyStepGoal: null, birthYear: null, avatarFigure: 'female' }, NOW);
+
+    expect(readAvatarFigure(db)).toBe('female');
     expect(peek(db, 10)[0]?.kind).toBe('settings');
   });
 });

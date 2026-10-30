@@ -33,6 +33,7 @@ const BASE_DP: readonly (readonly [string, number])[] = [
   ['enemy_', 160],
   ['item_', 64],
   ['gear_', 64],
+  ['avatar_', 240],
 ];
 
 /** Each side's margin, as a share of the canvas, so no shape touches its plate's edge. */

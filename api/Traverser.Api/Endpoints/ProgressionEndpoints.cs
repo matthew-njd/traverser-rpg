@@ -520,6 +520,11 @@ public static class ProgressionEndpoints
                 "daily_reminder_time must be on the hour, from 06:00 to 21:00.");
         }
 
+        if (request.AvatarFigure is not (null or "male" or "female"))
+        {
+            return ApiProblem.BadRequest(ApiProblem.ValidationFailed, "avatar_figure must be male or female.");
+        }
+
         var player = await db.Players.FirstOrDefaultAsync(p => p.Id == current.PlayerId, ct);
         var settings = await db.PlayerSettings.FirstOrDefaultAsync(s => s.PlayerId == current.PlayerId, ct);
 
@@ -547,6 +552,7 @@ public static class ProgressionEndpoints
         settings.SfxVolume = sfx ?? settings.SfxVolume;
         settings.AudioMuted = request.AudioMuted ?? settings.AudioMuted;
         settings.DailyReminderTime = request.DailyReminderTime ?? settings.DailyReminderTime;
+        settings.AvatarFigure = request.AvatarFigure ?? settings.AvatarFigure;
 
         await db.SaveChangesAsync(ct);
 

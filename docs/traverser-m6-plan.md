@@ -162,7 +162,9 @@ silhouettes (CC BY 3.0), edited to match, and lives in this repo:
   into every plate, falling back to today's glyph while a key is still a placeholder.
 - **P5b — The 52 manifest sprites.** Enemies, items and gear.
 - **P5c — The avatar and layered gear.** Needs a manifest key for the Traverser's base figure, and
-  an answer to black-on-black layers merging into one shape.
+  an answer to black-on-black layers merging into one shape. *Answered 2026-10-29: no layers. The
+  figure is a CC0 silhouette the player chooses, male or female, with gear in the plate's corners
+  (DECISIONS 2026-10-29).*
 - **P5d — The Road.** Zone art (new manifest keys), and the Waymarker's forward animation with
   `stg_waymarker` and `sfx_footstep_loop`.
 - **P5e — Battle motion and iconography.** T5 §13's choreography as transforms (lunge, hit, faint),

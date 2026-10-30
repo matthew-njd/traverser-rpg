@@ -73,6 +73,8 @@ Not skippable on first launch (it's brief enough not to warrant it); skippable o
 
 Simple text input, 20-character limit, default suggestion **"Traverser"** pre-filled so a player who doesn't care can just tap through. No character customization at this stage, consistent with the planning doc's fixed default appearance for v1.
 
+> **Amended 2026-10-29 (M6/P5c): the player chooses a male or female figure here.** Matthew's call, for player customization. It is the only appearance choice, and it is changeable later in Settings (GDD 13 §7). The choice is shown only once more than one figure has art; until then every Traverser is the male figure (`DECISIONS.md` 2026-10-29).
+
 ### 5.2 Starting Gear & Items (Screen 5)
 
 A short reveal screen, framed as the road provisioning the Traverser before their first steps:

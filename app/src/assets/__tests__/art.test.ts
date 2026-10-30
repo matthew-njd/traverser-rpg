@@ -17,11 +17,14 @@ const sources = fs
 it('credits every art source, and credits nothing that is not one', () => {
   expect(Object.keys(credits).sort()).toEqual([...sources].sort());
 
-  // Art drawn for Traverser owes no attribution; anything else must name its authors and source.
+  // Art drawn for Traverser owes nothing; CC0 owes a source but no author; CC BY owes both.
   for (const credit of Object.values(credits)) {
-    if (credit.source !== 'original') {
+    if (credit.source === 'original') continue;
+
+    expect(credit.source).toMatch(/^https:\/\//);
+
+    if (!('licence' in credit && credit.licence === 'CC0')) {
       expect(credit.authors.length).toBeGreaterThan(0);
-      expect(credit.source).toMatch(/^https:\/\//);
     }
   }
 });

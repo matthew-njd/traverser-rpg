@@ -273,7 +273,8 @@ public sealed record UpdateSettingsRequest(
     string? MusicVolume = null,
     string? SfxVolume = null,
     bool? AudioMuted = null,
-    TimeOnly? DailyReminderTime = null);
+    TimeOnly? DailyReminderTime = null,
+    string? AvatarFigure = null);
 
 /// <summary>
 /// <c>POST /api/v1/players/me/rest-days</c> — GDD 11 §3.1's manual tag, which is also GDD 2 §6's

@@ -17,11 +17,19 @@ import {
 } from '@/onboarding/registration';
 import { currentIdentity, refreshIdentity, rescheduleNudges, syncNow } from '@/runtime';
 import { ApiStatusError, ApiUnreachableError } from '@/sync/api';
-import { type AudioSettings, readAudioSettings, readBirthYear, readPlayer, readReminderHour } from '@/sync/mirror';
+import {
+  type AudioSettings,
+  readAudioSettings,
+  readAvatarFigure,
+  readBirthYear,
+  readPlayer,
+  readReminderHour,
+} from '@/sync/mirror';
 import { MIN_DAILY_STEP_GOAL, changeSettings } from '@/sync/writes';
 import { useAppStore } from '@/state/appStore';
 import { usePlayerStore } from '@/state/playerStore';
 import { Body, Button, Card, Field, Heading, Screen } from '@/ui/primitives';
+import { FigurePicker, availableFigures } from '@/ui/TraverserSprite';
 import { MIN_TOUCH_TARGET, colors, radius, space, type } from '@/ui/theme';
 
 /**
@@ -109,6 +117,8 @@ export default function Settings() {
       </Card>
 
       <Button label={saved ? 'Saved' : 'Save'} disabled={!goalValid || !yearValid} onPress={save} />
+
+      <Figure />
 
       <Audio />
 
@@ -336,6 +346,29 @@ function messageForRestore(caught: unknown): string {
   }
 
   return 'That identity could not be restored.';
+}
+
+/** GDD 13 §3.1's figure, the same choice as onboarding Screen 4. Saved on tap, like a toggle. */
+function Figure() {
+  const [figure, setFigure] = useState(() => readAvatarFigure(getDatabase()));
+
+  if (availableFigures().length < 2) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <Heading>Traverser</Heading>
+      <FigurePicker
+        value={figure}
+        onChange={(next) => {
+          setFigure(next);
+          changeSettings(getDatabase(), { dailyStepGoal: null, birthYear: null, avatarFigure: next }, Date.now());
+          void syncNow(Date.now(), { withNewWork: true }).catch(() => undefined);
+        }}
+      />
+    </Card>
+  );
 }
 
 /**

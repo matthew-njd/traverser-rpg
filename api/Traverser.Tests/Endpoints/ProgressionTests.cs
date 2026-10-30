@@ -370,6 +370,41 @@ public class ProgressionTests(TraverserApiFixture api)
         Assert.Equal("18:00:00", settings.GetProperty("daily_reminder_time").GetString());
     }
 
+    [Fact]
+    public async Task Settings_start_on_the_male_figure_and_store_the_choice()
+    {
+        var (_, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        var before = await client.GetFromJsonAsync<JsonElement>("/api/v1/players/me", TraverserApiFixture.Json);
+
+        Assert.Equal("male", before.GetProperty("settings").GetProperty("avatar_figure").GetString());
+
+        var response = await client.PatchAsJsonAsync(
+            "/api/v1/players/me/settings", new { avatar_figure = "female" }, TraverserApiFixture.Json);
+
+        response.EnsureSuccessStatusCode();
+
+        var settings = (await response.Content.ReadFromJsonAsync<JsonElement>(TraverserApiFixture.Json))
+            .GetProperty("settings");
+
+        Assert.Equal("female", settings.GetProperty("avatar_figure").GetString());
+    }
+
+    [Theory]
+    [InlineData("Female")]
+    [InlineData("other")]
+    [InlineData("")]
+    public async Task An_unknown_figure_is_rejected(string figure)
+    {
+        var (_, token) = await api.RegisterAsync();
+
+        var response = await api.CreateAuthenticatedClient(token).PatchAsJsonAsync(
+            "/api/v1/players/me/settings", new { avatar_figure = figure }, TraverserApiFixture.Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     /// <summary>Off the hour, or a window that would run past 22:00 or start before 06:00.</summary>
     [Theory]
     [InlineData("18:30:00")]

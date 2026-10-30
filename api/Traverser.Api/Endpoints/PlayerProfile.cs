@@ -103,7 +103,8 @@ internal static class PlayerProfile
                 MusicVolume: Decimal2(row.Settings.MusicVolume),
                 SfxVolume: Decimal2(row.Settings.SfxVolume),
                 BirthYear: row.Settings.BirthYear,
-                AudioMuted: row.Settings.AudioMuted),
+                AudioMuted: row.Settings.AudioMuted,
+                AvatarFigure: row.Settings.AvatarFigure),
 
             UnlockedZoneIds: row.ZoneIds,
 

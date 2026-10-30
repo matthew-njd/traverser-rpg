@@ -293,6 +293,8 @@ Split from `player` so UI preference writes never contend with progression write
 
 > **Amended 2026-10-28 (M6/P2):** `audio_muted boolean not null default false` added, for GDD 13 §7's Mute All toggle, which this table had no column for. It is last-write-wins like the volumes beside it, and muting leaves both volumes untouched, so unmuting restores them (`DECISIONS.md` 2026-10-28).
 
+> **Amended 2026-10-29 (M6/P5c):** `avatar_figure varchar(8) not null default 'male'`, checked to `male` or `female`, added for GDD 13 §3.1's figure choice. Last-write-wins like the rest of the table (`DECISIONS.md` 2026-10-29).
+
 ```sql
 create table auth_token (
   token_hash   bytea primary key,           -- sha256 of the opaque token; the token itself is never stored

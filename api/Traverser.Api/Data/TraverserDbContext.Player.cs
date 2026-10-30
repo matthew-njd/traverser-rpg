@@ -44,14 +44,18 @@ public partial class TraverserDbContext
         modelBuilder.Entity<PlayerSettings>(entity =>
         {
             entity.ToTable("player_settings", t =>
+            {
                 // A data-sanity bound with no GDD source — a typo cannot produce an absurd HRmax.
                 // Real validation (a plausible minimum age) belongs on the client at Screen 3.
-                t.HasCheckConstraint("ck_player_settings_birth_year", "birth_year between 1900 and 2100"));
+                t.HasCheckConstraint("ck_player_settings_birth_year", "birth_year between 1900 and 2100");
+                t.HasCheckConstraint("ck_player_settings_avatar_figure", "avatar_figure in ('male', 'female')");
+            });
 
             entity.HasKey(e => e.PlayerId);
             entity.Property(e => e.MusicVolume).HasPrecision(3, 2).HasDefaultValue(1.0m);
             entity.Property(e => e.SfxVolume).HasPrecision(3, 2).HasDefaultValue(1.0m);
             entity.Property(e => e.AudioMuted).HasDefaultValue(false);
+            entity.Property(e => e.AvatarFigure).HasMaxLength(8).HasDefaultValue("male");
 
             entity.HasOne(e => e.Player).WithOne()
                 .HasForeignKey<PlayerSettings>(e => e.PlayerId).OnDelete(DeleteBehavior.Cascade);

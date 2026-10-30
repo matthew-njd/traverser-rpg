@@ -426,6 +426,8 @@ Every manifest key gets a placeholder file from the first build: a flat-coloured
 
 ### 9.4 Sprite composition — layered gear
 
+> **Amended 2026-10-29 (M6/P5c): there are no layers.** GDD 13 §3.1 now puts gear in the plate's corners, so `<TraverserSprite>` (`src/ui/TraverserSprite.tsx`) draws the chosen figure, then four absolutely-positioned slot plates, each a gear sprite with its tier's border. Nothing overlaps, so the z-order and clipping cautions below no longer bind. A figure whose art is still a placeholder falls back to the male one, and the picker offers only figures with art. The rest of this section is kept as the record of the layered design.
+
 GDD 13 §3.1 requires the Character avatar to render with equipped gear overlays (Section 8's layered-silhouette pipeline), and the same composed sprite is the Map's Waymarker (GDD 13 §4.2).
 
 One `<TraverserSprite>` component: a base sprite plus up to four absolutely-positioned overlay layers, in fixed z-order **weapon → armor → accessory → trinket**, each resolved from the equipped `GearKey`. Layers share one coordinate space and one nominal frame size fixed at the art phase; the component scales the whole stack, never individual layers.

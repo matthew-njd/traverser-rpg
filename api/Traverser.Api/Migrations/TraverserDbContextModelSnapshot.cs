@@ -3275,6 +3275,14 @@ namespace Traverser.Api.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("audio_muted");
 
+                    b.Property<string>("AvatarFigure")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasDefaultValue("male")
+                        .HasColumnName("avatar_figure");
+
                     b.Property<int?>("BirthYear")
                         .HasColumnType("integer")
                         .HasColumnName("birth_year");
@@ -3302,6 +3310,8 @@ namespace Traverser.Api.Migrations
 
                     b.ToTable("player_settings", null, t =>
                         {
+                            t.HasCheckConstraint("ck_player_settings_avatar_figure", "avatar_figure in ('male', 'female')");
+
                             t.HasCheckConstraint("ck_player_settings_birth_year", "birth_year between 1900 and 2100");
                         });
                 });

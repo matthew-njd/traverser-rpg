@@ -109,6 +109,10 @@ export type GearKey =
   | 'gear_emberwise_ward'
   | 'gear_emberwise_verdict';
 
+export type AvatarKey =
+  | 'avatar_traverser_male'
+  | 'avatar_traverser_female';
+
 export type MusicKey =
   | 'mus_title'
   | 'mus_oldroads'
@@ -179,7 +183,7 @@ export type SfxKey =
   | 'sfx_volume';
 
 /** Keys with art — skills and moves are key types only, with no sprite. */
-export type SpriteKey = EnemyKey | ItemKey | GearKey;
+export type SpriteKey = EnemyKey | ItemKey | GearKey | AvatarKey;
 
 export type AudioKey = MusicKey | StingKey | SfxKey;
 

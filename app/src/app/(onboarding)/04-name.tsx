@@ -12,7 +12,10 @@ import {
 } from '@/onboarding/registration';
 import { refreshIdentity, syncNow } from '@/runtime';
 import { ApiUnreachableError } from '@/sync/api';
+import type { AvatarFigure } from '@/sync/dto';
+import { changeSettings } from '@/sync/writes';
 import { Body, Button, Field, Screen, Title } from '@/ui/primitives';
+import { FigurePicker, availableFigures } from '@/ui/TraverserSprite';
 import { MIN_TOUCH_TARGET, colors, space, type } from '@/ui/theme';
 
 /**
@@ -31,6 +34,7 @@ export default function NameYourTraverser() {
   const router = useRouter();
   const [name, setName] = useState(DEFAULT_TRAVERSER_NAME);
   const [birthYear, setBirthYear] = useState('');
+  const [figure, setFigure] = useState<AvatarFigure>('male');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +70,9 @@ export default function NameYourTraverser() {
 
       await refreshIdentity();
 
+      // Registration creates the settings row; the figure rides the sync pass below.
+      changeSettings(getDatabase(), { dailyStepGoal: null, birthYear: null, avatarFigure: figure }, Date.now());
+
       // Sync now, not on the next foreground: the banner reflects the *last* pass, which ran
       // before this screen existed — so the player is asked for a birth year they just typed. This
       // is also the pass that baselines HR, readable only now that the year is in the mirror.
@@ -89,6 +96,8 @@ export default function NameYourTraverser() {
       <View style={styles.body}>
         <Title>Name your Traverser</Title>
 
+        {availableFigures().length < 2 ? null : <FigurePicker value={figure} onChange={setFigure} />}
+
         <Field
           label="Name"
           value={name}
@@ -111,7 +120,7 @@ export default function NameYourTraverser() {
         {error === null ? null : <Text style={styles.error}>{error}</Text>}
 
         <Body dim>
-          You can change either of these later in Settings. Changing your birth year adjusts future
+          You can change any of these later in Settings. Changing your birth year adjusts future
           workouts only — earned XP is never taken back.
         </Body>
 

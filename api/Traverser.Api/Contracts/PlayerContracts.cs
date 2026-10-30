@@ -124,7 +124,8 @@ public sealed record PlayerSettingsResponse(
     string MusicVolume,
     string SfxVolume,
     int? BirthYear,
-    bool AudioMuted);
+    bool AudioMuted,
+    string AvatarFigure);
 
 /// <summary>
 /// <c>GET /api/v1/players/me/map</c> — GDD 9's Road, derived on every read.
