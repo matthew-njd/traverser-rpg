@@ -8,6 +8,7 @@ import type { GateState, RoadGate, RoadState, RoadZone } from '../progression/ro
 import { segmentFill } from '../progression/road';
 import type { AvatarFigure } from '../sync/dto';
 import { Sprite } from './Sprite';
+import { Forward } from './icons';
 import { figureKey } from './TraverserSprite';
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme';
 
@@ -283,7 +284,10 @@ function GateNode({
           onPress={() => onFace?.(gate)}
           style={({ pressed }) => [styles.battle, pressed ? styles.nodePressed : null]}
         >
-          <Text style={styles.face}>{gate.state === 'defeated' ? 'Battle again ›' : 'Battle ›'}</Text>
+          <View style={styles.go}>
+            <Text style={styles.face}>{gate.state === 'defeated' ? 'Battle again' : 'Battle'}</Text>
+            <Forward size={12} />
+          </View>
         </Pressable>
       ) : null}
     </View>
@@ -368,6 +372,7 @@ const styles = StyleSheet.create({
   nodePressed: { opacity: 0.7 },
   battle: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center', paddingLeft: space.sm },
   face: { ...type.small, color: colors.accent, fontWeight: '600' },
+  go: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   glyph: { fontSize: 18, width: 22, textAlign: 'center' },
   nodeText: { flex: 1 },
   nodeName: { ...type.body, color: colors.text },

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { playSfx } from '../../audio/bus';
+import { MatchChevron } from '../icons';
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from '../theme';
 import type { MoveCategory } from '../../battle/types';
 import type { Chevron } from './log';
@@ -293,12 +294,9 @@ function SkillSlot({
 
       <View style={styles.slotMeta}>
         {chevron === null ? null : (
-          <Text
-            accessibilityLabel={chevron.description}
-            style={[styles.chevron, toneStyles[chevron.tone]]}
-          >
-            {chevron.glyph}
-          </Text>
+          <View accessible accessibilityLabel={chevron.description}>
+            <MatchChevron tone={chevron.tone} />
+          </View>
         )}
 
         {skill.usesLeft === null ? null : <Text style={styles.uses}>{skill.usesLeft} left</Text>}
@@ -452,13 +450,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
   },
   rowLabel: { ...type.body, color: colors.text, flex: 1 },
-  chevron: { ...type.body, fontWeight: '700' },
   uses: { ...type.small, ...tabular, color: colors.textDim },
   empty: { ...type.small, color: colors.textDim, padding: space.md },
 });
 
-const toneStyles = StyleSheet.create({
-  strong: { color: colors.verdigris },
-  neutral: { color: colors.textDim },
-  weak: { color: colors.madder },
-});

@@ -181,8 +181,8 @@ describe('the Road', () => {
 
     // The row is not the button: a tap on the name belongs to the zone card, not the fight.
     await fireEvent.press(screen.getByText('Cerberus'));
-    await fireEvent.press(screen.getByText('Battle ›'));
-    await fireEvent.press(screen.getByText('Battle again ›'));
+    await fireEvent.press(screen.getByText('Battle'));
+    await fireEvent.press(screen.getByText('Battle again'));
     await fireEvent.press(screen.getByText('Fenrir'));
 
     expect(onFace.mock.calls.map(([faced]) => (faced as RoadGate).gateId)).toEqual([

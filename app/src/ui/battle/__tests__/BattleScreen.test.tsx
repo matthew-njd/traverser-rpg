@@ -202,7 +202,7 @@ describe('the type-effectiveness surfaces', () => {
   });
 
   /**
-   * The two type surfaces speak one colour language: the ▽ the player reads in the Skill menu and
+   * The two type surfaces speak one colour language: the down chevron the player reads in the Skill menu and
    * the "Resisted…" that answers the tap are the same `madder`. Two schemes for one fact is the
    * regression this guards.
    */
@@ -212,7 +212,7 @@ describe('the type-effectiveness surfaces', () => {
     expect(StyleSheet.flatten(screen.getByText(RESISTED).props.style).color).toBe(colors.madder);
 
     // The chevron is on the slot now, with no sub-menu to open in front of it.
-    expect(StyleSheet.flatten(screen.getByText('▽').props.style).color).toBe(colors.madder);
+    expect(StyleSheet.flatten(screen.getByTestId('chevron-weak').props.style).color).toBe(colors.madder);
   });
 
   it('says nothing on a neutral hit', async () => {
@@ -336,13 +336,13 @@ describe('the action menu', () => {
   it('gives the three chevron tones three different colours', async () => {
     await show();
 
-    const colourOf = (glyph: string) =>
-      StyleSheet.flatten(screen.getByText(glyph).props.style).color;
+    const colourOf = (tone: string) =>
+      StyleSheet.flatten(screen.getByTestId(`chevron-${tone}`).props.style).color;
 
-    // ▲▲ needs a super-effective pair, which the Harpy does not offer — the two it does offer are
+    // Strong needs a super-effective pair, which the Harpy does not offer — the two it does offer are
     // enough to catch the collapse this guards against.
-    expect(colourOf('–')).not.toBe(colourOf('▽'));
-    expect(colourOf('▽')).toBe(colors.madder);
+    expect(colourOf('neutral')).not.toBe(colourOf('weak'));
+    expect(colourOf('weak')).toBe(colors.madder);
   });
 
   /**

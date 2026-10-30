@@ -118,11 +118,11 @@ describe('calloutOf', () => {
 
 describe('chevronFor', () => {
   it.each([
-    [2, '▲▲', 'strong'],
-    [1, '–', 'neutral'],
-    [0.5, '▽', 'weak'],
-  ])('shows %p as %s', (multiplier, glyph, tone) => {
-    expect(chevronFor(multiplier, 'Storm', 'Sea')).toMatchObject({ glyph, tone });
+    [2, 'strong'],
+    [1, 'neutral'],
+    [0.5, 'weak'],
+  ])('reads %p as %s', (multiplier, tone) => {
+    expect(chevronFor(multiplier, 'Storm', 'Sea').tone).toBe(tone);
   });
 
   /**

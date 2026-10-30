@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { PendingEncounter } from '../progression/road';
+import { Forward } from './icons';
 import { MIN_TOUCH_TARGET, colors, radius, space, tabular, type } from './theme';
 
 /**
@@ -43,7 +44,10 @@ export function EncounterCard({
             <Text style={styles.next}>{encounter.displayName}</Text>
             <Text style={styles.typeTag}>{types.get(encounter.enemyId) ?? 'New'}</Text>
           </View>
-          <Text style={styles.battle}>Battle ›</Text>
+          <View style={styles.go}>
+            <Text style={styles.battle}>Battle</Text>
+            <Forward />
+          </View>
         </Pressable>
       ))}
 
@@ -87,6 +91,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xs,
   },
   battle: { ...type.body, color: colors.accent, fontWeight: '600' },
+  go: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   count: { ...type.small, ...tabular, color: colors.textDim },
   link: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
   linkText: { ...type.small, color: colors.accent, fontWeight: '600' },

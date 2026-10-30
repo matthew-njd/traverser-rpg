@@ -475,7 +475,7 @@ All values from fixtures §10.4 (Cerberus L15, Aegis 15, Favor 30):
 |---|---|
 | Multi-enemy encounters | Nothing in GDD 5–7 has one. `BattleState` holds a single enemy; generalising later is a shape change, not a rule change. |
 | Enemy secondary effects, phases, conditional AI | GDD 5–7 say "no conditional logic" in identical words thirteen times. §5 is the whole AI. The Swift-cancellation branch is the one exception, kept live for forward compatibility. |
-| Battle animation timing, sprite choreography | GDD 13 §6 / M2. The engine resolves a turn synchronously; pacing is the UI's problem, which is why events are a queue and not callbacks. |
+| Battle animation timing, sprite choreography | GDD 13 §6 / M2. The engine resolves a turn synchronously; pacing is the UI's problem, which is why events are a queue and not callbacks. *(Built at M6/P5e: as each log line appears, a hit flinches the enemy sprite, a crit staggers it, an enemy hit lunges it at the shaken player panel, and a win fades it as it sinks. All of it fits inside a line's delay, and reduced motion keeps only the fade. `ui/battle/motion.ts`.)* |
 | Damage-number balance retuning | GDD 2 §9 and GDD 3 §5 both close their balance questions as validated. Any retune is a content-table edit plus a fixtures regeneration, not an engine change. |
 | Anti-cheat on client-rolled loot | Sanctioned trim (no data-integrity work). T2 §1.1 keeps XP server-side, which bounds what a tampered client can mint to items and gear. |
 | Seeded/replayable battles as a player-facing feature | `SeededRng` and the snapshot's `rngSeed` field make it nearly free later; nothing is built for it now. |

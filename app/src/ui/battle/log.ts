@@ -45,7 +45,6 @@ export function calloutFor(typeMultiplier: number): string | null {
 }
 
 export interface Chevron {
-  readonly glyph: string;
   readonly tone: ChevronTone;
   /** GDD 13 §6.2's direction disambiguation — never a bare type name in either surface. */
   readonly description: string;
@@ -66,14 +65,14 @@ export function chevronFor(
   const description = `${moveTypeName} vs. ${enemyTypeName}`;
 
   if (typeMultiplier > 1) {
-    return { glyph: '▲▲', tone: 'strong', description: `${description}: super effective` };
+    return { tone: 'strong', description: `${description}: super effective` };
   }
 
   if (typeMultiplier < 1) {
-    return { glyph: '▽', tone: 'weak', description: `${description}: resisted` };
+    return { tone: 'weak', description: `${description}: resisted` };
   }
 
-  return { glyph: '–', tone: 'neutral', description: `${description}: neutral` };
+  return { tone: 'neutral', description: `${description}: neutral` };
 }
 
 /**

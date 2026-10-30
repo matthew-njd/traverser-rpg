@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { enterBattle, exitBattle, playMusic, playSfx, playSting } from '../../audio/bus';
 import { ITEM_SFX, battleMusic, dropRevealTier, entryMusic, hitSfx, isBoss, revealSting } from '../../audio/cues';
@@ -18,6 +18,7 @@ import { ActionMenu, type ItemOption } from './ActionMenu';
 import { CombatLog } from './CombatLog';
 import { VigorBar } from './VigorBar';
 import { type Callout, type LogLine, calloutOf, logEntries, shownVigor } from './log';
+import { useBattleMotion } from './motion';
 import { ACTOR_CHANGE_DELAY_MS, LINE_DELAY_MS, usePacedLines } from './paced';
 import { skillOptions, slotsFor } from './options';
 
@@ -150,6 +151,7 @@ export function BattleScreen({
   const won = over && state.outcome === 'win';
 
   useBattleAudio({ state, context, entries, shown: paced.length, over, won, closed, walked, lore, reveals, onTease });
+  const motion = useBattleMotion({ entries, shown: paced.length, fainted: won });
 
   // GDD 12 §2: the next zone's screens follow the defeat text, before the victory panel.
   if (won && closed && !walked) {
@@ -164,7 +166,9 @@ export function BattleScreen({
     <Screen style={styles.screen}>
       <View style={styles.enemy}>
         <View style={styles.plate}>
-          <Sprite subject={state.enemyId} size={168} glyph="◈" />
+          <Animated.View style={motion.enemy}>
+            <Sprite subject={state.enemyId} size={168} glyph="◈" />
+          </Animated.View>
 
           {/*
             ↯ A dark chip rather than ink straight onto the plate. On `marble` the only palette
@@ -196,7 +200,7 @@ export function BattleScreen({
         />
       </View>
 
-      <View style={styles.player}>
+      <Animated.View style={[styles.player, motion.player]}>
         {/*
           The player’s own name, mirroring the enemy’s above it — the slot held the round number and
           read as a label for the bar beneath (M2 drill note 1.5). The round moved to the log’s
@@ -208,7 +212,7 @@ export function BattleScreen({
           vigor={shownVigor(hidden, 'player', state.player.vigor)}
           vigorMax={state.player.vigorMax}
         />
-      </View>
+      </Animated.View>
 
       <View style={styles.logHeader}>
         <Text style={styles.roundLabel}>
