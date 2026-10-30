@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Sprite } from './Sprite';
 import { colors, radius, space, type } from './theme';
 
 /**
@@ -27,10 +28,13 @@ export const GRADE_BORDER: Readonly<Record<string, string>> = {
 };
 
 export function RevealCard({
+  subject,
   name,
   grade,
   flavor,
 }: {
+  /** The item or gear key, which is also its art key. */
+  subject: string;
   name: string;
   grade: string;
   flavor?: string | null;
@@ -39,9 +43,9 @@ export function RevealCard({
 
   return (
     <View testID="reveal-card" style={[styles.card, { borderColor: accentColor }]}>
-      {/* The placeholder plate, per GDD 13 §11's inked-silhouette-on-cream rule (tech-04 §9.3). */}
+      {/* GDD 13 §11.4's inked silhouette on its cream plate. */}
       <View style={styles.plate}>
-        <Text style={styles.plateGlyph}>◆</Text>
+        <Sprite subject={subject} size={48} glyph="◆" />
       </View>
 
       <View style={styles.body}>
@@ -84,7 +88,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.marble,
     borderRadius: radius.sm,
   },
-  plateGlyph: { fontSize: 24, color: colors.background },
 
   body: { flex: 1, gap: space.xs },
   name: { ...type.heading, color: colors.text },

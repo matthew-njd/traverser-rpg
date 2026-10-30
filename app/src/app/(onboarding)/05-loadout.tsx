@@ -5,6 +5,7 @@ import { readSatchel } from '@/battle/mirror';
 import { loadLabels, labelFor } from '@/content/labels';
 import { getDatabase } from '@/db/open';
 import { Body, Button, Screen, Title } from '@/ui/primitives';
+import { Sprite } from '@/ui/Sprite';
 import { colors, radius, space, tabular, type } from '@/ui/theme';
 
 /**
@@ -41,6 +42,7 @@ export default function Loadout() {
 
         {weapon === null ? null : (
           <Plate
+            subject={weapon.gear_def_id}
             glyph="†"
             name={labelFor(labels, weapon.gear_def_id)}
             note={`Equipped · +${weapon.bonus_primary} Might`}
@@ -49,6 +51,7 @@ export default function Loadout() {
 
         {salves === 0 ? null : (
           <Plate
+            subject="item_travelers_salve"
             glyph="✳"
             name={labelFor(labels, 'item_travelers_salve')}
             note={`×${salves} · restores Vigour mid-fight`}
@@ -61,12 +64,12 @@ export default function Loadout() {
   );
 }
 
-/** GDD 13 §11's art rule: an inked silhouette on a cream plate. The glyph is the placeholder. */
-function Plate({ glyph, name, note }: { glyph: string; name: string; note: string }) {
+/** GDD 13 §11's art rule: an inked silhouette on a cream plate. */
+function Plate({ subject, glyph, name, note }: { subject: string; glyph: string; name: string; note: string }) {
   return (
     <View style={styles.row}>
       <View style={styles.plate}>
-        <Text style={styles.plateGlyph}>{glyph}</Text>
+        <Sprite subject={subject} size={72} glyph={glyph} />
       </View>
 
       <View style={styles.text}>
@@ -89,7 +92,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.marble,
     borderRadius: radius.md,
   },
-  plateGlyph: { fontSize: 36, color: colors.background },
 
   text: { flex: 1, gap: space.xs },
   name: { ...type.heading, color: colors.text },

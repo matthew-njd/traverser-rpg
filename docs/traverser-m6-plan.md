@@ -154,6 +154,20 @@ midnight; no code path schedules on a streak reset.
 **Tests:** every manifest art key resolves to a delivered file; no placeholder is reachable in
 normal play.
 
+**Split on 2026-10-29, once sourcing was decided** (DECISIONS 2026-10-29). The art is game-icons.net
+silhouettes (CC BY 3.0), edited to match, and lives in this repo:
+
+- **P5a — Pipeline.** SVG sources in `app/art/`, an export script rendering transparent PNGs at
+  1×, 2× and 3×, a Credits row in Settings for the CC BY attribution, and one sprite component wired
+  into every plate, falling back to today's glyph while a key is still a placeholder.
+- **P5b — The 52 manifest sprites.** Enemies, items and gear.
+- **P5c — The avatar and layered gear.** Needs a manifest key for the Traverser's base figure, and
+  an answer to black-on-black layers merging into one shape.
+- **P5d — The Road.** Zone art (new manifest keys), and the Waymarker's forward animation with
+  `stg_waymarker` and `sfx_footstep_loop`.
+- **P5e — Battle motion and iconography.** T5 §13's choreography as transforms (lunge, hit, faint),
+  the type chevrons and the Battle `›`.
+
 ### P6 — The home-lab decision, and the second restore drill (T6 §10.6, §11)
 
 - Answer §3.2 question 5, and record it in T6 §11.

@@ -10,6 +10,7 @@ import { type Labels, labelFor } from '../../content/labels';
 import type { BattleLore } from '../../content/lore';
 import { Button, Screen } from '../primitives';
 import { RevealCard } from '../RevealCard';
+import { Sprite } from '../Sprite';
 import { TapThrough } from '../TapThrough';
 import type { Reveal } from './reveal';
 import { colors, radius, space, tabular, type } from '../theme';
@@ -163,7 +164,7 @@ export function BattleScreen({
     <Screen style={styles.screen}>
       <View style={styles.enemy}>
         <View style={styles.plate}>
-          <Text style={styles.plateGlyph}>◈</Text>
+          <Sprite subject={state.enemyId} size={168} glyph="◈" />
 
           {/*
             ↯ A dark chip rather than ink straight onto the plate. On `marble` the only palette
@@ -246,6 +247,7 @@ export function BattleScreen({
             {reveals.map((reveal) => (
               <RevealCard
                 key={reveal.defId}
+                subject={reveal.defId}
                 name={reveal.name}
                 grade={reveal.grade}
                 flavor={reveal.flavor}
@@ -481,7 +483,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.marble,
     borderRadius: radius.md,
   },
-  plateGlyph: { fontSize: 84, color: colors.background },
   calloutChip: {
     position: 'absolute',
     bottom: space.sm,

@@ -82,6 +82,7 @@ export function RewardReveal({
               <View key={reward.id} style={styles.entry}>
                 <Text style={styles.source}>{SOURCES[reward.source] ?? reward.source}</Text>
                 <RevealCard
+                  subject={reward.defId}
                   name={labelFor(labels, reward.defId)}
                   grade={details.get(reward.defId)?.grade ?? ''}
                   flavor={details.get(reward.defId)?.flavor}

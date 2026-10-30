@@ -31,6 +31,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "29.5.14",
     "@types/node": "^26.1.2",
@@ -43,6 +44,7 @@
     "start": "npm run reverse & expo start",
     "reverse": "adb reverse tcp:8081 tcp:8081 & adb reverse tcp:8082 tcp:8081",
     "android": "expo run:android",
+    "art:export": "node scripts/export-art.ts",
     "gen:assets": "node scripts/gen-assets.ts",
     "gen:content": "node scripts/gen-content.ts",
     "lint": "expo lint",

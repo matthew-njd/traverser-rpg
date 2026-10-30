@@ -160,6 +160,32 @@ text, and silent `.wav` files (not `.ogg`: no OGG encoder in the toolchain, and 
 `.ogg` without a `metro.config.js`, which arrives at M5 — DECISIONS 2026-08-01). Real art/audio is
 drop-in: replace the placeholder (for audio: add `{key}.ogg`, delete the `.wav`), rerun `gen:assets`.
 
+### Adding art
+
+Art is game-icons.net silhouettes, edited to match, under CC BY 3.0 (DECISIONS 2026-10-29). The SVG
+is the source; the PNGs are built from it and never edited by hand. From `app/`:
+
+1. **Find the icon** on game-icons.net and download its SVG. Search by subject, then by mood: the
+   Fenrir that works may be filed under "wolf" or "werewolf".
+2. **Save it as `art/{key}.svg`**, named exactly after its manifest key. A subject the set lacks is
+   composed in Inkscape from two or more icons, or drawn, at the same stroke weight and detail.
+   Colour does not matter: the export turns every fill into ink and drops the black background.
+3. **Credit it** in `art/credits.json`: the author or authors, and the icon's game-icons.net URL.
+   A test fails until every source is credited. Settings' Credits row is built from this file.
+4. **Export and register:**
+   ```
+   npm run art:export   # every art/*.svg → assets/sprites/{key}.png, @2x, @3x
+   npm run gen:assets   # the key leaves PLACEHOLDER_SPRITES, so its plates show the art
+   ```
+
+**Check it reads.** A silhouette works only if it's recognisable as a solid shape at plate size.
+Look at the 1× PNG, not the 3×: the battle plate is 168 dp, a Reveal Card's is 48. If the subject
+isn't obvious there, its defining feature isn't on the outline yet.
+
+↯ **The `@2x` and `@3x` files are not optional extras.** Android phones draw at 2.6× to 3.5× density,
+and Metro silently picks the closest file it has. Without them every plate upscales the 1× file and
+looks soft, with no warning anywhere.
+
 ### ↯ The Android SDK ships a ninja too old to build Reanimated
 
 **One-time machine setup. Without it the first native build cannot succeed**, and the error names

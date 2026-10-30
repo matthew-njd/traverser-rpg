@@ -8,7 +8,9 @@ import { VICTORY_LINE } from '@/onboarding/tutorial';
 import { syncNow } from '@/runtime';
 import { useBattleStore } from '@/state/battleStore';
 import { usePlayerStore } from '@/state/playerStore';
+import { TUTORIAL_ENEMY_ID } from '@/battle/session';
 import { Body, Button, Screen, Title } from '@/ui/primitives';
+import { Sprite } from '@/ui/Sprite';
 import { colors, radius, space, tabular, type } from '@/ui/theme';
 
 /**
@@ -45,7 +47,7 @@ export default function Victory() {
         <Title>{VICTORY_LINE}</Title>
 
         <View style={styles.plate}>
-          <Text style={styles.plateGlyph}>✦</Text>
+          <Sprite subject={TUTORIAL_ENEMY_ID} size={144} glyph="✦" />
         </View>
 
         <Body dim>
@@ -74,6 +76,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.marble,
     borderRadius: radius.md,
   },
-  plateGlyph: { fontSize: 72, color: colors.background },
   xp: { ...type.display, ...tabular, color: colors.gold, textAlign: 'center' },
 });

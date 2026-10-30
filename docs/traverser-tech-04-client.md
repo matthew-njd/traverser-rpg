@@ -422,6 +422,8 @@ Every manifest key gets a placeholder file from the first build: a flat-coloured
 > - **Metro's default `assetExts` does not include `ogg` at all** (it does include `wav`), so this section's `require('….ogg')` example needs a `metro.config.js` adding the extension before any real OGG can bundle. That file is deliberately absent until M5 introduces `getSentryExpoConfig` (tech-06 §9) — add `ogg` to `assetExts` in the same change.
 > - Skills and moves get key types (`SkillKey`, `GearMoveKey`, `EnemyMoveKey`) but no files, matching §9.2's own `AssetKey` union — they have no art; sprite keys are enemies + items + gear (52), audio keys are music + stingers + sfx (63).
 
+> **Amended 2026-10-29 (M6/P5a): the art pipeline.** Real art replaces placeholders key by key, as planned, through two steps rather than a file drop. SVG sources live in `app/art/{key}.svg`. `npm run art:export` renders each to `assets/sprites/{key}.png` with `@2x` and `@3x` variants, which Metro chooses by screen density, inking every fill and dropping the source's background. `gen:assets` then accepts the density variants and emits `PLACEHOLDER_SPRITES`, the keys whose PNG is still byte-for-byte the generated placeholder. One `<Sprite>` component draws the art, or the plate's old glyph while a key is in that set, so a placeholder PNG never reaches a screen. M6/P5's exit test is that set being empty.
+
 ### 9.4 Sprite composition — layered gear
 
 GDD 13 §3.1 requires the Character avatar to render with equipped gear overlays (Section 8's layered-silhouette pipeline), and the same composed sprite is the Map's Waymarker (GDD 13 §4.2).

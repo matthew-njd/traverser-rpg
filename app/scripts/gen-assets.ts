@@ -290,7 +290,8 @@ for (const key of audioKeys) {
 const spriteKeySet = new Set(spriteKeys);
 const audioKeySet = new Set(audioKeys);
 for (const file of spriteFiles) {
-  const wellFormed = /^([a-z0-9_]+)\.png$/.exec(file);
+  // `@2x`/`@3x` are export-art's density variants of the same key; Metro picks them by screen.
+  const wellFormed = /^([a-z0-9_]+)(?:@[23]x)?\.png$/.exec(file);
   if (!wellFormed || !spriteKeySet.has(wellFormed[1] as string)) errors.push(`orphan file (no manifest key): assets/sprites/${file}`);
 }
 for (const file of audioFiles) {
@@ -334,11 +335,22 @@ export type AudioKey = MusicKey | StingKey | SfxKey;
 export type AssetKey = SpriteKey | AudioKey;
 `;
 
+// A placeholder is recognised by being byte-for-byte what --placeholders writes, so delivering art
+// is the only way off this list. M6/P5's exit test is this list being empty.
+const placeholderSprites = spriteKeys.filter((key) =>
+  fs.readFileSync(path.join(spritesDir, `${key}.png`)).equals(placeholderPng(key)),
+);
+
 const registryTs = `${banner}import type { AudioKey, SpriteKey } from './keys.generated';
 
 export const SPRITES: Record<SpriteKey, number> = {
 ${spriteKeys.map((k) => `  ${k}: require('../../assets/sprites/${k}.png'),`).join('\n')}
 };
+
+/** Keys still on their generated placeholder. A plate shows its glyph for these instead. */
+export const PLACEHOLDER_SPRITES: ReadonlySet<SpriteKey> = new Set([
+${placeholderSprites.map((k) => `  '${k}',`).join('\n')}
+]);
 
 export const AUDIO: Record<AudioKey, number> = {
 ${audioKeys.map((k) => `  ${k}: require('../../assets/audio/${k}.${audioExt.get(k)}'),`).join('\n')}

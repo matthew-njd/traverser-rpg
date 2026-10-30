@@ -2,6 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Linking, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
+import credits from '../../art/credits.json';
 import { configureAudio, playSfx } from '@/audio/bus';
 import { getDatabase } from '@/db/open';
 import { parked } from '@/db/outbox';
@@ -120,6 +121,8 @@ export default function Settings() {
       />
 
       <StuckUploads />
+
+      <Credits />
     </Screen>
   );
 }
@@ -610,6 +613,33 @@ function StuckUploads() {
           <Row key={entry.clientOpId} label={entry.kind} value={entry.clientOpId.slice(0, 8)} />
         ))}
       </View>
+    </Card>
+  );
+}
+
+/**
+ * CC BY 3.0's attribution for the game-icons.net art (DECISIONS 2026-10-29): the authors, the
+ * source, the licence, and that the icons were changed. Read from `art/credits.json`, which a test
+ * keeps in step with every art source.
+ */
+function Credits() {
+  const authors = [...new Set(Object.values(credits).flatMap((credit) => credit.authors))].sort();
+
+  if (authors.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <Heading>Credits</Heading>
+      <Body dim>
+        {`Icons by ${authors.join(', ')}, from game-icons.net, under CC BY 3.0. Recoloured, resized, and some combined for Traverser.`}
+      </Body>
+      <Button
+        label="View the licence"
+        variant="secondary"
+        onPress={() => void Linking.openURL('https://creativecommons.org/licenses/by/3.0/')}
+      />
     </Card>
   );
 }

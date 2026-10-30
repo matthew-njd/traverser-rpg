@@ -11,7 +11,7 @@ import { colors } from '../theme';
  * this file is the only thing standing between the ladder and a silent re-assignment.
  */
 const borderOf = async (grade: string): Promise<unknown> => {
-  await render(<RevealCard name="Something" grade={grade} />);
+  await render(<RevealCard subject="item_travelers_salve" name="Something" grade={grade} />);
 
   return StyleSheet.flatten(screen.getByTestId('reveal-card').props.style).borderColor;
 };
@@ -52,7 +52,7 @@ describe('the rank ladder', () => {
    * brightness, so this is the channel that carries it when the colour cannot (WCAG 1.4.1).
    */
   it('names the grade beside the colour', async () => {
-    await render(<RevealCard name="Stormveil" grade="uncommon" flavor="Bottled weather." />);
+    await render(<RevealCard subject="item_travelers_salve" name="Stormveil" grade="uncommon" flavor="Bottled weather." />);
 
     expect(screen.getByText('uncommon')).toBeTruthy();
     expect(screen.getByText('Bottled weather.')).toBeTruthy();
