@@ -348,9 +348,7 @@ ${spriteKeys.map((k) => `  ${k}: require('../../assets/sprites/${k}.png'),`).joi
 };
 
 /** Keys still on their generated placeholder. A plate shows its glyph for these instead. */
-export const PLACEHOLDER_SPRITES: ReadonlySet<SpriteKey> = new Set([
-${placeholderSprites.map((k) => `  '${k}',`).join('\n')}
-]);
+export const PLACEHOLDER_SPRITES: ReadonlySet<SpriteKey> = new Set([${placeholderSprites.map((k) => `\n  '${k}',`).join('')}${placeholderSprites.length ? '\n' : ''}]);
 
 export const AUDIO: Record<AudioKey, number> = {
 ${audioKeys.map((k) => `  ${k}: require('../../assets/audio/${k}.${audioExt.get(k)}'),`).join('\n')}

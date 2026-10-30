@@ -17,9 +17,12 @@ const sources = fs
 it('credits every art source, and credits nothing that is not one', () => {
   expect(Object.keys(credits).sort()).toEqual([...sources].sort());
 
+  // Art drawn for Traverser owes no attribution; anything else must name its authors and source.
   for (const credit of Object.values(credits)) {
-    expect(credit.authors.length).toBeGreaterThan(0);
-    expect(credit.source).toMatch(/^https:\/\//);
+    if (credit.source !== 'original') {
+      expect(credit.authors.length).toBeGreaterThan(0);
+      expect(credit.source).toMatch(/^https:\/\//);
+    }
   }
 });
 

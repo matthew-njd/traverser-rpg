@@ -1,6 +1,210 @@
 {
+  "enemy_cacus": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/rock-golem.html"
+  },
+  "enemy_cerberus": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/wolf-head.html"
+  },
+  "enemy_cyclops": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/jawless-cyclop.html"
+  },
+  "enemy_draugr": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/viking-head.html"
+  },
+  "enemy_fenrir": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/direwolf.html"
+  },
+  "enemy_griffin": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/griffin-symbol.html"
+  },
   "enemy_harpy": {
     "authors": ["Lorc"],
     "source": "https://game-icons.net/1x1/lorc/harpy.html"
+  },
+  "enemy_jormungandr": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/sea-serpent.html"
+  },
+  "enemy_lemures": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/spectre.html"
+  },
+  "enemy_satyr": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/devil-mask.html"
+  },
+  "enemy_strix": {
+    "authors": ["Caro Asercion"],
+    "source": "https://game-icons.net/1x1/caro-asercion/barn-owl.html"
+  },
+  "enemy_valkyrie": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/winged-sword.html"
+  },
+  "enemy_waystone_wisp": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/spark-spirit.html"
+  },
+  "gear_accessory_divine": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/diamond-ring.html"
+  },
+  "gear_accessory_heroic": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/diamond-ring.html"
+  },
+  "gear_accessory_mortal": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/diamond-ring.html"
+  },
+  "gear_accessory_mythic": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/diamond-ring.html"
+  },
+  "gear_armor_divine": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/leather-armor.html"
+  },
+  "gear_armor_heroic": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/leather-armor.html"
+  },
+  "gear_armor_mortal": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/leather-armor.html"
+  },
+  "gear_armor_mythic": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/leather-armor.html"
+  },
+  "gear_coilbreakers_oath": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/ouroboros.html"
+  },
+  "gear_coilbreakers_wrath": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/fire-silhouette.html"
+  },
+  "gear_emberwise_verdict": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/book-aura.html"
+  },
+  "gear_emberwise_ward": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/fire-ring.html"
+  },
+  "gear_frostroad_sigil": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/tension-snowflake.html"
+  },
+  "gear_gatekeepers_ruse": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/drama-masks.html"
+  },
+  "gear_gatekeepers_snare": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/wolf-trap.html"
+  },
+  "gear_skyroad_sigil": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/winged-emblem.html"
+  },
+  "gear_sunroad_sigil": {
+    "authors": ["Caro Asercion"],
+    "source": "https://game-icons.net/1x1/caro-asercion/heraldic-sun.html"
+  },
+  "gear_weapon_divine": {
+    "authors": [],
+    "source": "original"
+  },
+  "gear_weapon_heroic": {
+    "authors": [],
+    "source": "original"
+  },
+  "gear_weapon_mortal": {
+    "authors": [],
+    "source": "original"
+  },
+  "gear_weapon_mythic": {
+    "authors": [],
+    "source": "original"
+  },
+  "item_ambrosia_shard": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/jeweled-chalice.html"
+  },
+  "item_battlebrand": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/crossed-swords.html"
+  },
+  "item_blindveil": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/blindfold.html"
+  },
+  "item_brinestone": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/rune-stone.html"
+  },
+  "item_clearsight": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/crystal-eye.html"
+  },
+  "item_fleet_omen": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/swallow.html"
+  },
+  "item_gravemark": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/skull-bolt.html"
+  },
+  "item_heralds_draft": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/heart-bottle.html"
+  },
+  "item_ironhide_tincture": {
+    "authors": ["Delapouite"],
+    "source": "https://game-icons.net/1x1/delapouite/magic-potion.html"
+  },
+  "item_pale_ash": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/candle-skull.html"
+  },
+  "item_shadowbind": {
+    "authors": ["DarkZaitzev"],
+    "source": "https://game-icons.net/1x1/darkzaitzev/hooded-figure.html"
+  },
+  "item_shadowblur": {
+    "authors": ["DarkZaitzev"],
+    "source": "https://game-icons.net/1x1/darkzaitzev/hooded-figure.html"
+  },
+  "item_stormveil": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/lightning-helix.html"
+  },
+  "item_sunder_oil": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/spiral-bottle.html"
+  },
+  "item_thundercrack": {
+    "authors": [],
+    "source": "original"
+  },
+  "item_travelers_salve": {
+    "authors": ["Skoll"],
+    "source": "https://game-icons.net/1x1/skoll/pestle-mortar.html"
+  },
+  "item_undertow": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/big-wave.html"
+  },
+  "item_warhex": {
+    "authors": ["Lorc"],
+    "source": "https://game-icons.net/1x1/lorc/cracked-helm.html"
   }
 }
