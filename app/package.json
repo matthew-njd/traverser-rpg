@@ -45,6 +45,7 @@
     "reverse": "adb reverse tcp:8081 tcp:8081 & adb reverse tcp:8082 tcp:8081",
     "android": "expo run:android",
     "art:export": "node scripts/export-art.ts",
+    "audio:temp": "node scripts/temp-audio.ts",
     "gen:assets": "node scripts/gen-assets.ts",
     "gen:content": "node scripts/gen-content.ts",
     "lint": "expo lint",

@@ -160,6 +160,11 @@ text, and silent `.wav` files (not `.ogg`: no OGG encoder in the toolchain, and 
 `.ogg` without a `metro.config.js`, which arrives at M5 — DECISIONS 2026-08-01). Real art/audio is
 drop-in: replace the placeholder (for audio: add `{key}.ogg`, delete the `.wav`), rerun `gen:assets`.
 
+Until real sound is sourced, each `.wav` speaks its own cue name, and music adds a drone after it, so
+every trigger can be checked by ear. `npm run audio:temp` regenerates them with Windows' built-in
+speech engine (DECISIONS 2026-10-30). It rewrites every `.wav`, so run it before any real sound lands,
+never after.
+
 ### Adding art
 
 Art is game-icons.net silhouettes, edited to match, under CC BY 3.0 (DECISIONS 2026-10-29). The SVG
