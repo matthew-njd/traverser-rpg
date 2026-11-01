@@ -38,6 +38,60 @@ Each milestone ends with a build I can run on my actual phone. Placeholder art (
 
 ---
 
+## Phase 3 — Direction & Polish (after M6)
+
+Phase 2 builds the game as the GDD specifies it. Phase 3 revisits how the game looks, sounds and feels, now that a playable foundation exists. Nothing here is decided yet: each item becomes a packet with its own plan, and a choice is locked into the GDD only once Matthew picks it.
+
+### Art direction: pixel-art sprites
+
+**The goal:** replace the ink-emblem sprites with pixel-art battle sprites, in the style of handheld monster-battlers. The designs stay Traverser's own creatures. Matthew prefers a gothic, mature feel (desaturated colours, sharp silhouettes, heavy shadow) to a bright, rounded, cartoony one.
+
+**The constraint is direction, not drawing.** Matthew can draw in LibreSprite; what he finds hard is deciding the art direction. Fix the direction first, as a style sheet, so each sprite becomes routine work:
+
+| Decision | Sets |
+|---|---|
+| Canvas | Sprite size: 64×64 for enemies and the avatar, 32×32 for items and gear. 16×16 is too small to read as a boss. |
+| Palette | Colour count and hues, for example 16 colours from a Lospec palette, with one accent per zone. |
+| Outline | Black, a darker shade of the fill, or the outer edge only. |
+| Light | Direction and shading levels, for example top-left with 3 levels. |
+| View | Camera angle, for example enemies front three-quarter facing left, and the Traverser from behind. |
+| Proportion | Realistic and lean, or squat and chunky. |
+| Detail density | Big readable shapes, or fine texture. |
+| Mood | One sentence, for example "weathered temple carvings come to life." |
+
+**The process:**
+
+1. Claude presents three distinct directions side by side, each filling in the table with references and a palette.
+2. Matthew picks one or mixes them, and it is written into GDD 13 as the style sheet.
+3. Matthew draws one test sprite (the Harpy) in LibreSprite, with Claude coaching each step: silhouette, flat colours, shading, then cleanup. View it on the Pixel next to the ink sprite.
+4. Only then decide on the other 51 sprites, the avatar and the zone banners.
+
+**Budget: $50–100, approved by Matthew (2026-11-01)** for creative help. Confirm each purchase before making it.
+
+- **AI image generation for concept art, about $10–20.** Use it to explore designs in the chosen direction, then redraw by hand at 64×64. The output is a reference, not a finished sprite.
+- **One commissioned anchor sprite, about $40–80** (optional). A pixel artist (itch.io, Fiverr, r/HungryArtists) draws one 64×64 enemy and its palette. Get commercial rights in writing.
+- **Free:** LibreSprite, and Lospec's palette list.
+
+**Tools assessed and not adopted:**
+
+- **Sprite Sheet Generator** (clsandoval) and **Creating Sprites** (RiccardoGrin): agent skills that generate sprites with a paid image API (Gemini and OpenAI). Image models paint a smooth picture and shrink it, which gives uneven pixels, stray colours and a large palette, so every sprite still needs hand cleanup. They're worth reconsidering only for concept art.
+- **Motion Anything** (nexu-io, Apache-2.0): a web motion engine. Its CSS and browser-React exports don't run in React Native. Its Lottie export could drive battle effects (a Thundercrack flash, a crit splash) through `lottie-react-native`, but that adds a native module and a `vfx_` manifest family. Trial it on one effect first.
+
+**What a pixel restyle touches:** GDD 13's ink-on-marble style, all 52 manifest sprites, the avatar figures, the zone banners, `credits.json`, and `scripts/export-art.ts`, which must scale by nearest neighbour with no smoothing. Check on the Pixel that Android doesn't smooth the PNGs when it scales them.
+
+### UI and UX changes
+
+Record any change Matthew wants to the look or flow of a screen here, then plan it as a packet. Nothing is listed yet.
+
+### Carried over from Phase 2
+
+- **Real sound.** The spoken temp audio (`npm run audio:temp`) stands in until real sound replaces it, key by key.
+- **The enemy restyle in the svgsilh style**, deferred in P5b for lack of matching images. A pixel restyle would replace it.
+- **The female figure's licence:** confirm the CC0 badge on svgsilh image 1905054.
+- **GDD 14's table**, which an earlier P3 note splits in two.
+
+---
+
 ## Current Session
 
 **M1 — The Walk.** Scope, packet order, and exit criteria are in `traverser-m1-plan.md`; work the packets in order, one commit each, `Phase 2 - M1: <name> (P<n>)`.

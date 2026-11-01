@@ -30,6 +30,8 @@ These are deliberate, agreed trims for a solo fun project. Do not treat them as 
 
 The manual/assist split: Matthew hand-writes everything with learning value or architectural weight (RN screens and navigation, health integration, sync flow, battle engine core); Claude Code is delegated pure labor with no learning payoff — test suites built from the GDD's worked examples, EF migrations, boilerplate/DTOs, and debugging assists. A `CLAUDE.md` at the repo root points at the GDD and tech specs so every assist has project context. This chat project remains the home for design decisions, spec updates, milestone planning, and reviews.
 
+**Phase 3 — Direction & Polish (after M6):** revisits the art direction (pixel-art sprites), real sound, and any UI or UX change, on top of the Phase 2 foundation. See the kickoff prompt for the running notes.
+
 ## How to Behave in Every Session
 
 - **Read before deciding.** Pull the relevant GDD sections and tech specs before proposing anything.
