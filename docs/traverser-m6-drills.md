@@ -1,12 +1,19 @@
 # M6 device drills
 
-**Run:** P7, on the Pixel 9, **on the release build**, from 2026-11-01. **Status:** in progress.
+**Run:** P7, on the Pixel 9, **on the release build**, from 2026-11-01. **Status:** complete on 2026-11-03 apart from 7.3, as a short pass (DECISIONS 2026-11-03). Drills 5 and 6 are deferred to Phase 3.
 
 **Purpose:** verify the ten exit criteria in `traverser-m6-plan.md` §5 on hardware.
 
 Fill in the **Result** column as you go. Record a failure as a defect, not as a retry. Write anything else you notice in the notes table at the bottom while you see it.
 
 **↯ These drills are written against the build, not against the spec.** Every expected string below was read out of the code on 2026-10-30. Every number was read out of the server again on 2026-11-01, after the 10:35 AM sync.
+
+### The short pass (from 2026-11-03)
+
+Matthew can't run the long drills for a while, so M6 closes on a short pass (DECISIONS 2026-11-03):
+
+- **Run:** 3.3–3.6, 4, 8, 9 and 10. Each takes a few minutes sitting down, apart from 3.4, which waits for your next walk. You have 23 waiting fights in Valheon, so drill 4 needs no Explore.
+- **Deferred to Phase 3:** 5 (the overactivity walk) and 6 (onboarding again). Drill 7, first deferred, then passed in daily use. Their criteria are marked **ACCEPTED**, not PASS, with the evidence named in the exit-criteria table. Confirm each in daily use when it comes up.
 
 ---
 
@@ -86,10 +93,10 @@ Covers exit criterion 3, apart from `stg_overactivity`, which is drill 5.
 | --- | --- | --- | --- |
 | 3.1 | In a fight, use a move the chevron marks super effective | "Super Effective!" on the plate, and "type super sting" | PASS |
 | 3.2 | Use one marked resisted | "Resisted…", and "type resisted sting" | PASS |
-| 3.3 | **Run this last, after 7.3 tonight.** A rest tag counts the day as done, which cancels tonight's nudge. Then Character → **Tag today as a Rest Day** | "rest day sting", and the music dips under it and returns | |
-| 3.4 | Walk at least 1,000 steps, open the app, wait for the sync to settle, then open the **Map**. If the Map was already open when the sync landed, switch tabs and back | The Waymarker walks forward along Valheon's track to "footstep loop", then "waymarker sting" when it stops | |
-| 3.5 | Leave the Map and come back | No walk and no sting: it plays once per batch | |
-| 3.6 | Open the Map again with no new Leagues | Nothing | |
+| 3.3 | Character → **Tag today as a Rest Day**. Tags are unlimited, so this costs nothing | "rest day sting", and the music dips under it and returns | PASS |
+| 3.4 | After your next walk of 1,000+ steps, open the app, wait for the sync to settle, then open the **Map**. If the Map was already open when the sync landed, switch tabs and back | The Waymarker walks forward along Valheon's track to "footstep loop", then "waymarker sting" when it stops | PASS |
+| 3.5 | Leave the Map and come back | No walk and no sting: it plays once per batch | PASS |
+| 3.6 | Open the Map again with no new Leagues | Nothing | PASS |
 
 ### 4. Sound effects
 
@@ -97,20 +104,22 @@ Covers exit criterion 4.
 
 | # | Step | Expected | Result |
 | --- | --- | --- | --- |
-| 4.1 | Tap between the three tabs | "tab switch" each time | |
-| 4.2 | Character's sub-views: Avatar, Stats, Skills, Activity | "subtab switch" each time | |
-| 4.3 | Open Settings, then back out | "screen push", then "screen pop" | |
-| 4.4 | In a fight, land a physical hit | "hit physical", and the enemy flinches | |
-| 4.5 | Land a critical hit, if one comes | "crit", and the enemy staggers harder | |
-| 4.6 | Let the enemy hit you | The enemy lunges at you and your panel shakes | |
-| 4.7 | Use a healing item | "item heal" | |
-| 4.8 | Use a skill until it reads **0 left**, then tap it again. Nothing is locked at Level 23, and a spent skill shares the sound | "skill locked" | |
-| 4.9 | Win | "enemy faint", and the enemy fades and sinks | |
-| 4.10 | In a boss fight, tap **Flee** | "flee denied" | |
-| 4.11 | Read the type chevrons on your skill slots | Drawn icons: a double chevron up in green, a dash in grey, a chevron down in red. Not text | |
-| 4.12 | Read **Battle** on the Road's encounter card | It ends in a drawn chevron, not a dot | |
+| 4.1 | Tap between the three tabs | "tab switch" each time | PASS |
+| 4.2 | Character's sub-views: Avatar, Stats, Skills, Activity | "subtab switch" each time | PASS |
+| 4.3 | Open Settings, then back out | "screen push", then "screen pop" | PASS |
+| 4.4 | In a fight, land a physical hit | "hit physical", and the enemy flinches | PASS |
+| 4.5 | Land a critical hit, if one comes | "crit", and the enemy staggers harder | PASS |
+| 4.6 | Let the enemy hit you | The enemy lunges at you and your panel shakes | PASS |
+| 4.7 | Use a healing item | "item heal" | PASS |
+| 4.8 | Use a skill until it reads **0 left**, then tap it again. Nothing is locked at Level 23, and a spent skill shares the sound | "skill locked" | PASS |
+| 4.9 | Win | "enemy faint", and the enemy fades and sinks | PASS |
+| 4.10 | In a boss fight, tap **Flee** | "flee denied" | PASS |
+| 4.11 | Read the type chevrons on your skill slots | Drawn icons: a double chevron up in green, a dash in grey, a chevron down in red. Not text | PASS |
+| 4.12 | Read **Battle** on the Road's encounter card | It ends in a drawn chevron, not a dot | PASS |
 
 ### 5. The overactivity sting, simulated
+
+**Deferred to Phase 3** (DECISIONS 2026-11-03).
 
 Covers exit criterion 3's `stg_overactivity`. **A 90-minute session doesn't fit a drill**, so this runs at a 10-minute threshold, set on the **server** only. No APK change.
 
@@ -126,6 +135,8 @@ Covers exit criterion 3's `stg_overactivity`. **A 90-minute session doesn't fit 
 | 5.3 | Check the notification shade | No notification about the session | |
 
 ### 6. Onboarding again: the figure, Screen 10, and a denial
+
+**Deferred to Phase 3** (DECISIONS 2026-11-03).
 
 Covers exit criterion 6, and the figure choice. **Needs the identity export from "Before you start".**
 
@@ -145,7 +156,9 @@ First, in Android Settings → Apps → Traverser → Notifications, turn notifi
 | 6.10 | Settings → **Traverser** | The same two plates, Female chosen. Tap **Male**, and Avatar shows the male figure | |
 | 6.11 | Settings → **Restore a different identity**, and paste Emdir's file | Emdir returns: Level 23, streak 11 | |
 
-### 7. The daily nudge, tonight at 6 PM
+### 7. The daily nudge
+
+**Passed in daily use**, outside the short pass.
 
 Covers exit criterion 7. **Runs today.** A met goal skips the day's nudge, and today's isn't met yet, so tonight's 6 PM nudge is already scheduled. It stays scheduled only if your last open before 6 PM still finds you under the goal.
 
@@ -159,11 +172,11 @@ Covers exit criterion 7. **Runs today.** A met goal skips the day's nudge, and t
 
 | # | Step | Expected | Result |
 | --- | --- | --- | --- |
-| 7.1 | Read the Daily reminder card | "between 6 and 7 PM" | |
-| 7.2 | Claude's alarm check | One nudge alarm a day for the coming week, the first today from 6 PM within an hour's window | |
-| 7.3 | Tonight, between 6 and 7 PM | One notification, titled **Traverser**: "As of [the time you last opened it], Emdir was [N] steps short of today's goal. Walked since? Open Traverser to count it and keep a 11-day streak going." The "a 11" is a known copy defect (note 1) | |
-| 7.4 | Step the reminder to 7 AM, then back to 6 PM | "between 7 and 8 AM", then "between 6 and 7 PM" | |
-| 7.5 | Across all of M6 | No notification has ever arrived about a broken streak | |
+| 7.1 | Read the Daily reminder card | "between 6 and 7 PM" | PASS |
+| 7.2 | Claude's alarm check | One nudge alarm a day for the coming week, the first today from 6 PM within an hour's window | Not run. The notifications arriving on Nov 2 and 3 cover it |
+| 7.3 | On a day you opened the app before 6 PM, under your goal, between 6 and 7 PM | One notification, titled **Traverser**: "As of [the time you last opened it], Emdir was [N] steps short of today's goal. Walked since? Open Traverser to count it and keep a [current]-day streak going." At 14 days the article is right; note 1 still applies at 18 | Not yet tested: on Nov 2 and 3 the first open came after 6 PM, so each night's notification was scheduled the evening before, with the original copy, as designed (note 3) |
+| 7.4 | Step the reminder to 7 AM, then back to 6 PM | "between 7 and 8 AM", then "between 6 and 7 PM" | PASS |
+| 7.5 | Across all of M6 | No notification has ever arrived about a broken streak | PASS |
 
 ### 8. No placeholder anywhere
 
@@ -171,11 +184,11 @@ Covers exit criterion 8.
 
 | # | Step | Expected | Result |
 | --- | --- | --- | --- |
-| 8.1 | Fight one enemy from each zone | Each plate shows an inked silhouette, never a glyph or coloured square | |
-| 8.2 | Win a fight that drops something | The Reveal Card shows the item's or gear's silhouette | |
-| 8.3 | Satchel → Gear, and → Items | Every piece and item has its silhouette | |
-| 8.4 | Read the Road | Each zone card opens with its banner. Your Waymarker is the figure on a gold-ringed marble token | |
-| 8.5 | Settings → **Credits** | "Icons by Caro Asercion, DarkZaitzev, Delapouite, Lorc, Skoll, from game-icons.net, under CC BY 3.0. Recoloured, resized, and some combined for Traverser." | |
+| 8.1 | Fight one enemy from each zone | Each plate shows an inked silhouette, never a glyph or coloured square | PASS |
+| 8.2 | Win a fight that drops something | The Reveal Card shows the item's or gear's silhouette | PASS |
+| 8.3 | Satchel → Gear, and → Items | Every piece and item has its silhouette | PASS |
+| 8.4 | Read the Road | Each zone card opens with its banner. Your Waymarker is the figure on a gold-ringed marble token | PASS |
+| 8.5 | Settings → **Credits** | "Icons by Caro Asercion, DarkZaitzev, Delapouite, Lorc, Skoll, from game-icons.net, under CC BY 3.0. Recoloured, resized, and some combined for Traverser." | PASS |
 
 ### 9. The volume sliders survive a restart
 
@@ -183,11 +196,11 @@ Covers exit criterion 5.
 
 | # | Step | Expected | Result |
 | --- | --- | --- | --- |
-| 9.1 | Settings → Audio, drag **Music** to about a quarter | The drone gets quieter as you drag | |
-| 9.2 | Drag **Sound effects** to zero and release | No "volume" sample, and tab switches go silent | |
-| 9.3 | Force-stop and reopen | Music quiet, effects silent, sliders where you left them | |
-| 9.4 | Turn **Mute all** on, then off | Everything silent, then back at the slider levels | |
-| 9.5 | Set both back to full | | |
+| 9.1 | Settings → Audio, drag **Music** to about a quarter | The drone gets quieter as you drag | PASS |
+| 9.2 | Drag **Sound effects** to zero and release | No "volume" sample, and tab switches go silent | PASS |
+| 9.3 | Force-stop and reopen | Music quiet, effects silent, sliders where you left them | PASS |
+| 9.4 | Turn **Mute all** on, then off | Everything silent, then back at the slider levels | PASS |
+| 9.5 | Set both back to full | | PASS |
 
 ### 10. M5 still holds
 
@@ -195,12 +208,12 @@ Covers exit criterion 10. Spot checks against M5's ten.
 
 | # | Step | Expected | Result |
 | --- | --- | --- | --- |
-| 10.1 | Satchel: four slots, Gear and Items. Wear another Trinket, then Coilbreaker's Wrath again | Favour and Aegis move with it (M5 criteria 1–2) | |
-| 10.2 | Use Coilbreaker's Wrath in a fight and land it | The Weaken line in the log (M5 criterion 3) | |
-| 10.3 | Battle a boss again from the Road | Its intro lines open the fight, and its defeat text closes it (M5 criterion 6) | |
-| 10.4 | Bestiary → a met wild enemy | Its flavour text reads again (M5 criterion 8) | |
-| 10.5 | The Road | The encounters card is one row high, and one Explore button serves every zone (M5 criterion 9) | |
-| 10.6 | Turn the API off, force-stop, open the Road | It renders in full from the phone | |
+| 10.1 | Satchel: four slots, Gear and Items. Wear another Trinket, then Coilbreaker's Wrath again | Favour and Aegis move with it (M5 criteria 1–2) | PASS |
+| 10.2 | Use Coilbreaker's Wrath in a fight and land it | The Weaken line in the log (M5 criterion 3) | PASS |
+| 10.3 | Battle a boss again from the Road | Its intro lines open the fight, and its defeat text closes it (M5 criterion 6) | PASS |
+| 10.4 | Bestiary → a met wild enemy | Its flavour text reads again (M5 criterion 8) | PASS |
+| 10.5 | The Road | The encounters card is one row high, and one Explore button serves every zone (M5 criterion 9) | PASS |
+| 10.6 | Turn the API off, force-stop, open the Road | It renders in full from the phone | PASS |
 
 ---
 
@@ -211,20 +224,21 @@ M6 plan §5, against the drills above.
 | # | Criterion | Evidence | Result |
 | --- | --- | --- | --- |
 | 1 | The signed APK runs with no cable and no Metro, and syncs over Tailscale | 1 | PASS |
-| 2 | Each screen plays its GDD 14 track, and a battle enters and exits on §5's transitions | 2, 6.1–6.5 | |
-| 3 | Stingers fire on their triggers, `stg_overactivity` with the banner | 3, 5 | |
-| 4 | Sound effects play for combat, navigation and the overworld | 4, 3.4 | |
-| 5 | Settings' volume sliders change music and effects, and survive a restart | 9 | |
-| 6 | Screen 10 asks for notification permission after the tutorial, and a denial changes nothing else | 6.6–6.9 | |
-| 7 | The daily notification arrives at its fixed time, and nothing is ever sent for a broken streak | 7 | |
-| 8 | No placeholder art is visible in normal play | 8 | |
+| 2 | Each screen plays its GDD 14 track, and a battle enters and exits on §5's transitions | 2, 6.1–6.5 | Drill 2 PASS. Onboarding music (6.1–6.5) ACCEPTED on `cues.test.ts`'s `musicForRoute` cases |
+| 3 | Stingers fire on their triggers, `stg_overactivity` with the banner | 3, 5 | Drill 3 PASS. `stg_overactivity` ACCEPTED on `OveractivityTests`, `cues.test.ts`, and M5 drill 5's banner PASS |
+| 4 | Sound effects play for combat, navigation and the overworld | 4, 3.4 | PASS |
+| 5 | Settings' volume sliders change music and effects, and survive a restart | 9 | PASS |
+| 6 | Screen 10 asks for notification permission after the tutorial, and a denial changes nothing else | 6.6–6.9 | ACCEPTED on code review: `10-notifications.tsx` sends both answers to `/map`, and the answer only decides whether a nudge is scheduled. No test covers it. Confirm on the next fresh install |
+| 7 | The daily notification arrives at its fixed time, and nothing is ever sent for a broken streak | 7 | 7.1, 7.4 and 7.5 PASS: delivered on Nov 2 and 3, and no streak notification ever. 7.3, the same-day copy, is still to test |
+| 8 | No placeholder art is visible in normal play | 8 | PASS |
 | 9 | The home-lab decision is recorded, and the second restore drill passes | P6 (DECISIONS 2026-10-30) | PASS |
-| 10 | M5's ten criteria still pass | 10 | |
+| 10 | M5's ten criteria still pass | 10 | PASS |
 
 ## Notes
 
 | # | Drill | Note |
 | --- | --- | --- |
 | 1 | 7.3 | Found while updating the sheet on 2026-11-01: `todayBody` in `notifications/nudge.ts` writes "a 11-day streak". Streaks of 8, 11, 18 and 80–89 days need "an". Not yet fixed |
-| 2 | — | Found 2026-11-03, between drills: with the server off, Nov 2 was opened over its goal but synced on Nov 3. Grace was spent, so the streak broke at 11. Fixed in step 9 (DECISIONS 2026-11-03), and the next sync re-credits Nov 2 |
+| 2 | — | Found 2026-11-03, between drills: with the server off, Nov 2 was opened over its goal but synced on Nov 3. Grace was spent, so the streak broke at 11. Fixed in step 9 (DECISIONS 2026-11-03), and the 7:39 PM sync re-credited Nov 2 as `goal_hit`: streak 14, best 14 |
+| 3 | 7.3 | Nov 2 and 3: notifications arrived with "The road is waiting…". The phone's reads show first opens at 6:10 PM and 6:08 PM, after each night's notification was due, so the evening before had scheduled them with the original copy. Working as GDD 11 §6 specifies |
 | | | |

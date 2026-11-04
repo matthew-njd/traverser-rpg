@@ -89,6 +89,8 @@ Record any change Matthew wants to the look or flow of a screen here, then plan 
 - **The enemy restyle in the svgsilh style**, deferred in P5b for lack of matching images. A pixel restyle would replace it.
 - **The female figure's licence:** confirm the CC0 badge on svgsilh image 1905054.
 - **GDD 14's table**, which an earlier P3 note splits in two.
+- **M6's deferred drills:** 5 (the overactivity sting), 6 (onboarding again: the figure picker, Screen 10 and a denial) and 7 (the nudge) in `traverser-m6-drills.md`. Confirm each in daily use, and refresh the sheet against the server first.
+- **The nudge's "a 11-day streak"**, note 1 in the M6 drill sheet: streaks of 8, 11, 18 and 80–89 days need "an".
 
 ---
 
