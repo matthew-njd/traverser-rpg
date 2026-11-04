@@ -55,11 +55,12 @@ decision (§3.2), and the manifest-keyed registry makes real assets drop in wher
 | The Streak Milestone push | trimmed | GDD 11 §7.1 sends it server-side, which needs a push service. Local notifications only, $0. The in-app reveal already announces it. |
 | Sign-in resurfacing | trimmed | GDD 11 §7.3. Guest-only local profile, no auth flows (CLAUDE.md). |
 | Analytics events, including GDD 13 §10's two view events | trimmed | Sentry only (CLAUDE.md). |
-| A respec | undecided | Carried from M4 and M5 §2.2. A design question, not a gap. |
-| In-game codex or help screen | undecided | Carried. Needs a GDD 13 amendment first. |
-| Shorten or skip a boss's intro on a rematch | undecided | M5 drill note 4. A GDD 12 §2 amendment first. |
-| A further pass on the battle screen's UI | undecided | Matthew may revisit it after M5's P7c. No known defect. |
-| The Egyptian zone | Phase 2 | GDD 9, GDD 12 §9. |
+| A respec | Phase 3, undecided | Carried from M4 and M5 §2.2. A design question, not a gap. Moved at P8. |
+| In-game codex or help screen | Phase 3, undecided | Carried. Needs a GDD 13 amendment first. Moved at P8. |
+| Shorten or skip a boss's intro on a rematch | Phase 3, undecided | M5 drill note 4. A GDD 12 §2 amendment first. Moved at P8. |
+| A further pass on the battle screen's UI | Phase 3, undecided | Matthew may revisit it after M5's P7c. No known defect. Moved at P8. |
+| The Egyptian zone | Phase 3 | GDD 9, GDD 12 §9. Moved at P8: Phase 2 ends with M6. |
+| Deferred during M6: real sound, the svgsilh enemy restyle, the female figure's licence, GDD 14's split table, drills 5, 6 and 7.3, the "a 11-day" copy, the Name screen's `›`, and encounters that never expire | Phase 3 | Listed under "Carried over from Phase 2" and "UI and UX changes" in `traverser-dev-kickoff-prompt.md`. Added at P8. |
 
 ---
 

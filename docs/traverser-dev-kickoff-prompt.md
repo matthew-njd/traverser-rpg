@@ -81,7 +81,17 @@ Phase 2 builds the game as the GDD specifies it. Phase 3 revisits how the game l
 
 ### UI and UX changes
 
-Record any change Matthew wants to the look or flow of a screen here, then plan it as a packet. Nothing is listed yet.
+Record any change Matthew wants to the look or flow of a screen here, then plan it as a packet. Carried from M6 §2.2, all still undecided:
+
+- **A further pass on the battle screen's UI.** No known defect.
+- **Shorten or skip a boss's intro on a rematch** (M5 drill note 4). Needs a GDD 12 §2 amendment first.
+- **An in-game codex or help screen.** Needs a GDD 13 amendment first.
+- **A respec.** A design question, not a gap.
+- **The restore link's `›` on the Name screen** (`04-name.tsx`). The same glyph that M5 drill note 5 found reads as a dot. M6/P5e replaced it only on the Battle buttons.
+
+### Content
+
+- **The Egyptian zone** (GDD 9, GDD 12 §9). `gate_cacus` already unlocks `egypt_tbd`.
 
 ### Carried over from Phase 2
 
@@ -89,8 +99,9 @@ Record any change Matthew wants to the look or flow of a screen here, then plan 
 - **The enemy restyle in the svgsilh style**, deferred in P5b for lack of matching images. A pixel restyle would replace it.
 - **The female figure's licence:** confirm the CC0 badge on svgsilh image 1905054.
 - **GDD 14's table**, which an earlier P3 note splits in two.
-- **M6's deferred drills:** 5 (the overactivity sting), 6 (onboarding again: the figure picker, Screen 10 and a denial) and 7 (the nudge) in `traverser-m6-drills.md`. Confirm each in daily use, and refresh the sheet against the server first.
+- **M6's deferred drills:** 5 (the overactivity sting), 6 (onboarding again: the figure picker, Screen 10 and a denial) and 7.3 (the nudge's same-day copy: open the app before 6 PM, under the goal) in `traverser-m6-drills.md`. Confirm each in daily use, and refresh the sheet against the server first.
 - **The nudge's "a 11-day streak"**, note 1 in the M6 drill sheet: streaks of 8, 11, 18 and 80–89 days need "an".
+- **Encounters never expire** (M3 drill note 2, carried as a cross-spec flag through M4, M5 and M6). Spec-correct, but unfought grants pile up: 23 were waiting on 2026-11-03.
 
 ---
 

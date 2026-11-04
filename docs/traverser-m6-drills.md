@@ -1,6 +1,6 @@
 # M6 device drills
 
-**Run:** P7, on the Pixel 9, **on the release build**, from 2026-11-01. **Status:** complete on 2026-11-03 apart from 7.3, as a short pass (DECISIONS 2026-11-03). Drills 5 and 6 are deferred to Phase 3.
+**Run:** P7, on the Pixel 9, **on the release build**, from 2026-11-01. **Status:** complete on 2026-11-03, as a short pass (DECISIONS 2026-11-03). Drills 5, 6 and 7.3 are deferred to Phase 3.
 
 **Purpose:** verify the ten exit criteria in `traverser-m6-plan.md` §5 on hardware.
 
@@ -13,7 +13,7 @@ Fill in the **Result** column as you go. Record a failure as a defect, not as a 
 Matthew can't run the long drills for a while, so M6 closes on a short pass (DECISIONS 2026-11-03):
 
 - **Run:** 3.3–3.6, 4, 8, 9 and 10. Each takes a few minutes sitting down, apart from 3.4, which waits for your next walk. You have 23 waiting fights in Valheon, so drill 4 needs no Explore.
-- **Deferred to Phase 3:** 5 (the overactivity walk) and 6 (onboarding again). Drill 7, first deferred, then passed in daily use. Their criteria are marked **ACCEPTED**, not PASS, with the evidence named in the exit-criteria table. Confirm each in daily use when it comes up.
+- **Deferred to Phase 3:** 5 (the overactivity walk), 6 (onboarding again) and 7.3 (the same-day nudge copy). The rest of drill 7 passed in daily use. Their criteria are marked **ACCEPTED**, not PASS, with the evidence named in the exit-criteria table. Confirm each in daily use when it comes up.
 
 ---
 
@@ -174,7 +174,7 @@ Covers exit criterion 7. **Runs today.** A met goal skips the day's nudge, and t
 | --- | --- | --- | --- |
 | 7.1 | Read the Daily reminder card | "between 6 and 7 PM" | PASS |
 | 7.2 | Claude's alarm check | One nudge alarm a day for the coming week, the first today from 6 PM within an hour's window | Not run. The notifications arriving on Nov 2 and 3 cover it |
-| 7.3 | On a day you opened the app before 6 PM, under your goal, between 6 and 7 PM | One notification, titled **Traverser**: "As of [the time you last opened it], Emdir was [N] steps short of today's goal. Walked since? Open Traverser to count it and keep a [current]-day streak going." At 14 days the article is right; note 1 still applies at 18 | Not yet tested: on Nov 2 and 3 the first open came after 6 PM, so each night's notification was scheduled the evening before, with the original copy, as designed (note 3) |
+| 7.3 | On a day you opened the app before 6 PM, under your goal, between 6 and 7 PM | One notification, titled **Traverser**: "As of [the time you last opened it], Emdir was [N] steps short of today's goal. Walked since? Open Traverser to count it and keep a [current]-day streak going." At 14 days the article is right; note 1 still applies at 18 | ACCEPTED on `nudge.test.ts`, carried to Phase 3. Not yet seen on the device: on Nov 2 and 3 the first open came after 6 PM, so each night's notification was scheduled the evening before, with the original copy, as designed (note 3) |
 | 7.4 | Step the reminder to 7 AM, then back to 6 PM | "between 7 and 8 AM", then "between 6 and 7 PM" | PASS |
 | 7.5 | Across all of M6 | No notification has ever arrived about a broken streak | PASS |
 
@@ -229,7 +229,7 @@ M6 plan §5, against the drills above.
 | 4 | Sound effects play for combat, navigation and the overworld | 4, 3.4 | PASS |
 | 5 | Settings' volume sliders change music and effects, and survive a restart | 9 | PASS |
 | 6 | Screen 10 asks for notification permission after the tutorial, and a denial changes nothing else | 6.6–6.9 | ACCEPTED on code review: `10-notifications.tsx` sends both answers to `/map`, and the answer only decides whether a nudge is scheduled. No test covers it. Confirm on the next fresh install |
-| 7 | The daily notification arrives at its fixed time, and nothing is ever sent for a broken streak | 7 | 7.1, 7.4 and 7.5 PASS: delivered on Nov 2 and 3, and no streak notification ever. 7.3, the same-day copy, is still to test |
+| 7 | The daily notification arrives at its fixed time, and nothing is ever sent for a broken streak | 7 | PASS on delivery (7.1, 7.4, 7.5): Nov 2 and 3, and no streak notification ever. The same-day copy (7.3) ACCEPTED on `nudge.test.ts` |
 | 8 | No placeholder art is visible in normal play | 8 | PASS |
 | 9 | The home-lab decision is recorded, and the second restore drill passes | P6 (DECISIONS 2026-10-30) | PASS |
 | 10 | M5's ten criteria still pass | 10 | PASS |
