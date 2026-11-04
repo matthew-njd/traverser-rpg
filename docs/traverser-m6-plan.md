@@ -270,7 +270,7 @@ Ten items, M5's checklist unchanged.
 | 2 | Tests assert against fixtures | PASS. M6 changed no formulas. Every packet's stated tests exist, including the bus, cues, nudge, art, motion and streak tests. |
 | 3 | In-scope T2 §4 steps built | PASS. Step 9's same-day read went in at P7. |
 | 4 | Obligations discharged | PASS. The nightly backup ran every day the PC was on, from 10-26 to 11-03, with Drive copies and a last result of 0. |
-| 5 | Nothing deferred silently | **FAILED as found, corrected at P8 and P9.** P8 found five gaps: the Name screen's `›`, encounters that never expire, the four undecided rows and the Egyptian zone with no home after Phase 2, and M6's own deferrals missing from §2.2. P9 found three more, recorded in DECISIONS but absent from Phase 3's list: GDD 14 §4.2's low-Vigour layer, the OGG encoder, and source-map upload. All now land in Phase 3. |
+| 5 | Nothing deferred silently | **FAILED as found, corrected at P8 and P9.** P8 found five gaps: the Name screen's `›`, encounters that never expire, the four undecided rows and the Egyptian zone with no home after Phase 2, and M6's own deferrals missing from §2.2. P9 found three more, recorded in DECISIONS but absent from Phase 3's list: GDD 14 §4.2's low-Vigour layer, the OGG encoder, and source-map upload. Updating the playbook after P9 found a fourth: §3.2's question 3, the looping intro, which waits for real tracks. All now land in Phase 3. |
 | 6 | Suites green, tree clean | PASS. 300 API and 888 client tests, `tsc` exit 0, clean at `944863f`. |
 | 7 | `⟨verify⟩` markers resolved | PASS. M6 introduced none. |
 | 8 | The visual style has a named owner | PASS. GDD 13 §11 owns it, and Phase 3's art-direction notes own the next one. |

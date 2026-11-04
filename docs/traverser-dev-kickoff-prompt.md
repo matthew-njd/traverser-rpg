@@ -97,7 +97,7 @@ Record any change Matthew wants to the look or flow of a screen here, then plan 
 
 ### Carried over from Phase 2
 
-- **Real sound.** The spoken temp audio (`npm run audio:temp`) stands in until real sound replaces it, key by key. It brings two items with it: GDD 14 §4.2's low-Vigour layer for the six boss tracks, whose manifest keys are added with the files (DECISIONS 2026-10-28), and an OGG encoder, since T4 §9.3 names `.ogg` and the placeholders are `.wav`.
+- **Real sound.** The spoken temp audio (`npm run audio:temp`) stands in until real sound replaces it, key by key. It brings three items with it: GDD 14 §4.2's low-Vigour layer for the six boss tracks, whose manifest keys are added with the files (DECISIONS 2026-10-28); an OGG encoder, since T4 §9.3 names `.ogg` and the placeholders are `.wav`; and M6 §3.2's question 3, whether a looping intro matters once real tracks exist (DECISIONS 2026-07-26).
 - **Source-map upload**, off since M0 (DECISIONS 2026-10-28). Revisit the first time a minified release stack trace gets in the way.
 - **The enemy restyle in the svgsilh style**, deferred in P5b for lack of matching images. A pixel restyle would replace it.
 - **The female figure's licence:** confirm the CC0 badge on svgsilh image 1905054.
