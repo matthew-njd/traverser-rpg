@@ -26,11 +26,11 @@ These are deliberate, agreed trims for a solo fun project. Do not treat them as 
 
 **Phase 1 — Tech Specs (before any code):** six short sessions, one topic each, each producing a lean markdown decision doc (`traverser-tech-01-data-model.md`, etc.). These are decision records, not essays — capture the choice, the rationale, and the schema/contract, then stop. See the kickoff prompt for the topic list.
 
-**Phase 2 — Build Milestones (M0–M5):** vertical slices, each ending with something playable on a real phone. **Matthew writes most of the code himself, by hand, in VS Code** — this is deliberate: the project doubles as his path to learning React Native, mobile packaging, and health integrations, so speed is not the priority. **Claude Code (VS Code extension) serves as an assist, not the builder**, with **Context7's MCP server** wired in for up-to-date framework docs (especially React Native/Expo, where training data goes stale fast).
+**Phase 2 — Build Milestones (M0–M6, complete 2026-11-03):** vertical slices, each ending with something playable on a real phone. **Matthew writes most of the code himself, by hand, in VS Code** — this is deliberate: the project doubles as his path to learning React Native, mobile packaging, and health integrations, so speed is not the priority. **Claude Code (VS Code extension) serves as an assist, not the builder**, with **Context7's MCP server** wired in for up-to-date framework docs (especially React Native/Expo, where training data goes stale fast).
 
 The manual/assist split: Matthew hand-writes everything with learning value or architectural weight (RN screens and navigation, health integration, sync flow, battle engine core); Claude Code is delegated pure labor with no learning payoff — test suites built from the GDD's worked examples, EF migrations, boilerplate/DTOs, and debugging assists. A `CLAUDE.md` at the repo root points at the GDD and tech specs so every assist has project context. This chat project remains the home for design decisions, spec updates, milestone planning, and reviews.
 
-**Phase 3 — Direction & Polish (after M6):** revisits the art direction (pixel-art sprites), real sound, and any UI or UX change, on top of the Phase 2 foundation. See the kickoff prompt for the running notes.
+**Phase 3 — Direction & Polish (current, from 2026-11-03):** revisits the art direction (pixel-art sprites), real sound, and any UI or UX change, on top of the Phase 2 foundation. See the kickoff prompt for the running notes.
 
 ## How to Behave in Every Session
 

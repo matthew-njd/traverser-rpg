@@ -157,7 +157,7 @@ npm run gen:assets -- --placeholders  # first create placeholders for keys that 
 The generator parses `docs/traverser-data-manifest.md` — new content means a manifest key *first*,
 then `gen:assets`, never a hardcoded filename. Placeholders are flat-colour PNGs with the key as
 text, and silent `.wav` files (not `.ogg`: no OGG encoder in the toolchain, and Metro cannot bundle
-`.ogg` without a `metro.config.js`, which arrives at M5 — DECISIONS 2026-08-01). Real art/audio is
+`.ogg` without the `metro.config.js` that arrived at M6/P1 — DECISIONS 2026-08-01). Real art/audio is
 drop-in: replace the placeholder (for audio: add `{key}.ogg`, delete the `.wav`), rerun `gen:assets`.
 
 Until real sound is sourced, each `.wav` speaks its own cue name, and music adds a drone after it, so
@@ -551,6 +551,32 @@ unreachable API the normal case, T4 §8.1 treats it as success, and T3's high-wa
 sync loses nothing. Adding any of the three would be a regression (tech-06 §8.4).
 
 ---
+
+## M6 is complete, and with it Phase 2
+
+**Verified on the Pixel's release build, 2026-11-03, on a short pass** (`traverser-m6-plan.md` §5,
+§7, and `traverser-m6-drills.md`). Six exit criteria pass outright, and 2, 3 and 7 pass apart from
+one step each. Those steps (the onboarding music, the overactivity sting and the nudge's same-day
+copy) and criterion 6's Screen 10 are ACCEPTED on named evidence and carried to Phase 3 (DECISIONS
+2026-11-03).
+
+The game is dressed and untethered. A signed release APK runs with no cable and no Metro. Every
+screen has its music, every stinger and sound effect has its trigger, and the sliders and Mute all
+sync. The daily nudge arrives in the hour you pick and says what the app last knew. All 52 manifest
+sprites are real, inked from game-icons.net. The Traverser is a silhouette with gear in its plate's
+corners, male or female. The Road has a banner per zone, and the Waymarker walks forward after a
+sync. Hits move the sprites.
+
+**The sounds are temporary.** Each one speaks its own cue name, so every trigger can be checked by
+ear until real sound is sourced (`npm run audio:temp`, above).
+
+**A streak broke because the PC was off, and that's fixed.** A day the phone read as over its goal
+synced late, grace was spent, and the run ended at 11. Step 9 now credits the phone's own read time,
+and the next sync restored the streak to 14.
+
+The close-out review found eight deferrals with no home and gave each one in Phase 3
+(`traverser-m6-plan.md` §7.2). Next is Phase 3, Direction & Polish: the art direction, real sound,
+and UI changes, from the notes in `docs/traverser-dev-kickoff-prompt.md`.
 
 ## M5 is complete
 

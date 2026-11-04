@@ -1,6 +1,6 @@
 # Traverser M6 build plan — "The Song"
 
-**Milestone:** M6. **Predecessor:** `traverser-m5-plan.md` (complete, 2026-10-28).
+**Milestone:** M6. **Predecessor:** `traverser-m5-plan.md` (complete, 2026-10-28). **Status:** complete, 2026-11-03 (§7).
 **Theme:** dress the finished game, and ship it untethered.
 
 M5 finished the game: every reward, slot, story beat and screen the GDDs ask for is built and
@@ -223,3 +223,58 @@ Verified at P7, before the wrap-up. M6 is done when, on the Pixel, on the releas
   lives in the spec and not only in CLAUDE.md.
 - **T4 §9.3 still names `.ogg`, and M0 shipped `.wav` placeholders.** P1's `metro.config.js` closes
   the bundling half. The encoder is part of question 2.
+
+---
+
+## 7. Packets, as delivered
+
+| Plan packet | Commit(s) | Date | Contents |
+|---|---|---|---|
+| **P1** | `82eeccf` | 10-28 | `expo-audio` and `expo-notifications`, `metro.config.js` with `ogg` in `assetExts`, and the signed release APK. Source-map upload stays off. |
+| **P2** | `72673c6` | 10-28 | The audio bus: music per screen with equal-power crossfades, the duck, stinger arbitration, and the sliders and Mute all, synced. Found that the Waymarker's walk had never been built, so `stg_waymarker` had no trigger. |
+| **P3** | `2b8eb46` | 10-28 | Sound effects for combat, navigation and the overworld. GDD 14 and T4 amended. |
+| **P4** | `03026d5`, `e8039f9`, `ae831da`, `1d663d8` | 10-28 – 10-29 | The fixed-time nudge, scheduled a week ahead and re-laid on every open, and Screen 10. Then three device-led changes: the player picks the hour, stated as a one-hour window; a rest day skips the nudge; and tonight's nudge states the steps it knew. GDD 10, 11 and 13 amended. |
+| **P5a** | `c7fb8d9` | 10-29 | The art pipeline: `npm run art:export` inks game-icons.net SVGs and writes 1×, 2× and 3× PNGs, with credits. T4 amended. |
+| **P5b** | `93a196c` | 10-29 | All 52 manifest sprites, over three rounds of Matthew's picks. Seven subjects were composed or drawn. |
+| **P5c** | `b3cba91` | 10-29 | The Traverser: a CC0 silhouette on a marble plate, with gear in four grade-bordered corners. Rejected twice before that. A male or female figure, chosen at Screen 4 and in Settings, synced. GDD 8, 10 and 13, T1 and the manifest amended. |
+| **P5d** | `bbe878c` | 10-29 | The Waymarker's forward walk, with its footsteps and sting, and four one-ink skyline banners on the Road. GDD 9 and 13 and the manifest amended. |
+| **P5e** | `574e50a` | 10-30 | Battle motion as transforms on the sprites: flinch, stagger, lunge and a faint. Ionicons replace the type chevrons and the Battle `›`. GDD 13 amended. |
+| **P6** | `c72191b` | 10-30 | The home-lab hardware: not yet. The second restore drill passed, reconciled against the ledger. T6 amended. |
+| **P7** | `2c39f96`, `6498561`, `172a090` | 10-30 – 11-03 | Spoken temp audio, the drill sheet, and the short-pass results. A streak defect found in daily use was fixed in step 9. GDD 11 and T2 amended. Also `772246a` (11-01): Phase 3's first notes. |
+| **P8** | `944863f` | 11-03 | Close-out review, ten items. Item 5 failed as found and was corrected in §2.2 and in Phase 3's notes. See §7.2. |
+| **P9** | *this packet* | 11-03 | Wrap-up: this section, the README, both dev docs, and the Phase 3 kickoff. |
+
+### 7.1 Where the delivery diverged from the intent
+
+- **The silent placeholders hid the audio criteria until the drills.** §3.1 put placeholders first so each packet could be tested alone, and M0's audio placeholders were 0.3 seconds of silence. P2 and P3 were verified by tests, and nothing could be heard until P7's spoken temp audio. *Lesson: a placeholder has to be observable in the way the real asset will be. A silent sound is not a placeholder for a sound.*
+
+- **The art direction was found by rejection.** The sprites took three rounds of picks, and the Traverser was rejected twice ("very boring and plain", then "very childish and not very mythical") before Matthew found the style he wanted himself. Each round was cheap, but the direction was never written down before drawing started. *Lesson: decide the direction first, as a style sheet. Phase 3's art notes start there.*
+
+- **Two packets split into many.** P4 became four commits as the device showed Android delivering within an hour, and P5 became five, a to e. As at M5, every split was made before the second half was built.
+
+- **One more "unscheduled" item was owned by a GDD.** The Waymarker's forward walk (GDD 9 §5) had never been built, which left `stg_waymarker` and `sfx_footstep_loop` with no trigger. P2 found it, and P5d built it.
+
+- **The drill sheet went stale in days, and one expected value was wrong from the start.** It was written against Oct 30's server state, so the steps, the encounters and the nudge plan were wrong by Nov 1. It also put the Waymarker in Imperion, because Imperion was open, but the Waymarker stands in the furthest open zone the Leagues have reached, which was Valheon. *Lesson: refresh a drill sheet against the server on the day it runs, and derive each expected value from the code's rule, not from a list.*
+
+- **The worst defect came from the host, not the build.** With the PC off for two days, a day the phone saw over its goal synced late, grace was spent, and the streak broke. GDD 11 §3.2 assumed that opening the app means syncing. The fix credits the phone's own read time. *Lesson: with a desktop host, "offline" is the common case, so every rule that judges by server time needs checking against it.*
+
+- **M6 closed on a short pass, not the full drills.** Matthew couldn't run the long drills for a while. Drills 5, 6 and 7.3 are ACCEPTED on named evidence and carried to Phase 3 (DECISIONS 2026-11-03). One step was first reported as failed: 7.3's setup step, an open before 6 PM, hadn't happened, so the nudge carried the original copy as designed.
+
+### 7.2 Close-out review (P8) result
+
+Ten items, M5's checklist unchanged.
+
+| # | Item | Result |
+|---|---|---|
+| 1 | Every spec amendment has code behind it | PASS. All 18 M6 amendments, across GDD 8, 9, 10, 11, 13 and 14 and T1, T2, T4 and T6, plus the manifest's Avatar and Zone Art sections, were built in their packets. |
+| 2 | Tests assert against fixtures | PASS. M6 changed no formulas. Every packet's stated tests exist, including the bus, cues, nudge, art, motion and streak tests. |
+| 3 | In-scope T2 §4 steps built | PASS. Step 9's same-day read went in at P7. |
+| 4 | Obligations discharged | PASS. The nightly backup ran every day the PC was on, from 10-26 to 11-03, with Drive copies and a last result of 0. |
+| 5 | Nothing deferred silently | **FAILED as found, corrected at P8 and P9.** P8 found five gaps: the Name screen's `›`, encounters that never expire, the four undecided rows and the Egyptian zone with no home after Phase 2, and M6's own deferrals missing from §2.2. P9 found three more, recorded in DECISIONS but absent from Phase 3's list: GDD 14 §4.2's low-Vigour layer, the OGG encoder, and source-map upload. All now land in Phase 3. |
+| 6 | Suites green, tree clean | PASS. 300 API and 888 client tests, `tsc` exit 0, clean at `944863f`. |
+| 7 | `⟨verify⟩` markers resolved | PASS. M6 introduced none. |
+| 8 | The visual style has a named owner | PASS. GDD 13 §11 owns it, and Phase 3's art-direction notes own the next one. |
+| 9 | The review takes no new work | PASS. Every correction is documentation. |
+| 10 | One row of real production data reconciled | PASS. Nov 2's `activity_day` and its `sync_delta` read times, during the streak repair. |
+
+**Phase 2 is complete.** Next is Phase 3, Direction & Polish, from the notes in `traverser-dev-kickoff-prompt.md`.

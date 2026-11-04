@@ -34,6 +34,8 @@ Each milestone ends with a build I can run on my actual phone. Placeholder art (
 | M4 | **The Realm** | All three zones. Valheon + Imperion rosters, Trinkets + gear moves, zone entry narratives + boss dialogue + bestiary, streaks/rest days/grace logic, overactivity warning. | 6, 7, 8, 11, 12 |
 | M5 | **The Song** | Ship-quality personal build. Full sound design, real art integrated, fixed-time daily notification, remaining polish, installable on my phone as a daily-use app. | 14, remaining 10/13 polish |
 
+> **Amended 2026-11-03 (M6/P9).** Delivered as seven milestones, M0–M6. On 2026-10-24 the row above was split in two: M5 finished the game, and M6, "The Song", added the sound, the art, the notification and the release build. From 2026-08-04 Claude writes the code by default and Matthew reviews and commits it, which supersedes the working agreement below.
+
 **Working agreement:** I write the code manually in VS Code, using Claude Code (VS Code extension) as an assist rather than the builder, with Context7's MCP server providing current framework docs. Backend targets **.NET 10**. Hosting is my current PC via Docker Compose through the build phase (off-between-sessions is fine, no uptime need yet); a dedicated home-lab box is a later, deliberately deferred purchase. Hand-written by me: RN screens/navigation, health integration, sync flow, battle engine core — the learning-value and architecture-weight work. Delegated to Claude Code: test suites from the GDD's worked examples (expected values are already locked — ideal delegation), EF migrations, boilerplate/DTOs, and debugging assists. The GDD and tech specs are checked into the repo with a `CLAUDE.md` at the root pointing to them. This chat project handles planning each milestone, resolving spec questions that surface during the build, and the post-milestone review (the dev-phase version of the GDD's consistency audit: does the build match the spec, with formula outputs tested against the GDD's own verified numbers).
 
 ---
@@ -95,7 +97,8 @@ Record any change Matthew wants to the look or flow of a screen here, then plan 
 
 ### Carried over from Phase 2
 
-- **Real sound.** The spoken temp audio (`npm run audio:temp`) stands in until real sound replaces it, key by key.
+- **Real sound.** The spoken temp audio (`npm run audio:temp`) stands in until real sound replaces it, key by key. It brings two items with it: GDD 14 §4.2's low-Vigour layer for the six boss tracks, whose manifest keys are added with the files (DECISIONS 2026-10-28), and an OGG encoder, since T4 §9.3 names `.ogg` and the placeholders are `.wav`.
+- **Source-map upload**, off since M0 (DECISIONS 2026-10-28). Revisit the first time a minified release stack trace gets in the way.
 - **The enemy restyle in the svgsilh style**, deferred in P5b for lack of matching images. A pixel restyle would replace it.
 - **The female figure's licence:** confirm the CC0 badge on svgsilh image 1905054.
 - **GDD 14's table**, which an earlier P3 note splits in two.
@@ -107,7 +110,7 @@ Record any change Matthew wants to the look or flow of a screen here, then plan 
 
 ## Current Session
 
-**M1 — The Walk.** Scope, packet order, and exit criteria are in `traverser-m1-plan.md`; work the packets in order, one commit each, `Phase 2 - M1: <name> (P<n>)`.
+**Phase 3 — Direction & Polish.** No plan yet. The first Phase 3 plan draws its scope from the notes in the Phase 3 section above, starting with the art direction's style sheet. Commits follow `Phase 3 - <plan>: <name> (P<n>)`.
 
 Rather than restating the session here every time and letting it rot, this block names the current milestone only. **The milestone plan is the session brief** — its packet list is the running order and its §5 exit criteria are the definition of done.
 
@@ -115,3 +118,4 @@ Rather than restating the session here every time and letting it rot, this block
 
 - **Phase 1 — Tech Specs:** all six, T1–T6, closed 2026-07-26. Amendments land in place as dated blockquotes; deviations get a `DECISIONS.md` line.
 - **Phase 2 — M0 (Scaffolding):** closed 2026-08-01. The app builds locally and installs to the Pixel over USB; Postgres is migrated and seeded; Compose, Tailscale, Sentry, and the release keystore are wired. `traverser-m0-plan.md` §4.1 records where delivery diverged from the plan.
+- **Phase 2 — M1 (The Walk):** verified 2026-08-16. **M2 (The Fight):** 2026-08-22. **M3 (The Road):** 2026-09-01. **M4 (The Payoff):** 2026-10-24. **M5 (The Realm):** 2026-10-28. **M6 (The Song):** 2026-11-03, on a short drill pass. Each plan's §7 records where delivery diverged, and the README summarizes each milestone.
