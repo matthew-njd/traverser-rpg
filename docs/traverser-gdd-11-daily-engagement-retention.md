@@ -49,6 +49,8 @@ Covers the specific case named in the planning doc: the player hit their goal bu
 - **Capped at 3 auto-credited days per rolling 30-day window.** Beyond that, retroactive sync still credits the underlying steps and XP (XP is never lost, per Section 1's core principle) but no longer auto-repairs the streak — at that point a manual Rest Day tag (3.1, uncapped) is the correct tool if the player wants to preserve it.
 - The cap exists to keep this mechanism bounded and legible in analytics (distinguishing "genuinely active but device-lax" players from edge cases) without contradicting its own purpose — 3/month covers realistic gaps generously.
 
+> **Amended 2026-11-03 (M6/P7).** Opening the app is what counts, not reaching the server. If the phone read the day's goal as met before local midnight, the day is a goal hit however late that read syncs, and it spends no grace. Grace covers only a day the app never saw met. Found when the PC hosting the server was off for two days: Matthew opened the app on Nov 2 with the goal met, the grace cap was already spent, and the streak broke.
+
 ### 3.3 What actually breaks a streak
 
 A streak breaks only when a calendar day passes with: no step goal met, no Rest Day tag (same-day or within the 24-hour retroactive window), and no remaining Auto Sync Grace credit. This is intentionally the narrow case — everything else in this section exists to keep genuine effort or genuine rest from ever counting as a loss.

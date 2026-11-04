@@ -15,7 +15,7 @@ public class StreakTests(TraverserApiFixture api)
 
     private static DateOnly Day(int n) => Day1.AddDays(n - 1);
 
-    private static object Steps(DateOnly date, int steps) => new
+    private static object Steps(DateOnly date, int steps, DateTime? recordedAt = null) => new
     {
         client_delta_id = Guid.CreateVersion7(),
         activity_date = date,
@@ -23,8 +23,12 @@ public class StreakTests(TraverserApiFixture api)
         steps_delta = steps,
         minutes_delta = 0,
         hr_tier = (int?)null,
-        recorded_at = DateTime.UtcNow,
+        recorded_at = recordedAt ?? DateTime.UtcNow,
     };
+
+    /// <summary>A device read at <paramref name="hour"/> o'clock on <paramref name="date"/>, New York time (the fixture's zone).</summary>
+    private static DateTime ReadAt(DateOnly date, int hour) =>
+        TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(new TimeOnly(hour, 0)), TimeZoneInfo.FindSystemTimeZoneById("America/New_York"));
 
     /// <summary>A sync made while <paramref name="today"/> was the device's local date.</summary>
     private static async Task<JsonElement> SyncOnAsync(HttpClient client, DateOnly today, params object[] deltas)
@@ -118,6 +122,39 @@ public class StreakTests(TraverserApiFixture api)
 
         Assert.Equal(StreakCreditMethod.AutoSyncGrace, await CreditOnAsync(playerId, Day(2)));
         Assert.Equal((3, 3), StreakOf(result));
+    }
+
+    /// <summary>
+    /// GDD 11 §3.2, amended 2026-11-03: the app was opened with the server off. The phone read the
+    /// goal as met that evening, so the late sync is a goal hit and spends no grace.
+    /// </summary>
+    [Fact]
+    public async Task A_goal_the_phone_read_on_the_day_is_a_goal_hit_however_late_it_syncs()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        await SyncOnAsync(client, Day(1), Steps(Day(1), 7_000));
+        var result = await SyncOnAsync(client, Day(3), Steps(Day(2), 7_200, ReadAt(Day(2), 23)), Steps(Day(3), 7_000));
+
+        Assert.Equal(StreakCreditMethod.GoalHit, await CreditOnAsync(playerId, Day(2)));
+        Assert.Equal((3, 3), StreakOf(result));
+    }
+
+    /// <summary>Only what the phone had read before local midnight counts toward the day being met on the day.</summary>
+    [Fact]
+    public async Task Steps_read_after_midnight_still_need_grace()
+    {
+        var (playerId, token) = await api.RegisterAsync();
+        var client = api.CreateAuthenticatedClient(token);
+
+        await SyncOnAsync(client, Day(1), Steps(Day(1), 7_000));
+        await SyncOnAsync(
+            client, Day(3),
+            Steps(Day(2), 6_000, ReadAt(Day(2), 23)),
+            Steps(Day(2), 1_500, ReadAt(Day(3), 1)));
+
+        Assert.Equal(StreakCreditMethod.AutoSyncGrace, await CreditOnAsync(playerId, Day(2)));
     }
 
     /// <summary>GDD 11 §3.2's 48 hours: three days back is outside it, and the steps still count.</summary>

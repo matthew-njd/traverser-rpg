@@ -288,7 +288,7 @@ public static class SyncEndpoints
             {
                 day.StreakCreditMethod = StreakCreditMethod.RestDayTag;
             }
-            else if (day.GoalMet && day.SyncedSameDay)
+            else if (day.GoalMet && (day.SyncedSameDay || await ReadMetOnTheDayAsync(db, player, day, ct)))
             {
                 day.StreakCreditMethod = StreakCreditMethod.GoalHit;
             }
@@ -327,6 +327,23 @@ public static class SyncEndpoints
         state.CurrentStreak = current;
         state.LongestStreak = Math.Max(state.LongestStreak, current);
         state.LastCreditedDate = credited.Count > 0 ? credited[0] : null;
+    }
+
+    /// <summary>
+    /// GDD 11 §3.2, amended 2026-11-03: the device read the goal as met before the day's local midnight,
+    /// however late that read reached the server. <c>recorded_at</c> is the device clock.
+    /// </summary>
+    private static async Task<bool> ReadMetOnTheDayAsync(TraverserDbContext db, Player player, ActivityDay day, CancellationToken ct)
+    {
+        var midnight = TimeZoneInfo.ConvertTimeToUtc(
+            day.ActivityDate.AddDays(1).ToDateTime(TimeOnly.MinValue),
+            TimeZoneInfo.FindSystemTimeZoneById(player.Timezone));
+
+        var stepsRead = await db.SyncDeltas
+            .Where(d => d.PlayerId == player.Id && d.ActivityDate == day.ActivityDate && d.RecordedAt < midnight)
+            .SumAsync(d => d.StepsDelta, ct);
+
+        return stepsRead >= day.StepGoalSnapshot;
     }
 
     /// <summary>

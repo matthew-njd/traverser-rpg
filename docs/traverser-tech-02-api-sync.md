@@ -217,6 +217,8 @@ For each touched date plus the 48-hour lookback window:
 
 > **Amended 2026-10-24 (M4/P5).** "Never synced at the time" means no sync arrived while that date was the device's local date. The request's `local_date` sets `activity_day.synced_same_day` on that date, and only a goal-met day without the flag can take `auto_sync_grace`. "Touched dates" includes `local_date` and the two days before it, and those rows return in `activity_days`. The run is counted back from `local_date`; today without a credit yet is not a break. A sync with no `local_date` skips step 9.
 
+> **Amended 2026-11-03 (M6/P7).** A goal-met day is also `goal_hit` when its step deltas with `recorded_at` before that date's local midnight, in the player's `timezone`, already sum to `step_goal_snapshot`. The phone read the goal as met on the day, so only the sync was late, and grace isn't spent. This happens when the app is opened while the server is off. Deltas read after midnight still fall to `auto_sync_grace`.
+
 A null `streak_credit_method` on a past date is a break, and that is *all* it is: no flag is written, no notification is queued, no field records that a streak was lost (GDD 11 §4). The quiet reset copy is the client's business.
 
 **10. Deterministic rewards.**

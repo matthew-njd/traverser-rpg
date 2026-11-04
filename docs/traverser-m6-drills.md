@@ -1,28 +1,30 @@
 # M6 device drills
 
-**Run:** P7, on the Pixel 9, **on the release build**, from 2026-10-30. **Status:** not started.
+**Run:** P7, on the Pixel 9, **on the release build**, from 2026-11-01. **Status:** in progress.
 
 **Purpose:** verify the ten exit criteria in `traverser-m6-plan.md` §5 on hardware.
 
 Fill in the **Result** column as you go. Record a failure as a defect, not as a retry. Write anything else you notice in the notes table at the bottom while you see it.
 
-**↯ These drills are written against the build, not against the spec.** Every expected string below was read out of the code on 2026-10-30, and every number out of the server the same day.
+**↯ These drills are written against the build, not against the spec.** Every expected string below was read out of the code on 2026-10-30. Every number was read out of the server again on 2026-11-01, after the 10:35 AM sync.
 
 ---
 
 ## Before you start
 
-### State on 2026-10-30
+### State on 2026-11-01
 
-Your profile, `Emdir` (`019fd954-0745-7748-9892-ce6f2e600c04`), read from the server:
+Your profile, `Emdir` (`019fd954-0745-7748-9892-ce6f2e600c04`), read from the server after the 10:35 AM sync:
 
 | Field | Value |
 | --- | --- |
 | Level | 23, with **6 unspent** stat points |
-| `lifetime_steps` | **278,377** (278 Leagues) |
+| `lifetime_steps` | **291,416** (291 Leagues) |
 | Zones open | Olympion, Valheon, Imperion |
-| Streak | current **10**, best **10**, credited through 2026-10-30 |
-| Today | 9,298 steps, goal met, 5 of 5 encounters used |
+| Waymarker | **Valheon.** Imperion is open, but its road begins at 900 Leagues, and the Waymarker stands in the furthest open zone you've reached |
+| Streak | current **11**, best **11**, credited through 2026-10-31 |
+| Today | 3,160 steps, **goal not met**, 2 of 5 encounters used |
+| Waiting encounters | **3**, all workout grants in Valheon: Valkyrie, and Draugr twice |
 | Gear | **12 of 12.** Worn: Ascendant's Blade +9, Paragon's Guard +7, Ascendant's Band +9, Coilbreaker's Wrath (+5 Favour, +5 Aegis) |
 | Items | 20 |
 | Settings | Music and effects at 1.00, not muted, reminder **6 PM**, male figure |
@@ -56,9 +58,9 @@ Covers exit criterion 1.
 
 | # | Step | Expected | Result |
 | --- | --- | --- | --- |
-| 1.1 | With no cable and Metro stopped, force-stop and open Traverser | It opens to Character with no red screen and no "Unable to load script" | |
-| 1.2 | Pull to refresh on Character | The spinner settles with no banner. Your step count matches Health Connect's | |
-| 1.3 | On the server, read your last sync (Claude runs this) | A `sync_delta` row applied within the last minute | |
+| 1.1 | With no cable and Metro stopped, force-stop and open Traverser | It opens to Character with no red screen and no "Unable to load script" | PASS |
+| 1.2 | Pull to refresh on Character | The spinner settles with no banner. Your step count matches Health Connect's | PASS |
+| 1.3 | On the server, read your last sync (Claude runs this) | A `sync_delta` row applied within the last minute | PASS: a 4-step delta for Nov 1 applied at 10:49:26 AM, read 24 seconds later. Today now stands at 3,164 |
 
 ### 2. Music by screen, and a battle's way in and out
 
@@ -66,15 +68,15 @@ Covers exit criterion 2. Each track speaks its name, then drones. A crossfade la
 
 | # | Step | Expected | Result |
 | --- | --- | --- | --- |
-| 2.1 | Open the **Character** tab | "hub music", then a drone | |
-| 2.2 | Switch to **Satchel** | No change: the same track keeps playing | |
-| 2.3 | Switch to **Map** | "map imperion music", crossfaded in. Your Waymarker stands in Imperion | |
-| 2.4 | Open **Settings** from Character | No change: Settings keeps whatever was playing | |
-| 2.5 | Start a waiting wild fight from the Road's encounters card | "modal open". The map music drops to a fifth of its volume, then "battle imperion music". ("Encounter start" plays only on **Explore**, and today's five are used: run it tomorrow as 2.5a) | |
-| 2.5a | Tomorrow, tap **Explore** | "encounter start" | |
-| 2.6 | Win it | The battle track stops, then "victory sting". If something dropped, the Reveal Card follows with "reveal 1 sting", 2 or 3 by its tier, and "reveal card flip" | |
-| 2.7 | Tap **Continue** back to the Road | The map track returns | |
-| 2.8 | Start another wild fight, then **Flee** | "flee success", and the map track fades back in | |
+| 2.1 | Open the **Character** tab | "hub music", then a drone | PASS |
+| 2.2 | Switch to **Satchel** | No change: the same track keeps playing | PASS |
+| 2.3 | Switch to **Map** | "map valheon music", crossfaded in. Your Waymarker stands in Valheon | PASS |
+| 2.4 | Open **Settings** from Character | No change: Settings keeps whatever was playing | PASS |
+| 2.5 | Start a waiting wild fight from the Road's encounters card | "modal open". The map music drops to a fifth of its volume, then "battle valheon music" | PASS |
+| 2.5a | Tap **Explore Valheon**. Three of today's five are left | If the roll finds a fight, "encounter start" and a new row on the encounters card. If it finds nothing, no sound: tap again | PASS |
+| 2.6 | Win it | The battle track stops, then "victory sting". If something dropped, the Reveal Card follows with "reveal 1 sting", 2 or 3 by its tier, and "reveal card flip" | PASS |
+| 2.7 | Tap **Continue** back to the Road | The map track returns | PASS |
+| 2.8 | Start another wild fight, then **Flee** | "flee success", and the map track fades back in | PASS |
 
 ### 3. Stingers on their triggers
 
@@ -82,10 +84,10 @@ Covers exit criterion 3, apart from `stg_overactivity`, which is drill 5.
 
 | # | Step | Expected | Result |
 | --- | --- | --- | --- |
-| 3.1 | In a fight, use a move the chevron marks super effective | "Super Effective!" on the plate, and "type super sting" | |
-| 3.2 | Use one marked resisted | "Resisted…", and "type resisted sting" | |
-| 3.3 | Character → **Tag today as a Rest Day** | "rest day sting", and the music dips under it and returns | |
-| 3.4 | Walk at least 1,000 steps, open the app, wait for the sync to settle, then open the **Map**. If the Map was already open when the sync landed, switch tabs and back | The Waymarker walks forward along Imperion's track to "footstep loop", then "waymarker sting" when it stops | |
+| 3.1 | In a fight, use a move the chevron marks super effective | "Super Effective!" on the plate, and "type super sting" | PASS |
+| 3.2 | Use one marked resisted | "Resisted…", and "type resisted sting" | PASS |
+| 3.3 | **Run this last, after 7.3 tonight.** A rest tag counts the day as done, which cancels tonight's nudge. Then Character → **Tag today as a Rest Day** | "rest day sting", and the music dips under it and returns | |
+| 3.4 | Walk at least 1,000 steps, open the app, wait for the sync to settle, then open the **Map**. If the Map was already open when the sync landed, switch tabs and back | The Waymarker walks forward along Valheon's track to "footstep loop", then "waymarker sting" when it stops | |
 | 3.5 | Leave the Map and come back | No walk and no sting: it plays once per batch | |
 | 3.6 | Open the Map again with no new Leagues | Nothing | |
 
@@ -141,23 +143,26 @@ First, in Android Settings → Apps → Traverser → Notifications, turn notifi
 | 6.8 | Character → Avatar | The female figure, the starting blade in the top-left corner, and three dashed empty slots: Armour, Accessory, Trinket | |
 | 6.9 | Everything else on Character | Unchanged by the denial. No banner about notifications | |
 | 6.10 | Settings → **Traverser** | The same two plates, Female chosen. Tap **Male**, and Avatar shows the male figure | |
-| 6.11 | Settings → **Restore a different identity**, and paste Emdir's file | Emdir returns: Level 23, streak 10 | |
+| 6.11 | Settings → **Restore a different identity**, and paste Emdir's file | Emdir returns: Level 23, streak 11 | |
 
-### 7. The daily nudge, overnight
+### 7. The daily nudge, tonight at 6 PM
 
-Covers exit criterion 7. **Runs overnight.** A met goal skips the day's nudge, and today's is met, so it has to be tomorrow, before you've walked.
+Covers exit criterion 7. **Runs today.** A met goal skips the day's nudge, and today's isn't met yet, so tonight's 6 PM nudge is already scheduled. It stays scheduled only if your last open before 6 PM still finds you under the goal.
 
-1. Tonight, in Android Settings, turn Traverser's notifications back **on**. Then Settings → **Daily reminder**, and step it to **7 AM**.
-2. Claude reads `adb shell dumpsys alarm` and confirms tomorrow's alarm, with the one-hour window.
-3. Tomorrow, before 7 AM, open Traverser once. That sets tonight's numbers into the nudge.
-4. Don't reach 7,000 steps before 8 AM.
+1. After drill 6, in Android Settings, turn Traverser's notifications back **on**. Drill 6 turned them off.
+2. Watch your steps. You're at 3,160, and drills 3.4 and 5 add about 2,500. Stay under 7,000 by your last open before 6 PM.
+3. Plug the cable in. Claude reads `adb shell dumpsys alarm` and confirms tonight's alarm, with the one-hour window.
+4. Open Traverser once more before 6 PM. That sets the latest numbers into the nudge.
+5. Don't open Traverser again until the notification arrives. Don't tag the rest day (3.3) until after it.
+
+**If you pass 7,000 first,** today's nudge is cancelled. Run 7.3 tomorrow instead, before you've walked 7,000 steps.
 
 | # | Step | Expected | Result |
 | --- | --- | --- | --- |
-| 7.1 | Read the Daily reminder card | "between 7 and 8 AM" | |
-| 7.2 | Claude's alarm check | One nudge alarm a day for the coming week, none today (the goal is met), the first tomorrow from 7 AM within an hour's window | |
-| 7.3 | Tomorrow, between 7 and 8 AM | One notification, titled **Traverser**: "As of [the time you opened it], Emdir was [N] steps short of today's goal. Walked since? Open Traverser to count it and keep a 10-day streak going." | |
-| 7.4 | Set the reminder back to 6 PM | "between 6 and 7 PM" | |
+| 7.1 | Read the Daily reminder card | "between 6 and 7 PM" | |
+| 7.2 | Claude's alarm check | One nudge alarm a day for the coming week, the first today from 6 PM within an hour's window | |
+| 7.3 | Tonight, between 6 and 7 PM | One notification, titled **Traverser**: "As of [the time you last opened it], Emdir was [N] steps short of today's goal. Walked since? Open Traverser to count it and keep a 11-day streak going." The "a 11" is a known copy defect (note 1) | |
+| 7.4 | Step the reminder to 7 AM, then back to 6 PM | "between 7 and 8 AM", then "between 6 and 7 PM" | |
 | 7.5 | Across all of M6 | No notification has ever arrived about a broken streak | |
 
 ### 8. No placeholder anywhere
@@ -205,7 +210,7 @@ M6 plan §5, against the drills above.
 
 | # | Criterion | Evidence | Result |
 | --- | --- | --- | --- |
-| 1 | The signed APK runs with no cable and no Metro, and syncs over Tailscale | 1 | |
+| 1 | The signed APK runs with no cable and no Metro, and syncs over Tailscale | 1 | PASS |
 | 2 | Each screen plays its GDD 14 track, and a battle enters and exits on §5's transitions | 2, 6.1–6.5 | |
 | 3 | Stingers fire on their triggers, `stg_overactivity` with the banner | 3, 5 | |
 | 4 | Sound effects play for combat, navigation and the overworld | 4, 3.4 | |
@@ -220,4 +225,6 @@ M6 plan §5, against the drills above.
 
 | # | Drill | Note |
 | --- | --- | --- |
+| 1 | 7.3 | Found while updating the sheet on 2026-11-01: `todayBody` in `notifications/nudge.ts` writes "a 11-day streak". Streaks of 8, 11, 18 and 80–89 days need "an". Not yet fixed |
+| 2 | — | Found 2026-11-03, between drills: with the server off, Nov 2 was opened over its goal but synced on Nov 3. Grace was spent, so the streak broke at 11. Fixed in step 9 (DECISIONS 2026-11-03), and the next sync re-credits Nov 2 |
 | | | |
